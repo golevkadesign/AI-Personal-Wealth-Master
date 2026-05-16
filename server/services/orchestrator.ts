@@ -246,6 +246,8 @@ export async function streamSynthesis(userTier: string, message: string, externa
   - \`Typography\`: 文本。props 包含 variant (h2, h3, h3-serif, body, body-sm), color (text-primary, text-muted, danger, warning), text。
   - \`Badge\`: 标签。props 包含 intent (critical, warning, success, default), text。
   - \`ActionButton\`: 交互按钮。props 包含 variant (primary, danger, outline), label, actionIntent (点击后触发的后续全局 Prompt 指令，极其重要！)。
+  - \`MetricCard\`: 成品核心指标卡。props 包含 title, dataKey (如 netWorth, liquidity, fcf 等), isLongSubText。
+  - \`DynamicChart\`: 成品高级图表。props 包含 title, chartType (如 liquidity, publicHoldings, expenses 等)。
 
 当前前端面板状态 (TERMINAL_STATE)：
 ${JSON.stringify({ 
