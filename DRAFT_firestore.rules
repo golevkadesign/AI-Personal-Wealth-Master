@@ -1,0 +1,28 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() { return request.auth != null; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    function isValidUserProfile(data) {
+      let isChatHistorySafe = !('chatHistory' in data) || (data.chatHistory is list && data.chatHistory.size() <= 1000);
+      let isAppDataSafe = !('appData' in data) || data.appData is map;
+      let isUserProfileSafe = !('userProfile' in data) || data.userProfile is map;
+      
+      return isChatHistorySafe && isAppDataSafe && isUserProfileSafe;
+    }
+
+    match /userProfiles/{userId} {
+      allow read: if isSignedIn() && request.auth.uid == userId && isValidId(userId);
+      allow create: if isSignedIn() && request.auth.uid == userId && isValidId(userId) && isValidUserProfile(incoming());
+      allow update: if isSignedIn() && request.auth.uid == userId && isValidId(userId) && isValidUserProfile(incoming());
+      allow delete: if isSignedIn() && request.auth.uid == userId && isValidId(userId);
+    }
+  }
+}

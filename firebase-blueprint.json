@@ -1,0 +1,31 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile Data",
+      "description": "Stores user's application state, RAG profile, and chat history.",
+      "type": "object",
+      "properties": {
+        "appData": {
+          "type": "object",
+          "description": "Terminal State Data"
+        },
+        "userProfile": {
+          "type": "object",
+          "description": "RAG extracted profile"
+        },
+        "chatHistory": {
+          "type": "array",
+          "description": "Chat message history"
+        }
+      }
+    }
+  },
+  "firestore": {
+    "/userProfiles/{userId}": {
+      "schema": {
+        "$ref": "#/entities/UserProfile"
+      },
+      "description": "Stores all terminal state and chat history for a specific user"
+    }
+  }
+}
