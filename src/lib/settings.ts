@@ -11,6 +11,13 @@ export interface AppSettings {
   openaiAdvancedModel: string;
   agentPrompts?: Record<string, string>;
   ragSchema?: string;
+  intentModel?: string;
+  orchestratorModel?: string;
+  sentinelModel?: string;
+  sentinelCooldown?: number;
+  heartbeatInterval?: number;
+  liquidityBufferMonths?: number;
+  strategicDebtThreshold?: number;
 }
 
 export const defaultSettings: AppSettings = {
@@ -26,6 +33,13 @@ export const defaultSettings: AppSettings = {
   openaiAdvancedModel: 'gpt-4o',
   agentPrompts: {},
   ragSchema: '',
+  intentModel: 'gemini-2.5-flash',
+  orchestratorModel: 'gemini-2.5-pro',
+  sentinelModel: 'gemini-2.5-flash',
+  sentinelCooldown: 60,
+  heartbeatInterval: 180,
+  liquidityBufferMonths: 6,
+  strategicDebtThreshold: 40,
 };
 
 export const getSettings = (): AppSettings => {
