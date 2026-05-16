@@ -5,6 +5,7 @@ import { getSettings } from '../lib/settings';
 export function useSentinel(data: any, commitData: any) {
   const hasScanned = useRef(false);
   const latestData = useRef(data);
+  const isDataReady = !!(data && Object.keys(data.metrics || {}).length > 0);
   
   // 💥 修复 1：使用 ref 永远保持最新状态引用，而不触发 re-render 监听
   useEffect(() => {
@@ -47,11 +48,8 @@ export function useSentinel(data: any, commitData: any) {
   }, [commitData]);
 
   useEffect(() => {
-    // 💥 修复 2：只在组件首次挂载且有基础指标时才启动，后续依赖项为空数组 []，绝不重绑
     if (hasScanned.current) return;
-    
-    // 确保有初始数据才启动
-    if (!latestData.current || Object.keys(latestData.current.metrics || {}).length === 0) return;
+    if (!isDataReady) return;
     
     hasScanned.current = true;
 
@@ -63,8 +61,12 @@ export function useSentinel(data: any, commitData: any) {
           // 每次发送时都去拿 ref 里的最新数据
           body: JSON.stringify({ terminalState: latestData.current, settings: getSettings() })
         });
-      } catch (e) {
-        console.error("Sentinel heartbeat failed:", e);
+      } catch (e: any) {
+        if (e.message === 'Failed to fetch') {
+           console.warn("Sentinel heartbeat skipped: Dev server restarting or offline.");
+        } else {
+           console.error("Sentinel heartbeat failed:", e);
+        }
       }
     };
 
@@ -78,5 +80,5 @@ export function useSentinel(data: any, commitData: any) {
       clearInterval(intervalTimer);
       hasScanned.current = false;
     };
-  }, []); // 💥 核心：依赖项为空！只绑一次！
+  }, [isDataReady]); // ✅ Depend on isDataReady so it runs when data is available
 }
