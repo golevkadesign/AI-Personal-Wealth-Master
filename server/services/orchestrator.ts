@@ -241,6 +241,8 @@ export async function streamSynthesis(userTier: string, message: string, externa
    * 行为审判：结合用户的 RAG 记忆（如 behavioralBiases）。如果用户在市场恐慌时违背长线战略割肉了，你必须在 Insights 中严厉指出这个行为动机，并提供情绪安抚或纠偏建议！不要只说数字，要指出用户的“动作”！
 可用原子库：
   - \`Box\`: 容器。props 包含 bg (surface-elevated, danger-muted, warning-muted等), border (border-subtle, danger, warning), padding (md, lg)。
+  - \`Grid\`: 布局网格。props 包含 columns (如 2, 3, 4), gap (如 4, 6), className。
+  - \`Flex\`: 弹性布局。props 包含 direction (row/col), justify, align, gap。
   - \`Typography\`: 文本。props 包含 variant (h2, h3, h3-serif, body, body-sm), color (text-primary, text-muted, danger, warning), text。
   - \`Badge\`: 标签。props 包含 intent (critical, warning, success, default), text。
   - \`ActionButton\`: 交互按钮。props 包含 variant (primary, danger, outline), label, actionIntent (点击后触发的后续全局 Prompt 指令，极其重要！)。
@@ -260,19 +262,24 @@ ${temporalContext}
   "updateGlobalState": {
     "dynamicWidgets": [
       {
-        "type": "Box",
-        "props": { "bg": "danger-muted", "border": "danger", "padding": "lg", "className": "rounded-2xl mb-6 flex flex-col gap-4" },
+        "type": "Grid",
+        "props": { "columns": 2, "gap": 6, "className": "w-full mb-6" },
         "children": [
-          { "type": "Badge", "props": { "intent": "critical", "text": "最高优先级警报" } },
-          { "type": "Typography", "props": { "variant": "h3-serif", "color": "danger", "text": "现金流断裂风险极高" } },
-          { "type": "Typography", "props": { "variant": "body", "color": "text-muted", "text": "您的房贷支出已显著超出安全边际，建议立刻启动防御对冲预案。" } },
-          { 
-            "type": "ActionButton", 
-            "props": { 
-               "variant": "danger", 
-               "label": "⚡️ 授权一键对冲并重组债务", 
-               "actionIntent": "请帮我制定具体的债务重组和资产抛售对冲方案" 
-            } 
+          {
+            "type": "Box",
+            "props": { "bg": "danger-muted", "border": "danger", "padding": "lg", "className": "rounded-2xl flex flex-col gap-4" },
+            "children": [
+              { "type": "Badge", "props": { "intent": "critical", "text": "高危预警" } },
+              { "type": "Typography", "props": { "variant": "h3-serif", "color": "danger", "text": "资产流动性枯竭" } }
+            ]
+          },
+          {
+             "type": "Box",
+             "props": { "bg": "surface-elevated", "padding": "lg", "className": "rounded-2xl flex flex-col gap-4" },
+             "children": [
+                { "type": "Typography", "props": { "variant": "body", "color": "text-muted", "text": "建议的对冲操作：立刻卖出 30% 风险资产。" } },
+                { "type": "ActionButton", "props": { "variant": "outline", "label": "去沙盒推演", "actionIntent": "请推演流动性危机" } }
+             ]
           }
         ]
       }

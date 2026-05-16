@@ -223,7 +223,7 @@ export default function App() {
 
       {/* Confirm Clear Modal */}
       {showClearConfirm && (
-        <div className="fixed inset-0 bg-dash-bg/80 backdrop-blur-xl z-50 flex justify-center items-center p-4">
+        <div className="fixed inset-0 bg-dash-bg/80 backdrop-blur-xl z-[999] flex justify-center items-center p-4">
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-dash-surface border border-dash-red/30 shadow-lg rounded-[24px] w-full max-w-md overflow-hidden relative p-8">
             <h3 className="text-[15px] font-bold text-dash-red mb-3 uppercase tracking-widest flex items-center gap-2">
                Reset Workspace

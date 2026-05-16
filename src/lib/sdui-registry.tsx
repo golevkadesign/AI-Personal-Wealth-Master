@@ -94,6 +94,17 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
       />
     );
   },
+  Flex: ({ direction = 'row', justify = 'start', align = 'stretch', gap = 4, className = '', children }) => {
+    const dirClass = direction === 'col' ? 'flex-col' : 'flex-row';
+    const justifyClass = `justify-${justify}`;
+    const alignClass = `items-${align}`;
+    const gapClass = `gap-${gap}`;
+    return (
+      <div className={`flex ${dirClass} ${justifyClass} ${alignClass} ${gapClass} ${className}`}>
+        {children}
+      </div>
+    );
+  },
   Box: ({ bg = 'transparent', border = 'none', padding = 'none', className = '', children, globalData }) => {
     const classes = [bgMap[bg] || '', borderMap[border] || '', paddingMap[padding] || '', className].join(' ');
     return <div className={classes.trim()}>{children}</div>;
