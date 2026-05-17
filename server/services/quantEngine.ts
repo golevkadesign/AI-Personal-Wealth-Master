@@ -25,11 +25,21 @@ const calculateSignals = (data: any[], config: any) => {
 }
 
 // 核心抓取与清洗引擎
-export const analyzeStock = async (symbol: string) => {
+const getYahooSymbol = (sym: string) => sym.trim().toUpperCase().replace(/\.US$/i, '');
+
+export const analyzeStock = async (rawSymbol: string) => {
+    const symbol = getYahooSymbol(rawSymbol);
     try {
         // Node 端直接 fetch，无需跨域代理
-        const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=6mo&interval=1d`);
-        if (!res.ok) return null;
+        const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=6mo&interval=1d`, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+        });
+        if (!res.ok) {
+            console.error(`Yahoo Finance fetch failed for ${symbol}: ${res.status} ${res.statusText}`);
+            return null;
+        }
         const json = await res.json();
         const result = json.chart?.result?.[0];
         if (!result) return null;
@@ -76,35 +86,50 @@ export const analyzeStock = async (symbol: string) => {
     }
 };
 
-export const fetchStockHistory = async (symbol: string) => {
-    try {
-        const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=1y&interval=1d`);
-        if (!res.ok) return null;
-        const json = await res.json();
-        const result = json.chart?.result?.[0];
-        if (!result) return null;
-        const quotes = result.indicators.quote[0];
-        const timestamps = result.timestamp;
-        
-        // ECharts K线图所需格式: [日期, 开盘, 收盘, 最低, 最高]
-        let history = timestamps.map((ts: number, i: number) => {
-            const d = new Date(ts * 1000);
-            const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-            return [
-                dateStr,
-                quotes.open[i],
-                quotes.close[i],
-                quotes.low[i],
-                quotes.high[i]
-            ];
-        }).filter((item: any[]) => {
-            return item[1] != null && item[2] != null && item[3] != null && item[4] != null;
-        });
+// 提取出的 Yahoo 兜底抓取函数 (增加了 User-Agent 伪装)
+const fetchFromYahooFallback = async (symbol: string) => {
+    console.log(`[QuantEngine] 降级使用 Yahoo 公共数据源获取 ${symbol} 历史数据...`);
+    const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=1y&interval=1d`, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' } // 💥 关键修复
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    const result = json.chart?.result?.[0];
+    if (!result) return null;
+    
+    const quotes = result.indicators.quote[0];
+    return result.timestamp.map((ts: number, i: number) => {
+        const d = new Date(ts * 1000);
+        return [
+            `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
+            quotes.open[i], quotes.close[i], quotes.low[i], quotes.high[i]
+        ];
+    }).filter((item: any[]) => item[1] != null && item[2] != null && item[3] != null && item[4] != null).slice(-150);
+};
 
-        // 截取最新的 150 个交易日
-        return history.slice(-150);
+// 预留的长桥抓取通道
+const fetchFromLongbridge = async (symbol: string, lbConfig: any) => {
+    console.log(`[QuantEngine] ⚡ 使用长桥(Longbridge)实盘专线获取 ${symbol} 历史数据...`);
+    // TODO: 结合你本地的 test-lb2.ts 或 Longbridge SDK，在这里发起真实的长桥 OpenAPI K 线请求
+    // 返回格式必须同样是: [ [日期字符串, open, close, low, high], ... ]
+    throw new Error("Longbridge integration pending"); 
+};
+
+export const fetchStockHistory = async (rawSymbol: string, useLongbridge: boolean = false, lbConfig?: any) => {
+    const symbol = getYahooSymbol(rawSymbol);
+    try {
+        if (useLongbridge) {
+            try {
+                const lbHistory = await fetchFromLongbridge(symbol, lbConfig);
+                if (lbHistory && lbHistory.length > 0) return lbHistory;
+            } catch (e) {
+                console.warn(`[QuantEngine] 长桥获取 ${symbol} 失败，准备降级兜底...`, e);
+            }
+        }
+        // 如果未绑定长桥，或长桥拉取失败，安全降级到 Yahoo
+        return await fetchFromYahooFallback(symbol);
     } catch (e) {
-        console.error(`Fetch History Error for ${symbol}:`, e);
+        console.error(`[QuantEngine] ${symbol} 所有历史数据源拉取均失败:`, e);
         return null;
     }
 };

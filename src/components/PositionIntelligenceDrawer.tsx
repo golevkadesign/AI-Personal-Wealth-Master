@@ -18,12 +18,28 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
   useEffect(() => {
     if (isOpen && holding?.symbol) {
       setLoading(true);
-      fetch(`/api/quant/history?symbol=${holding.symbol}`)
-        .then(res => res.json())
+      const isLbBound = true; // 未来可替换为 settings.hasLongbridge
+      fetch(`/api/quant/history?symbol=${holding.symbol}&useLb=${isLbBound}`)
+        .then(async (res) => {
+          if (!res.ok) {
+            const errText = await res.text();
+            throw new Error(`HTTP ${res.status}: ${errText}`);
+          }
+          return res.json();
+        })
         .then(data => {
-          if (data.history) setHistory(data.history);
+          if (data.history && data.history.length > 0) {
+            setHistory(data.history);
+          } else {
+            console.error("QuantEngine: 返回了空的历史数据数组");
+          }
+        })
+        .catch((err) => {
+          console.error("QuantEngine 拉取失败:", err);
+        })
+        .finally(() => {
           setLoading(false);
-        }).catch(() => setLoading(false));
+        });
     }
   }, [isOpen, holding]);
 
