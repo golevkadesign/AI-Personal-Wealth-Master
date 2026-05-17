@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Network, Cpu, User, Activity, PieChart, ShieldAlert, ArrowDown, Binary, Braces, Sparkles, Database, RefreshCw, Edit2, Save, RotateCcw, AlertCircle, Sliders, FileCode } from 'lucide-react';
+import { X, Network, Cpu, User, Activity, PieChart, ShieldAlert, ArrowDown, Binary, Braces, Sparkles, Database, RefreshCw, Edit2, Save, RotateCcw, AlertCircle, Sliders, FileCode, Plus, Trash2 } from 'lucide-react';
 import { getSettings, saveSettings, AppSettings } from '../lib/settings';
 import { DEFAULT_PROMPTS, DEFAULT_RAG_SCHEMA } from '../lib/defaultPrompts';
 import ReactMarkdown from 'react-markdown';
@@ -11,21 +11,53 @@ interface DeveloperViewProps {
   onClose: () => void;
   user?: any;
   onClearData?: () => void;
+  onUpdateProfile?: (newProfile: any) => void;
 }
 
-export const DeveloperView: React.FC<DeveloperViewProps> = ({ isOpen, onClose, user, onClearData }) => {
+export const DeveloperView: React.FC<DeveloperViewProps> = ({ isOpen, onClose, user, onClearData, onUpdateProfile }) => {
   const [activeTab, setActiveTab] = useState<'architecture' | 'memory' | 'routing' | 'moats'>('architecture');
   const [selectedNode, setSelectedNode] = useState<string | null>("rag");
   const [settings, setSettings] = useState<AppSettings>(getSettings());
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState("");
+  const [profileFields, setProfileFields] = useState<{id: string, key: string, value: string}[]>([]);
 
   useEffect(() => {
     if (isOpen) {
       setSettings(getSettings());
       setIsEditing(false);
+      if (user && typeof user === 'object') {
+        const fields = Object.keys(user)
+          // Filter out internal firebase auth properties if user is accidentally an Auth object, or just map them
+          .map(k => ({
+            id: Math.random().toString(36).substring(7),
+            key: k,
+            value: typeof user[k] === 'object' ? JSON.stringify(user[k], null, 2) : String(user[k])
+          }));
+        setProfileFields(fields);
+      } else {
+        setProfileFields([]);
+      }
     }
-  }, [isOpen, selectedNode]);
+  }, [isOpen, selectedNode, user]);
+
+  const handleAddProfileField = () => setProfileFields([...profileFields, { id: Math.random().toString(36).substring(7), key: '', value: '' }]);
+  const handleUpdateProfileField = (id: string, field: 'key' | 'value', val: string) => setProfileFields(profileFields.map(f => f.id === id ? { ...f, [field]: val } : f));
+  const handleRemoveProfileField = (id: string) => setProfileFields(profileFields.filter(f => f.id !== id));
+
+  const handleSaveProfile = () => {
+    if (!onUpdateProfile) return alert("未绑定保存方法！");
+    const newProfile: any = {};
+    profileFields.forEach(f => {
+      const k = f.key.trim();
+      if (k) {
+        try { newProfile[k] = JSON.parse(f.value); } 
+        catch { newProfile[k] = f.value; }
+      }
+    });
+    onUpdateProfile(newProfile);
+    alert("长线记忆快照已成功物理覆盖写入！");
+  };
 
   const AGENTS = useMemo(() => [
     {
@@ -270,12 +302,50 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({ isOpen, onClose, u
               <div className="flex-1 p-8 overflow-y-auto">
                 <div className="max-w-3xl space-y-8">
                   {activeTab === 'memory' && (
-                    <div className="space-y-4">
-                      <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2"><Database className="w-4 h-4"/> 物理记忆实体快照 (RAG T0)</h3>
-                      <pre className="bg-black/30 border border-dash-subtle rounded-xl p-5 font-mono text-xs text-slate-400 overflow-x-auto max-h-[600px] leading-relaxed">
-                        {JSON.stringify(user, null, 2)}
-                      </pre>
-                      <p className="text-xs text-dash-primary bg-dash-primary/10 p-3 rounded-lg border border-dash-primary/20">💡 提示：此分类已预留，下一步我们将在此部署基于 Key-Value 的离线高阻尼动态表单，替代生硬的 JSON 展示。</p>
+                    <div className="space-y-6 flex flex-col h-full">
+                      <div className="flex justify-between items-center shrink-0">
+                        <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                          <Database className="w-4 h-4"/> 物理记忆实体快照 (RAG Profile)
+                        </h3>
+                        <button onClick={handleAddProfileField} className="px-3 py-1.5 bg-dash-primary/20 text-dash-primary hover:bg-dash-primary/30 border border-dash-primary/30 rounded-lg text-xs font-bold transition-colors">
+                          + 添加结构化属性
+                        </button>
+                      </div>
+
+                      <div className="flex-1 overflow-y-auto space-y-4 pr-2 pb-6">
+                        {profileFields.length === 0 && (
+                           <div className="text-slate-500 text-sm text-center py-10 border border-dashed border-dash-subtle rounded-xl">暂无记忆数据，请手动添加或通过全局沙盒对话生成。</div>
+                        )}
+                        {profileFields.map((field) => (
+                          <div key={field.id} className="bg-dash-surface border border-dash-subtle rounded-xl p-4 flex gap-4 group transition-colors hover:border-dash-primary/50 relative">
+                            <div className="w-1/3">
+                              <input 
+                                type="text" placeholder="属性键名 (e.g. Demographics)" value={field.key} 
+                                onChange={(e) => handleUpdateProfileField(field.id, 'key', e.target.value)}
+                                className="w-full bg-black/30 border border-dash-subtle rounded-lg p-2.5 text-xs text-dash-gold font-mono focus:outline-none focus:border-dash-primary"
+                              />
+                            </div>
+                            <div className="flex-1">
+                              <textarea 
+                                placeholder="详细履历、牵挂或财务约束内容..." value={field.value} 
+                                onChange={(e) => handleUpdateProfileField(field.id, 'value', e.target.value)}
+                                rows={typeof field.value === 'string' && field.value.length > 60 ? 4 : 1}
+                                className="w-full bg-black/30 border border-dash-subtle rounded-lg p-2.5 text-xs text-slate-300 focus:outline-none focus:border-dash-primary resize-y min-h-[42px] leading-relaxed"
+                              />
+                            </div>
+                            <button onClick={() => handleRemoveProfileField(field.id)} className="absolute -right-2 -top-2 opacity-0 group-hover:opacity-100 p-1.5 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600 transition-all">
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* 专属保存按钮 */}
+                      <div className="pt-6 border-t border-dash-subtle flex justify-end shrink-0">
+                        <button onClick={handleSaveProfile} className="px-6 py-2.5 bg-dash-primary hover:bg-white text-black rounded-xl font-bold flex items-center gap-2 shadow-lg tracking-wide transition-colors">
+                          <Save className="w-4 h-4" /> 物理覆盖写入记忆库
+                        </button>
+                      </div>
                     </div>
                   )}
 

@@ -135,8 +135,14 @@ export default function App() {
       <DeveloperView 
         isOpen={showDeveloperView} 
         onClose={() => setShowDeveloperView(false)} 
-        user={user}
+        user={data?.userProfile || {}}
         onClearData={handleClearDataClick}
+        onUpdateProfile={(newProfile) => {
+          commitData((prev: any) => ({
+            ...prev,
+            userProfile: newProfile
+          }));
+        }}
       />
 
       {/* Top Header */}
