@@ -78,7 +78,7 @@ export const analyzeStock = async (symbol: string) => {
 
 export const fetchStockHistory = async (symbol: string) => {
     try {
-        const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=6mo&interval=1d`);
+        const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=1y&interval=1d`);
         if (!res.ok) return null;
         const json = await res.json();
         const result = json.chart?.result?.[0];
@@ -97,8 +97,12 @@ export const fetchStockHistory = async (symbol: string) => {
                 quotes.low[i],
                 quotes.high[i]
             ];
-        }).filter((item: any[]) => item[1] !== null);
-        return history;
+        }).filter((item: any[]) => {
+            return item[1] != null && item[2] != null && item[3] != null && item[4] != null;
+        });
+
+        // 截取最新的 150 个交易日
+        return history.slice(-150);
     } catch (e) {
         console.error(`Fetch History Error for ${symbol}:`, e);
         return null;
