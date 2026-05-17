@@ -75,3 +75,32 @@ export const analyzeStock = async (symbol: string) => {
         return null;
     }
 };
+
+export const fetchStockHistory = async (symbol: string) => {
+    try {
+        const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=6mo&interval=1d`);
+        if (!res.ok) return null;
+        const json = await res.json();
+        const result = json.chart?.result?.[0];
+        if (!result) return null;
+        const quotes = result.indicators.quote[0];
+        const timestamps = result.timestamp;
+        
+        // ECharts K线图所需格式: [日期, 开盘, 收盘, 最低, 最高]
+        let history = timestamps.map((ts: number, i: number) => {
+            const d = new Date(ts * 1000);
+            const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            return [
+                dateStr,
+                quotes.open[i],
+                quotes.close[i],
+                quotes.low[i],
+                quotes.high[i]
+            ];
+        }).filter((item: any[]) => item[1] !== null);
+        return history;
+    } catch (e) {
+        console.error(`Fetch History Error for ${symbol}:`, e);
+        return null;
+    }
+};

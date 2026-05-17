@@ -4,9 +4,11 @@ import * as echarts from 'echarts';
 interface ReactEChartsProps {
   option: any;
   style?: React.CSSProperties;
+  className?: string;
+  onEvents?: Record<string, Function>;
 }
 
-export const ReactECharts: React.FC<ReactEChartsProps> = ({ option, style }) => {
+export const ReactECharts: React.FC<ReactEChartsProps> = ({ option, style, className, onEvents }) => {
   const chartRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -29,7 +31,14 @@ export const ReactECharts: React.FC<ReactEChartsProps> = ({ option, style }) => 
       }
     }, true);
 
-    const handleResize = () => chartInstance.resize();
+    if (onEvents) {
+      Object.keys(onEvents).forEach((eventName) => {
+        chartInstance?.off(eventName); // 防重复绑定
+        chartInstance?.on(eventName, onEvents[eventName] as any);
+      });
+    }
+
+    const handleResize = () => chartInstance?.resize();
     window.addEventListener('resize', handleResize);
 
     return () => {
@@ -38,5 +47,5 @@ export const ReactECharts: React.FC<ReactEChartsProps> = ({ option, style }) => 
     };
   }, [option]);
 
-  return <div ref={chartRef} style={{ width: '100%', height: '100%', ...style }} />;
+  return <div ref={chartRef} className={className} style={{ width: '100%', height: '100%', ...style }} />;
 };

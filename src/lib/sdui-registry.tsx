@@ -68,7 +68,7 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
     const subValue = metrics[`${dataKey}Summary`] || '';
     return <Card title={title} value={valueStr} subValue={subValue} isLongSubText={isLongSubText} />;
   },
-  DynamicChart: ({ title, chartType, chartHeight, delay, globalData }) => {
+  DynamicChart: ({ title, chartType, chartHeight, delay, globalData, onChartClick }) => {
     const distData = globalData?.distributions?.[chartType] || [];
     let option = {};
     const mockDataForConfig = { distributions: { [chartType]: distData } };
@@ -91,6 +91,7 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
         delay={delay}
         insight={globalData?.insights?.[insightKey] || ""}
         dataLength={distData.length}
+        onChartClick={onChartClick}
       />
     );
   },
@@ -297,7 +298,7 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
   }
 };
 
-export const SDUIRenderer = ({ schema, globalData }: { schema?: SDUIComponent[], globalData?: any }) => {
+export const SDUIRenderer = ({ schema, globalData, onChartClick }: { schema?: SDUIComponent[], globalData?: any, onChartClick?: (params: any) => void }) => {
   if (!schema || !Array.isArray(schema)) return null;
 
   return (
@@ -312,8 +313,8 @@ export const SDUIRenderer = ({ schema, globalData }: { schema?: SDUIComponent[],
            );
         }
         return (
-           <Component key={block.id || i} {...block.props} globalData={globalData}>
-              {block.children && <SDUIRenderer schema={block.children} globalData={globalData} />}
+           <Component key={block.id || i} {...block.props} globalData={globalData} onChartClick={onChartClick}>
+              {block.children && <SDUIRenderer schema={block.children} globalData={globalData} onChartClick={onChartClick} />}
            </Component>
         );
       })}

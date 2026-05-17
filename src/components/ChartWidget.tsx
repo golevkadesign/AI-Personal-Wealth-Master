@@ -15,9 +15,10 @@ interface ChartWidgetProps {
   status?: 'loading' | 'empty' | 'error' | 'success'; 
   onReload?: () => void;
   badge?: React.ReactNode;
+  onChartClick?: (params: any) => void;
 }
 
-export function ChartWidget({ title, dataLength, insight, option, delay = 0, chartHeight = '250px', children, status, onReload, badge }: ChartWidgetProps) {
+export function ChartWidget({ title, dataLength, insight, option, delay = 0, chartHeight = '250px', children, status, onReload, badge, onChartClick }: ChartWidgetProps) {
   // If status is provided, use it, else derive from dataLength
   const currentStatus = status || (dataLength > 0 ? 'success' : 'empty');
 
@@ -76,7 +77,7 @@ export function ChartWidget({ title, dataLength, insight, option, delay = 0, cha
         <div className="flex-1 flex flex-col min-h-0">
           {option || children ? (
             <div className="w-full relative z-10 shrink-0 mb-6" style={{ height: chartHeight }}>
-              {children ? children : <ReactECharts option={option} />}
+              {children ? children : <ReactECharts option={option} onEvents={onChartClick ? { click: onChartClick } : undefined} />}
             </div>
           ) : null}
           

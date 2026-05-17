@@ -25,6 +25,7 @@ import { TerminalHeader } from './components/TerminalHeader';
 import { LifeStrategyTimeline } from './components/LifeStrategyTimeline';
 import { GoalTracker } from './components/GoalTracker';
 
+import { PositionIntelligenceDrawer } from './components/PositionIntelligenceDrawer';
 import { ComponentRegistry, SDUIRenderer } from './lib/sdui-registry';
 
 export interface Attachment {
@@ -53,6 +54,14 @@ export default function App() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showProfileReport, setShowProfileReport] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [selectedHolding, setSelectedHolding] = useState<any | null>(null);
+
+  const handleChartClick = (params: any) => {
+    if (data.publicHoldings && params.name) {
+      const hit = data.publicHoldings.find((h: any) => h.name === params.name || h.symbol === params.name);
+      if (hit) setSelectedHolding(hit);
+    }
+  };
 
   const donutOption = useMemo(() => getDonutOption(data), [data?.distributions?.liquidity]);
 
@@ -200,11 +209,11 @@ export default function App() {
 
       {/* AI 战术干预层 (警报、临时操作区) */}
       {data.dynamicWidgets && data.dynamicWidgets.length > 0 && (
-         <div className="mb-8 w-full"><SDUIRenderer schema={data.dynamicWidgets} globalData={data} /></div>
+         <div className="mb-8 w-full"><SDUIRenderer schema={data.dynamicWidgets} globalData={data} onChartClick={handleChartClick} /></div>
       )}
 
       {/* 战略基座层 (指标卡与核心图表) */}
-      <SDUIRenderer schema={data.dashboardSchema} globalData={data} />
+      <SDUIRenderer schema={data.dashboardSchema} globalData={data} onChartClick={handleChartClick} />
 
       {/* 阶段性人生策略建议 (Life Strategies Timeline) */}
       <LifeStrategyTimeline 
@@ -275,6 +284,12 @@ export default function App() {
         setSduiState={setSduiState} 
         setIsSynthesizing={setIsSynthesizing}
         commitData={commitData}
+      />
+
+      <PositionIntelligenceDrawer 
+        isOpen={!!selectedHolding} 
+        holding={selectedHolding} 
+        onClose={() => setSelectedHolding(null)} 
       />
     </div>
   );
