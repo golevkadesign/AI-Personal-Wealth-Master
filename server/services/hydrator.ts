@@ -1,5 +1,6 @@
 import { getRealTimeQuotes } from "./marketData";
 import { extractTickers } from "./utils";
+import { analyzeStock } from "./quantEngine";
 
 import * as crypto from 'crypto';
 
@@ -233,6 +234,27 @@ export async function hydrateContext(message: string, contextData: any, settings
         if (contextData?.distributions?.publicHoldings?.length > 0) {
             workingPortfolio = JSON.parse(JSON.stringify(contextData.distributions.publicHoldings));
         }
+    }
+    
+    // 💥 植入量化指标洗注逻辑
+    if (workingPortfolio && workingPortfolio.length > 0) {
+        workingPortfolio = await Promise.all(
+            workingPortfolio.map(async (holding: any) => {
+                const symbolToFetch = holding.symbol || (holding.name && holding.name.length <= 6 && holding.name === holding.name.toUpperCase() ? holding.name : null);
+                
+                if (symbolToFetch) {
+                    const quantData = await analyzeStock(symbolToFetch);
+                    if (quantData) {
+                        return {
+                            ...holding,
+                            symbol: symbolToFetch,
+                            quantSignals: quantData
+                        };
+                    }
+                }
+                return holding;
+            })
+        );
     }
     
     if (workingPortfolio && workingPortfolio.length > 0 && hydratedData.marketData) {

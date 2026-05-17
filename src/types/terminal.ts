@@ -18,6 +18,26 @@ export interface Metrics {
   fcfSummary: string;
 }
 
+export interface PublicHolding {
+  name: string;
+  value: number;
+  
+  symbol?: string;
+  quantity?: number;
+  costPrice?: number;
+  quantSignals?: {
+    currentPrice: number;
+    changePercent: number;
+    trend: 'up' | 'down';
+    rsi: number;
+    macdHist: number;
+    adx: number;
+    signal: 'buy' | 'sell' | 'hold';
+    buyPrice: number;
+    sellPrice: number;
+  };
+}
+
 export interface DistributionItem {
   id?: string;
   name?: string;
