@@ -136,16 +136,24 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({ isOpen, onClose, u
     alert("智能体全局配置已成功注入运行时生态！");
   };
 
-  if (!isOpen) return null;
-
   return (
     <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 50 }}
-        className="fixed inset-y-0 right-0 w-[95vw] xl:w-[1200px] max-w-full bg-dash-bg border-l border-dash-subtle z-50 flex flex-col shadow-2xl font-sans"
-      >
-        {/* Header */}
-        <div className="h-16 border-b border-dash-subtle flex items-center justify-between px-6 bg-black/20 z-10 shrink-0">
+      {isOpen && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-[4px] z-[40]"
+            onClick={onClose}
+          />
+          <motion.div
+            initial={{ opacity: 0, x: 50, filter: 'blur(10px)' }} 
+            animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }} 
+            exit={{ opacity: 0, x: '100%', filter: 'blur(10px)' }} 
+            transition={{ type: "spring", bounce: 0, duration: 0.4 }}
+            className="fixed inset-y-0 right-0 w-[100vw] sm:w-[95vw] xl:w-[1200px] max-w-full bg-dash-bg border-l border-dash-subtle z-[50] flex flex-col shadow-2xl font-sans"
+          >
+            {/* Header */}
+            <div className="h-16 border-b border-dash-subtle flex items-center justify-between px-4 sm:px-6 bg-black/20 z-10 shrink-0">
           <div className="flex items-center space-x-3">
             <Binary className="w-6 h-6 text-dash-gold" />
             <h2 className="text-lg font-semibold tracking-tight text-white">Developer View: Control Center</h2>
@@ -175,8 +183,10 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({ isOpen, onClose, u
               const Icon = t.icon;
               const isSel = activeTab === t.id;
               return (
-                <button key={t.id} onClick={() => setActiveTab(t.id as any)} className={`p-3 rounded-xl transition-colors relative group ${isSel ? 'bg-dash-primary/10 text-dash-primary' : 'text-slate-400 hover:text-white'}`}>
-                  <Icon className="w-5 h-5" />
+                <button key={t.id} onClick={() => setActiveTab(t.id as any)} 
+                  className={`p-3 rounded-xl transition-all relative group overflow-hidden ${isSel ? 'bg-dash-primary/10 text-dash-primary shadow-[inset_0_0_20px_rgba(var(--color-dash-primary),0.1)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
+                  {isSel && <div className="absolute left-0 top-1/4 bottom-1/4 w-1 bg-dash-primary rounded-r-full shadow-[0_0_10px_rgba(var(--color-dash-primary),0.8)]" />}
+                  <Icon className="w-5 h-5 relative z-10" />
                   <span className="absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 border border-slate-700">{t.label}</span>
                 </button>
               );
@@ -299,8 +309,8 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({ isOpen, onClose, u
 
             {/* Other Config Tabs */}
             {activeTab !== 'architecture' && (
-              <div className="flex-1 p-8 overflow-y-auto">
-                <div className="max-w-3xl space-y-8">
+              <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
+                <div className="max-w-3xl space-y-8 mx-auto">
                   {activeTab === 'memory' && (
                     <div className="space-y-6 flex flex-col h-full">
                       <div className="flex justify-between items-center shrink-0">
@@ -317,23 +327,23 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({ isOpen, onClose, u
                            <div className="text-slate-500 text-sm text-center py-10 border border-dashed border-dash-subtle rounded-xl">暂无记忆数据，请手动添加或通过全局沙盒对话生成。</div>
                         )}
                         {profileFields.map((field) => (
-                          <div key={field.id} className="bg-dash-surface border border-dash-subtle rounded-xl p-4 flex gap-4 group transition-colors hover:border-dash-primary/50 relative">
-                            <div className="w-1/3">
+                          <div key={field.id} className="bg-dash-surface border border-dash-subtle rounded-xl p-4 flex flex-col sm:flex-row gap-4 group transition-colors hover:border-dash-primary/50 relative shadow-sm">
+                            <div className="w-full sm:w-1/3 shrink-0">
                               <input 
                                 type="text" placeholder="属性键名 (e.g. Demographics)" value={field.key} 
                                 onChange={(e) => handleUpdateProfileField(field.id, 'key', e.target.value)}
-                                className="w-full bg-black/30 border border-dash-subtle rounded-lg p-2.5 text-xs text-dash-gold font-mono focus:outline-none focus:border-dash-primary"
+                                className="w-full bg-black/30 border border-dash-subtle rounded-lg p-2.5 text-[13px] text-dash-gold font-mono focus:outline-none focus:border-dash-primary transition-colors"
                               />
                             </div>
-                            <div className="flex-1">
+                            <div className="flex-1 w-full">
                               <textarea 
                                 placeholder="详细履历、牵挂或财务约束内容..." value={field.value} 
                                 onChange={(e) => handleUpdateProfileField(field.id, 'value', e.target.value)}
                                 rows={typeof field.value === 'string' && field.value.length > 60 ? 4 : 1}
-                                className="w-full bg-black/30 border border-dash-subtle rounded-lg p-2.5 text-xs text-slate-300 focus:outline-none focus:border-dash-primary resize-y min-h-[42px] leading-relaxed"
+                                className="w-full bg-black/30 border border-dash-subtle rounded-lg p-2.5 text-[13px] text-slate-300 focus:outline-none focus:border-dash-primary transition-colors resize-y min-h-[42px] leading-relaxed scrollbar-thin scrollbar-thumb-dash-subtle"
                               />
                             </div>
-                            <button onClick={() => handleRemoveProfileField(field.id)} className="absolute -right-2 -top-2 opacity-0 group-hover:opacity-100 p-1.5 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600 transition-all">
+                            <button onClick={() => handleRemoveProfileField(field.id)} className="absolute -right-2 -top-2 sm:opacity-0 sm:group-hover:opacity-100 opacity-100 p-1.5 bg-red-500/90 text-white rounded-full shadow-lg hover:bg-red-500 transition-all border border-red-400">
                               <X className="w-3 h-3" />
                             </button>
                           </div>
@@ -422,6 +432,8 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({ isOpen, onClose, u
           </div>
         </div>
       </motion.div>
+        </>
+      )}
     </AnimatePresence>
   );
 }
