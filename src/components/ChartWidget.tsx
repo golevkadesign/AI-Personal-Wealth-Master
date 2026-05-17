@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { motion } from 'motion/react';
 import { PieChart, RefreshCw } from 'lucide-react';
 import { ReactECharts } from './ReactECharts';
@@ -21,6 +21,8 @@ interface ChartWidgetProps {
 export function ChartWidget({ title, dataLength, insight, option, delay = 0, chartHeight = '250px', children, status, onReload, badge, onChartClick }: ChartWidgetProps) {
   // If status is provided, use it, else derive from dataLength
   const currentStatus = status || (dataLength > 0 ? 'success' : 'empty');
+  
+  const chartEvents = useMemo(() => onChartClick ? { click: onChartClick } : undefined, [onChartClick]);
 
   return (
     <motion.div
@@ -77,7 +79,7 @@ export function ChartWidget({ title, dataLength, insight, option, delay = 0, cha
         <div className="flex-1 flex flex-col min-h-0">
           {option || children ? (
             <div className="w-full relative z-10 shrink-0 mb-6" style={{ height: chartHeight }}>
-              {children ? children : <ReactECharts option={option} onEvents={onChartClick ? { click: onChartClick } : undefined} />}
+              {children ? children : <ReactECharts option={option} onEvents={chartEvents} />}
             </div>
           ) : null}
           

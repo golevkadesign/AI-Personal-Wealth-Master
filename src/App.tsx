@@ -1,5 +1,5 @@
 import { getSettings, saveSettings, AppSettings } from './lib/settings';
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { getDonutOption, getExpenseOption, getWaterfallOption, getHoldingsOption, getOptionsOption, getCurrencySymbol } from './components/chart-configs';
 import { Card } from './components/Card';
 import { ReactECharts } from './components/ReactECharts';
@@ -56,12 +56,12 @@ export default function App() {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [selectedHolding, setSelectedHolding] = useState<any | null>(null);
 
-  const handleChartClick = (params: any) => {
-    if (data.publicHoldings && params.name) {
-      const hit = data.publicHoldings.find((h: any) => h.name === params.name || h.symbol === params.name);
+  const handleChartClick = useCallback((params: any) => {
+    if (data.distributions?.publicHoldings && params.name) {
+      const hit = data.distributions.publicHoldings.find((h: any) => h.name === params.name || h.symbol === params.name);
       if (hit) setSelectedHolding(hit);
     }
-  };
+  }, [data.distributions?.publicHoldings]);
 
   const donutOption = useMemo(() => getDonutOption(data), [data?.distributions?.liquidity]);
 

@@ -27,10 +27,8 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
     }
   }, [isOpen, holding]);
 
-  if (!isOpen || !holding) return null;
-
-  const quant = holding.quantSignals || {};
-  const isUp = quant.changePercent >= 0;
+  const quant = holding?.quantSignals || {};
+  const isUp = (quant.changePercent || 0) >= 0;
 
   // ECharts K线配置 (极简老钱风)
   const chartOption = {
@@ -41,7 +39,7 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
     yAxis: { type: 'value', scale: true, splitLine: { lineStyle: { color: '#1A1D21', type: 'dashed' } }, axisLabel: { color: '#888' } },
     series: [
       {
-        name: holding.symbol, type: 'candlestick', data: history.map(item => [item[1], item[2], item[3], item[4]]),
+        name: holding?.symbol, type: 'candlestick', data: history.map(item => [item[1], item[2], item[3], item[4]]),
         itemStyle: { color: '#10B981', color0: '#EF4444', borderColor: '#10B981', borderColor0: '#EF4444' }
       }
     ]
@@ -49,14 +47,18 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
 
   const handleAskAI = () => {
     onClose();
-    openCopilot(`我当前持有 ${holding.name} (${holding.symbol})，总价值 $${holding.value}。它的当前量化指标为 RSI: ${quant.rsi}, ADX: ${quant.adx}, 信号: ${quant.signal}。请结合我目前的整体财务状况和防守策略，为我进行深度的持仓推演和决策建议。`);
+    if (holding) {
+      openCopilot(`我当前持有 ${holding.name} (${holding.symbol})，总价值 $${holding.value}。它的当前量化指标为 RSI: ${quant.rsi}, ADX: ${quant.adx}, 信号: ${quant.signal}。请结合我目前的整体财务状况和防守策略，为我进行深度的持仓推演和决策建议。`);
+    }
   };
 
   return (
     <AnimatePresence>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]" onClick={onClose} />
-      <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} 
-        className="fixed bottom-0 left-0 right-0 h-[85vh] sm:h-[600px] bg-dash-bg border-t border-dash-subtle z-[101] rounded-t-3xl shadow-2xl flex flex-col font-sans">
+      {isOpen && holding && (
+        <>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]" onClick={onClose} />
+          <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} 
+            className="fixed bottom-0 left-0 right-0 h-[85vh] sm:h-[600px] bg-dash-bg border-t border-dash-subtle z-[101] rounded-t-3xl shadow-2xl flex flex-col font-sans">
         
         {/* Header */}
         <div className="flex justify-between items-center px-8 py-5 border-b border-dash-subtle bg-black/20">
@@ -114,6 +116,8 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
           </div>
         </div>
       </motion.div>
+      </>
+      )}
     </AnimatePresence>
   );
 }
