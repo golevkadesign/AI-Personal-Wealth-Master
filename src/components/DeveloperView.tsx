@@ -23,6 +23,7 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({ isOpen, onClose, u
   const [naturalInput, setNaturalInput] = useState("");
   const [isParsing, setIsParsing] = useState(false);
   const [tempAttachments, setTempAttachments] = useState<any[]>([]);
+  const [profileFields, setProfileFields] = useState<{id: string, key: string, value: string, fileData: {name: string, base64: any} | null, isAnalyzing: boolean}[]>([]);
 
   useEffect(() => {
     if (isOpen) {
@@ -30,8 +31,38 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({ isOpen, onClose, u
       setIsEditing(false);
       setNaturalInput("");
       setTempAttachments([]);
+      if (user && typeof user === 'object') {
+        const fields = Object.keys(user).map(k => ({
+          id: Math.random().toString(36).substring(7),
+          key: k,
+          value: typeof user[k] === 'object' ? JSON.stringify(user[k], null, 2) : String(user[k]),
+          fileData: null,
+          isAnalyzing: false
+        }));
+        setProfileFields(fields);
+      } else {
+        setProfileFields([]);
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, selectedNode, user]);
+
+  const handleAddProfileField = () => setProfileFields([...profileFields, { id: Math.random().toString(36).substring(7), key: '', value: '', fileData: null, isAnalyzing: false }]);
+  const handleUpdateProfileField = (id: string, field: 'key' | 'value', val: string) => setProfileFields(profileFields.map(f => f.id === id ? { ...f, [field]: val } : f));
+  const handleRemoveProfileField = (id: string) => setProfileFields(profileFields.filter(f => f.id !== id));
+
+  const handleSaveProfile = () => {
+    if (!onUpdateProfile) return alert("未绑定保存方法！");
+    const newProfile: any = {};
+    profileFields.forEach(f => {
+      const k = f.key.trim();
+      if (k) {
+        try { newProfile[k] = JSON.parse(f.value); } 
+        catch { newProfile[k] = f.value; }
+      }
+    });
+    onUpdateProfile(newProfile);
+    alert("长线记忆快照已成功物理覆盖写入！");
+  };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -333,15 +364,99 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({ isOpen, onClose, u
                 <div className="max-w-3xl space-y-8 mx-auto">
                   {activeTab === 'memory' && (
                     <div className="space-y-6 flex flex-col h-full">
-                      <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                        <Database className="w-4 h-4"/> 物理记忆实体
-                      </h3>
+                      <div className="flex justify-between items-center shrink-0">
+                        <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                          <Database className="w-4 h-4"/> 物理记忆实体
+                        </h3>
+                        <button onClick={handleAddProfileField} className="px-3 py-1.5 bg-dash-primary/20 text-dash-primary hover:bg-dash-primary/30 border border-dash-primary/30 rounded-lg text-xs font-bold transition-colors">
+                          + 添加结构化属性
+                        </button>
+                      </div>
                       
                       <div className="bg-black/40 border border-dash-subtle rounded-xl p-4">
                         <label className="block text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Current Ground Truth Snapshot</label>
                         <pre className="text-dash-primary font-mono text-xs overflow-auto max-h-[200px] custom-scrollbar">
                           {JSON.stringify(user, null, 2)}
                         </pre>
+                      </div>
+
+                      <div className="flex-1 overflow-y-auto space-y-4 pr-2 pb-6">
+                        {profileFields.length === 0 && (
+                           <div className="text-slate-500 text-sm text-center py-10 border border-dashed border-dash-subtle rounded-xl">暂无记忆数据，请手动添加或通过全局沙盒对话生成。</div>
+                        )}
+                        {profileFields.map((field) => (
+                          <div key={field.id} className="bg-dash-surface border border-dash-subtle rounded-xl p-4 flex flex-col gap-3 group transition-colors hover:border-dash-primary/50 relative shadow-sm">
+                            <div className="flex flex-col sm:flex-row gap-4">
+                              <div className="w-full sm:w-1/3 shrink-0">
+                                <input 
+                                  type="text" placeholder="属性名 (如: FundHoldings)" value={field.key} 
+                                  onChange={(e) => handleUpdateProfileField(field.id, 'key', e.target.value)}
+                                  className="w-full bg-black/30 border border-dash-subtle rounded-lg p-2.5 text-[13px] text-dash-gold font-mono focus:outline-none focus:border-dash-primary transition-colors"
+                                />
+                              </div>
+                              <div className="flex-1 w-full">
+                                <textarea 
+                                  placeholder="详细事实约束，或在此行上传凭证..." value={field.value} 
+                                  onChange={(e) => handleUpdateProfileField(field.id, 'value', e.target.value)}
+                                  rows={typeof field.value === 'string' && field.value.length > 60 ? 4 : 2}
+                                  className="w-full bg-black/30 border border-dash-subtle rounded-lg p-2.5 text-[13px] text-slate-300 focus:outline-none focus:border-dash-primary transition-colors resize-y min-h-[42px] leading-relaxed scrollbar-thin scrollbar-thumb-dash-subtle"
+                                />
+                              </div>
+                            </div>
+                            
+                            {/* 单行 AI 操作底栏 */}
+                            <div className="flex flex-wrap items-center justify-between pt-2 mt-1 border-t border-dash-subtle/30 text-xs gap-3">
+                              <div className="flex items-center gap-3">
+                                <label className="flex items-center gap-1.5 px-3 py-1.5 bg-black/20 hover:bg-black/40 rounded-lg text-[11px] text-slate-400 cursor-pointer border border-dash-subtle/50 hover:border-dash-primary/50 transition-all">
+                                  <span>📎 {field.fileData ? '已就绪' : '追加本项附件'}</span>
+                                  <input 
+                                    type="file" className="hidden" 
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        const r = new FileReader();
+                                        r.onload = (ev) => setProfileFields(profileFields.map(f => f.id === field.id ? { ...f, fileData: { name: file.name, base64: ev.target?.result } } : f));
+                                        r.readAsDataURL(file);
+                                      }
+                                    }} 
+                                  />
+                                </label>
+                                {field.fileData && <span className="text-[11px] text-dash-primary max-w-[120px] truncate font-mono">{field.fileData.name}</span>}
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <button 
+                                  disabled={field.isAnalyzing || (!field.value && !field.fileData)}
+                                  onClick={async () => {
+                                    setProfileFields(profileFields.map(f => f.id === field.id ? { ...f, isAnalyzing: true } : f));
+                                    try {
+                                      const res = await fetch('/api/profile/parse-row', {
+                                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ key: field.key, value: field.value, file: field.fileData, settings })
+                                      });
+                                      if (!res.ok) throw new Error("Request Failed");
+                                      const resData = await res.json();
+                                      setProfileFields(profileFields.map(f => f.id === field.id ? { ...f, value: resData.parsedValue, isAnalyzing: false, fileData: null } : f));
+                                    } catch (e) {
+                                      alert("行解析失败");
+                                      setProfileFields(profileFields.map(f => f.id === field.id ? { ...f, isAnalyzing: false } : f));
+                                    }
+                                  }}
+                                  className="px-3 py-1.5 bg-dash-primary/10 text-dash-primary rounded-lg border border-dash-primary/30 font-bold text-[11px] hover:bg-dash-primary hover:text-black transition-all disabled:opacity-30"
+                                >
+                                  {field.isAnalyzing ? "精炼中..." : "🧠 智能清洗本行"}
+                                </button>
+                                <button onClick={() => handleRemoveProfileField(field.id)} className="px-2 py-1.5 text-slate-500 hover:text-dash-red transition-colors"><X className="w-4 h-4" /></button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="pt-6 border-t border-dash-subtle flex justify-end shrink-0">
+                        <button onClick={handleSaveProfile} className="px-6 py-2.5 bg-dash-primary hover:bg-white text-black rounded-xl font-bold flex items-center gap-2 shadow-lg tracking-wide transition-colors">
+                          <Save className="w-4 h-4" /> 物理覆盖写入记忆库
+                        </button>
                       </div>
 
                       <div className="bg-dash-surface border border-dash-subtle p-5 rounded-xl flex flex-col gap-4">
