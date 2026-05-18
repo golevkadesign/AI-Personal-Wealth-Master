@@ -1,8 +1,18 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, Suspense } from 'react';
 import { motion } from 'motion/react';
-import { PieChart, RefreshCw } from 'lucide-react';
-import { ReactECharts } from './ReactECharts';
+import { PieChart, RefreshCw, Activity } from 'lucide-react';
 import { useInteractionStore } from '../hooks/useInteractionStore';
+
+const ReactEChartsLazy = React.lazy(() => import('./ReactECharts').then(m => ({ default: m.ReactECharts })));
+
+const ChartSkeleton = () => (
+  <div className="w-full h-full flex items-center justify-center bg-black/10 rounded-xl border border-dash-subtle/50 animate-pulse min-h-[250px]">
+    <div className="flex flex-col items-center gap-3">
+      <Activity className="w-5 h-5 text-dash-primary/40 animate-bounce" />
+      <span className="text-[10px] text-slate-500 font-mono tracking-widest uppercase">Initializing Quant Engine...</span>
+    </div>
+  </div>
+);
 
 interface ChartWidgetProps {
   title: React.ReactNode;
@@ -79,7 +89,11 @@ export function ChartWidget({ title, dataLength, insight, option, delay = 0, cha
         <div className="flex-1 flex flex-col min-h-0">
           {option || children ? (
             <div className="w-full relative z-10 shrink-0 mb-6" style={{ height: chartHeight }}>
-              {children ? children : <ReactECharts option={option} onEvents={chartEvents} />}
+              {children ? children : (
+                <Suspense fallback={<ChartSkeleton />}>
+                  <ReactEChartsLazy option={option} onEvents={chartEvents} className="w-full h-full" />
+                </Suspense>
+              )}
             </div>
           ) : null}
           

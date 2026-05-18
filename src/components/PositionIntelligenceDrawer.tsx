@@ -1,9 +1,19 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Activity, Target, BrainCircuit, TrendingUp, TrendingDown, ArrowRight } from 'lucide-react';
-import { ReactECharts } from './ReactECharts';
 import { useInteractionStore } from '../hooks/useInteractionStore';
 import { WidgetCopilot } from './WidgetCopilot';
+
+const ReactEChartsLazy = React.lazy(() => import('./ReactECharts').then(m => ({ default: m.ReactECharts })));
+
+const ChartSkeleton = () => (
+  <div className="w-full h-full min-h-[300px] flex items-center justify-center bg-black/10 rounded-xl animate-pulse">
+    <div className="flex flex-col items-center gap-3">
+      <Activity className="w-5 h-5 text-dash-primary/40 animate-bounce" />
+      <span className="text-[10px] text-slate-500 font-mono tracking-widest uppercase">Loading Market Data...</span>
+    </div>
+  </div>
+);
 
 interface PositionIntelligenceDrawerProps {
   isOpen: boolean;
@@ -105,9 +115,15 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
           <div className="flex-1 border-r border-dash-subtle p-6 flex flex-col">
             <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2"><Activity className="w-4 h-4"/> 150天 K线微观博弈图</h3>
             <div className="flex-1 min-h-[300px] bg-black/20 rounded-xl border border-dash-subtle p-2">
-              {loading ? <div className="w-full h-full flex items-center justify-center text-slate-500">拉取底层量化数据中...</div> 
-                       : history.length > 0 ? <ReactECharts option={chartOption} /> 
-                       : <div className="w-full h-full flex items-center justify-center text-slate-500">暂无该资产的高频行情数据</div>}
+              {loading ? (
+                 <div className="w-full h-full flex items-center justify-center text-slate-500 text-xs">拉取底层量化数据中...</div> 
+              ) : history.length > 0 ? (
+                 <Suspense fallback={<ChartSkeleton />}>
+                   <ReactEChartsLazy option={chartOption} /> 
+                 </Suspense>
+              ) : (
+                 <div className="w-full h-full flex items-center justify-center text-slate-500 text-xs">暂无该资产的高频行情数据</div>
+              )}
             </div>
           </div>
 
