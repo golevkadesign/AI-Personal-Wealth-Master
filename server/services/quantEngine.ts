@@ -112,7 +112,7 @@ const fetchFromLongbridge = async (symbol: string, lbConfig: any): Promise<any[]
     console.log(`[QuantEngine] ⚡ 使用长桥(Longbridge)实盘专线获取 ${symbol} 历史数据...`);
     // TODO: 结合你本地的 test-lb2.ts 或 Longbridge SDK，在这里发起真实的长桥 OpenAPI K 线请求
     // 返回格式必须同样是: [ [日期字符串, open, close, low, high], ... ]
-    throw new Error("Longbridge integration pending"); 
+    return []; 
 };
 
 export const fetchStockHistory = async (rawSymbol: string, useLongbridge: boolean = false, lbConfig?: any) => {

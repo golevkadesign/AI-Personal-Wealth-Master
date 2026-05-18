@@ -24,6 +24,7 @@ import { WidgetCopilot } from './components/WidgetCopilot';
 import { TerminalHeader } from './components/TerminalHeader';
 import { LifeStrategyTimeline } from './components/LifeStrategyTimeline';
 import { GoalTracker } from './components/GoalTracker';
+import { DashboardGrid } from './components/DashboardGrid';
 
 import { PositionIntelligenceDrawer } from './components/PositionIntelligenceDrawer';
 import { ComponentRegistry, SDUIRenderer } from './lib/sdui-registry';
@@ -139,6 +140,10 @@ export default function App() {
     }
   };
 
+  const renderSDUI = (schema: any, globalData: any, keyPrefix: string, onCC?: (params: any) => void) => (
+    <SDUIRenderer key={keyPrefix} schema={schema} globalData={globalData} onChartClick={onCC} />
+  );
+
   return (
     <div className="min-h-screen text-dash-textMain font-sans bg-dash-bg pb-20">
       <DeveloperView 
@@ -207,13 +212,12 @@ export default function App() {
       </div>
       )}
 
-      {/* AI 战术干预层 (警报、临时操作区) */}
-      {data.dynamicWidgets && data.dynamicWidgets.length > 0 && (
-         <div className="mb-8 w-full"><SDUIRenderer schema={data.dynamicWidgets} globalData={data} onChartClick={handleChartClick} /></div>
-      )}
-
-      {/* 战略基座层 (指标卡与核心图表) */}
-      <SDUIRenderer schema={data.dashboardSchema} globalData={data} onChartClick={handleChartClick} />
+      {/* 核心数据网格视图 */}
+      <DashboardGrid 
+        data={data}
+        renderSDUI={renderSDUI}
+        onChartClick={handleChartClick}
+      />
 
       {/* 阶段性人生策略建议 (Life Strategies Timeline) */}
       <LifeStrategyTimeline 
