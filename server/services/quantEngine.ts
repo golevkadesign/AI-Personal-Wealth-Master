@@ -108,7 +108,7 @@ const fetchFromYahooFallback = async (symbol: string) => {
 };
 
 // 预留的长桥抓取通道
-const fetchFromLongbridge = async (symbol: string, lbConfig: any) => {
+const fetchFromLongbridge = async (symbol: string, lbConfig: any): Promise<any[]> => {
     console.log(`[QuantEngine] ⚡ 使用长桥(Longbridge)实盘专线获取 ${symbol} 历史数据...`);
     // TODO: 结合你本地的 test-lb2.ts 或 Longbridge SDK，在这里发起真实的长桥 OpenAPI K 线请求
     // 返回格式必须同样是: [ [日期字符串, open, close, low, high], ... ]

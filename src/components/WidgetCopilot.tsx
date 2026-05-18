@@ -11,6 +11,7 @@ export interface WidgetCopilotProps {
   expertRole?: string;
   globalData?: any;
   onPromoteIntent: (prompt: string) => void;
+  inline?: boolean;
 }
 
 export const WidgetCopilot: React.FC<WidgetCopilotProps> = ({
@@ -20,7 +21,8 @@ export const WidgetCopilot: React.FC<WidgetCopilotProps> = ({
   widgetData,
   expertRole = "首席资产分析师",
   globalData,
-  onPromoteIntent
+  onPromoteIntent,
+  inline = false
 }) => {
   const [messages, setMessages] = useState<{ role: 'user' | 'model', content: string }[]>([]);
   const [input, setInput] = useState('');
@@ -140,28 +142,38 @@ export const WidgetCopilot: React.FC<WidgetCopilotProps> = ({
 
   if (!isOpen) return null;
 
+  const containerClass = inline 
+    ? "flex flex-col h-full bg-dash-surface border-0" 
+    : "fixed inset-0 z-[60] bg-black/40 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 transition-opacity";
+
+  const modalClass = inline
+    ? "w-full flex-1 flex flex-col overflow-hidden"
+    : "bg-dash-surface border border-dash-subtle shadow-2xl rounded-2xl w-full max-w-lg flex flex-col overflow-hidden max-h-[85vh]";
+
   return (
-    <div className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 transition-opacity">
-      <div className="bg-dash-surface border border-dash-subtle shadow-2xl rounded-2xl w-full max-w-lg flex flex-col overflow-hidden max-h-[85vh]">
+    <div className={containerClass}>
+      <div className={modalClass}>
         
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-dash-subtle bg-black/20">
-          <div className="flex flex-col">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <Bot className="w-4 h-4 text-dash-primary" />
-              {widgetTitle} 局部推演沙盒
-            </h3>
-            <p className="text-[10px] text-dash-tertiary mt-1">
-              执行者：{expertRole} | 此对话不会直接修改大盘数据
-            </p>
+        {!inline && (
+          <div className="flex items-center justify-between px-5 py-4 border-b border-dash-subtle bg-black/20">
+            <div className="flex flex-col">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <Bot className="w-4 h-4 text-dash-primary" />
+                {widgetTitle} 局部推演沙盒
+              </h3>
+              <p className="text-[10px] text-dash-tertiary mt-1">
+                执行者：{expertRole} | 此对话不会直接修改大盘数据
+              </p>
+            </div>
+            <button 
+              onClick={onClose} 
+              className="p-1.5 text-dash-tertiary hover:text-white transition-colors rounded-lg hover:bg-white/10"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
-          <button 
-            onClick={onClose} 
-            className="p-1.5 text-dash-tertiary hover:text-white transition-colors rounded-lg hover:bg-white/10"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+        )}
 
         {/* Chat Area */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scroll bg-[#0a0a0c] min-h-[350px]">
