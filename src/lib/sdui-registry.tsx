@@ -109,22 +109,47 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
     );
   },
   Box: ({ bg = 'transparent', border = 'none', padding = 'none', className = '', children, globalData }) => {
-    const classes = [bgMap[bg] || '', borderMap[border] || '', paddingMap[padding] || '', className].join(' ');
-    return <div className={classes.trim()}>{children}</div>;
+    const bgClasses = {
+      'surface': 'bg-dash-surface',
+      'surface-elevated': 'bg-dash-surface-hover shadow-lg shadow-black/50',
+      'danger-muted': 'bg-dash-red/10',
+      'accent-muted': 'bg-dash-primary/5',
+    };
+    const borderClasses = {
+      'subtle': 'border border-dash-subtle',
+      'danger': 'border border-dash-red/30',
+      'accent': 'border border-dash-primary/30',
+    };
+    const paddingClasses = { 'none': '', 'sm': 'p-3', 'md': 'p-5', 'lg': 'p-8' };
+    const boxClass = `rounded-2xl backdrop-blur-sm ${bgClasses[bg as keyof typeof bgClasses] || ''} ${borderClasses[border as keyof typeof borderClasses] || ''} ${paddingClasses[padding as keyof typeof paddingClasses] || 'p-5'} ${className || ''}`;
+    return <div className={boxClass.trim()}>{children}</div>;
   },
   Typography: ({ variant = 'body', color = 'text-primary', text, className = '' }) => {
-    const classes = [typoMap[variant] || typoMap['body'], textMap[color] || textMap['text-primary'], className].join(' ');
+    const variantClasses = {
+      'h1': 'text-4xl font-serif font-bold text-white tracking-tight',
+      'h2': 'text-2xl font-serif font-semibold text-slate-100',
+      'h3-serif': 'text-xl font-serif font-semibold text-dash-primary',
+      'h3': 'text-lg font-bold text-white',
+      'body': 'text-sm text-slate-300 leading-relaxed',
+      'caption': 'text-xs text-slate-500 uppercase tracking-widest font-semibold',
+    };
+    const colorClasses = {
+      'text-accent': 'text-dash-primary',
+      'text-muted': 'text-slate-400',
+      'danger': 'text-dash-red',
+      'success': 'text-dash-green',
+    };
+    const classes = `${variantClasses[variant as keyof typeof variantClasses] || variantClasses.body} ${colorClasses[color as keyof typeof colorClasses] || ''} ${className}`;
     return <div className={classes.trim()}>{text}</div>;
   },
   Badge: ({ intent = 'default', text, className = '' }) => {
-    const intentStyles: Record<string, string> = {
-      'critical': 'bg-red-500/20 text-red-400 border-red-500/30',
-      'warning': 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-      'success': 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-      'default': 'bg-slate-500/20 text-slate-300 border-slate-500/30'
+    const badgeIntentClasses = {
+      'info': 'bg-dash-primary/10 text-dash-primary border-dash-primary/30',
+      'critical': 'bg-dash-red/10 text-dash-red border-dash-red/30',
+      'success': 'bg-dash-green/10 text-dash-green border-dash-green/30',
     };
-    const classes = `inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${intentStyles[intent] || intentStyles['default']} ${className}`;
-    return <span className={classes}>{text}</span>;
+    const classes = `inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest border ${badgeIntentClasses[intent as keyof typeof badgeIntentClasses] || badgeIntentClasses.info} ${className}`;
+    return <span className={classes.trim()}>{text}</span>;
   },
   ActionButton: ({ actionIntent, label, variant = 'primary', className = '' }) => {
     const openDrawerWithIntent = useInteractionStore(state => state.openDrawerWithIntent);

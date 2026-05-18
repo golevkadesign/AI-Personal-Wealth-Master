@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { getUniversalAiClient } from "../utils/ai-universal";
+import { analyzeIntentWithFlash } from '../services/orchestrator';
 
 export const profileRouter = Router();
 
@@ -37,4 +38,31 @@ ${JSON.stringify(finalData, null, 2)}`;
     console.error("Profile generation error:", error);
     res.status(500).json({ error: error.message });
   }
+});
+
+profileRouter.post('/parse', async (req, res) => {
+    try {
+        const { currentProfile, ragSchema, naturalLanguageInput, attachments } = req.body;
+        
+        const message = `[用户手动补充资料/事实修正]: ${naturalLanguageInput}`;
+        // 借用 Flash 意图层极其强悍的 RAG 更新能力
+        const result = await analyzeIntentWithFlash(
+            message, 
+            [], 
+            req.body.settings, // 如果前端传了
+            "General", 
+            currentProfile || {}, 
+            ragSchema || "", 
+            attachments || []
+        );
+
+        if (!result.updatedProfile) {
+            return res.status(500).json({ error: "解析引擎未能成功合并资料" });
+        }
+
+        res.json({ updatedProfile: result.updatedProfile });
+    } catch (e: any) {
+        console.error("Profile Parsing Route Error:", e);
+        res.status(500).json({ error: "服务器内部解析错误", details: e.message });
+    }
 });

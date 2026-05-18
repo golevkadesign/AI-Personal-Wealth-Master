@@ -1,35 +1,36 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Noto+Serif+SC:wght@400;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap');
 @import "tailwindcss";
 
 @theme {
+  /* 核心底色：羊皮纸墨灰 / 深邃黑灰 */
+  --color-dash-bg: #121415;
+  --color-dash-base: #181A1C;
+  --color-dash-surface: #1E2124;
+  --color-dash-surface-hover: #24272A;
+  
+  /* 强调色：哑光暗金与柔和沙色 */
+  --color-dash-primary: #C9B284; /* 核心暗金 */
+  --color-dash-secondary: #A39167; /* 辅助深金 */
+  --color-dash-tertiary: #8C8270; /* 灰沙色 */
+  
+  /* 状态色：低饱和、克制 */
+  --color-dash-green: #6B8E6B; /* Barbour绿 */
+  --color-dash-red: #A65D57; /* 哑光绛红 */
+  --color-dash-gold: #D4AF37; 
+  
+  /* 线条与文本 */
+  --color-dash-subtle: rgba(201, 178, 132, 0.15); /* 带有一丝金色的细线 */
+  --color-dash-strong: rgba(201, 178, 132, 0.3);
+
   /* Legacy mapping to prevent breaking existing UI */
-  --color-dash-bg: var(--color-dash-base);
   --color-dash-card: var(--color-dash-surface);
   --color-dash-cardHover: var(--color-dash-surface-hover);
   --color-dash-textMain: var(--color-dash-primary);
   --color-dash-textSub: var(--color-dash-secondary);
 
-  /* Signature Brand Colors (Premium Terminal) */
-  --color-dash-gold: #D4AF37; /* Refined metallic gold */
-  --color-dash-green: #2EAAA4; /* De-saturated tech green */
-  --color-dash-red: #D34C4C; /* Muted alerts */
-
-  /* Surface Colors - Linear/Vercel style dark aesthetics */
-  --color-dash-base: #0B0C0E;        /* App root background: very dark cool gray */
-  --color-dash-surface: #131417;     /* Standard card/panel background */
-  --color-dash-surface-hover: #1C1E22; /* Hovered surface state */
-
-  /* Borders */
-  --color-dash-subtle: #232529;      /* Dividers, subtle outlines */
-  --color-dash-strong: #363A40;      /* Focused borders, active tabs */
-
-  /* Typography */
-  --color-dash-primary: #EEEEF0;     /* High contrast headings/values */
-  --color-dash-secondary: #93969C;   /* Normal text, labels, secondary info */
-  --color-dash-tertiary: #61646B;    /* Disabled, placeholders, lowest priority */
-
   /* Fonts */
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-serif: 'Playfair Display', 'Noto Serif SC', serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
 
   /* Custom Animations */
@@ -60,14 +61,10 @@
 }
 
 body {
-  background-color: var(--color-dash-base);
-  color: var(--color-dash-primary);
-  font-family: var(--font-sans);
+  @apply bg-dash-bg text-slate-300 font-sans antialiased;
   margin: 0;
   padding: 0;
   overflow-x: hidden;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
 ::-webkit-scrollbar {
@@ -78,11 +75,10 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-dash-subtle);
-  border-radius: 10px;
+  @apply bg-dash-subtle rounded-full;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-dash-strong);
+  @apply bg-dash-tertiary;
 }
 
 .tabular-nums {

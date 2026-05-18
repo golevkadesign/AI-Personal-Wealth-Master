@@ -98,7 +98,11 @@ ${temporalContext}`;
     let jsonResult;
     try {
       // Clean up markdown if it was added by the model despite responseMimeType
-      const cleanedText = outputText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+      let cleanedText = outputText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+      // If the model output just a single brace or truncated json, attempt to close it or fallback
+      if (cleanedText === '{') {
+        cleanedText = '{}';
+      }
       jsonResult = JSON.parse(cleanedText);
     } catch (e) {
       const match = outputText.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
@@ -106,10 +110,12 @@ ${temporalContext}`;
         try {
           jsonResult = JSON.parse(match[1].trim());
         } catch (innerE) {
-          throw new Error("Failed to parse JSON response: " + outputText);
+          console.warn("Failed to parse JSON response match:", outputText);
+          jsonResult = { triggered: false, reason: "Failed to parse JSON" };
         }
       } else {
-        throw new Error("Failed to parse JSON response: " + outputText);
+        console.warn("Failed to parse JSON response:", outputText);
+        jsonResult = { triggered: false, reason: "Failed to parse JSON" };
       }
     }
 

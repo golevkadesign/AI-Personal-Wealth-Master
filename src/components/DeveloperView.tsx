@@ -15,48 +15,69 @@ interface DeveloperViewProps {
 }
 
 export const DeveloperView: React.FC<DeveloperViewProps> = ({ isOpen, onClose, user, onClearData, onUpdateProfile }) => {
-  const [activeTab, setActiveTab] = useState<'architecture' | 'memory' | 'routing' | 'moats'>('architecture');
+  const [activeTab, setActiveTab] = useState<'architecture' | 'memory' | 'moats'>('architecture');
   const [selectedNode, setSelectedNode] = useState<string | null>("rag");
   const [settings, setSettings] = useState<AppSettings>(getSettings());
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState("");
-  const [profileFields, setProfileFields] = useState<{id: string, key: string, value: string}[]>([]);
+  const [naturalInput, setNaturalInput] = useState("");
+  const [isParsing, setIsParsing] = useState(false);
+  const [tempAttachments, setTempAttachments] = useState<any[]>([]);
 
   useEffect(() => {
     if (isOpen) {
       setSettings(getSettings());
       setIsEditing(false);
-      if (user && typeof user === 'object') {
-        const fields = Object.keys(user)
-          // Filter out internal firebase auth properties if user is accidentally an Auth object, or just map them
-          .map(k => ({
-            id: Math.random().toString(36).substring(7),
-            key: k,
-            value: typeof user[k] === 'object' ? JSON.stringify(user[k], null, 2) : String(user[k])
-          }));
-        setProfileFields(fields);
-      } else {
-        setProfileFields([]);
-      }
+      setNaturalInput("");
+      setTempAttachments([]);
     }
-  }, [isOpen, selectedNode, user]);
+  }, [isOpen]);
 
-  const handleAddProfileField = () => setProfileFields([...profileFields, { id: Math.random().toString(36).substring(7), key: '', value: '' }]);
-  const handleUpdateProfileField = (id: string, field: 'key' | 'value', val: string) => setProfileFields(profileFields.map(f => f.id === id ? { ...f, [field]: val } : f));
-  const handleRemoveProfileField = (id: string) => setProfileFields(profileFields.filter(f => f.id !== id));
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const newAttachments = await Promise.all(
+      files.map(async (file) => {
+        const buffer = await file.arrayBuffer();
+        const base64 = btoa(new Uint8Array(buffer).reduce((data, byte) => data + String.fromCharCode(byte), ''));
+        return {
+          mimeType: file.type,
+          data: base64
+        };
+      })
+    );
+    setTempAttachments(prev => [...prev, ...newAttachments]);
+  };
 
-  const handleSaveProfile = () => {
-    if (!onUpdateProfile) return alert("未绑定保存方法！");
-    const newProfile: any = {};
-    profileFields.forEach(f => {
-      const k = f.key.trim();
-      if (k) {
-        try { newProfile[k] = JSON.parse(f.value); } 
-        catch { newProfile[k] = f.value; }
+  const handleParseAndSave = async () => {
+    if (!naturalInput.trim() && tempAttachments.length === 0) return;
+    setIsParsing(true);
+    try {
+      const response = await fetch('/api/profile/parse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentProfile: user,
+          ragSchema: settings.ragSchema,
+          naturalLanguageInput: naturalInput,
+          attachments: tempAttachments,
+          settings: settings
+        })
+      });
+      const data = await response.json();
+      if (data.updatedProfile) {
+        if (onUpdateProfile) onUpdateProfile(data.updatedProfile);
+        setNaturalInput('');
+        setTempAttachments([]);
+        alert("长线记忆快照已成功物理覆盖写入！");
+      } else {
+        if (data.error) alert(data.error);
       }
-    });
-    onUpdateProfile(newProfile);
-    alert("长线记忆快照已成功物理覆盖写入！");
+    } catch (e) {
+      console.error(e);
+      alert("解析发生异常");
+    } finally {
+      setIsParsing(false);
+    }
   };
 
   const AGENTS = useMemo(() => [
@@ -177,7 +198,6 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({ isOpen, onClose, u
             {[
               { id: 'architecture', icon: Network, label: '架构与提示词' },
               { id: 'memory', icon: Database, label: '物理记忆实体' },
-              { id: 'routing', icon: Cpu, label: '分布式模型网关' },
               { id: 'moats', icon: Sliders, label: '系统量化红线' }
             ].map(t => {
               const Icon = t.icon;
@@ -313,67 +333,45 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({ isOpen, onClose, u
                 <div className="max-w-3xl space-y-8 mx-auto">
                   {activeTab === 'memory' && (
                     <div className="space-y-6 flex flex-col h-full">
-                      <div className="flex justify-between items-center shrink-0">
-                        <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                          <Database className="w-4 h-4"/> 物理记忆实体快照 (RAG Profile)
-                        </h3>
-                        <button onClick={handleAddProfileField} className="px-3 py-1.5 bg-dash-primary/20 text-dash-primary hover:bg-dash-primary/30 border border-dash-primary/30 rounded-lg text-xs font-bold transition-colors">
-                          + 添加结构化属性
-                        </button>
+                      <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                        <Database className="w-4 h-4"/> 物理记忆实体
+                      </h3>
+                      
+                      <div className="bg-black/40 border border-dash-subtle rounded-xl p-4">
+                        <label className="block text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Current Ground Truth Snapshot</label>
+                        <pre className="text-dash-primary font-mono text-xs overflow-auto max-h-[200px] custom-scrollbar">
+                          {JSON.stringify(user, null, 2)}
+                        </pre>
                       </div>
 
-                      <div className="flex-1 overflow-y-auto space-y-4 pr-2 pb-6">
-                        {profileFields.length === 0 && (
-                           <div className="text-slate-500 text-sm text-center py-10 border border-dashed border-dash-subtle rounded-xl">暂无记忆数据，请手动添加或通过全局沙盒对话生成。</div>
-                        )}
-                        {profileFields.map((field) => (
-                          <div key={field.id} className="bg-dash-surface border border-dash-subtle rounded-xl p-4 flex flex-col sm:flex-row gap-4 group transition-colors hover:border-dash-primary/50 relative shadow-sm">
-                            <div className="w-full sm:w-1/3 shrink-0">
-                              <input 
-                                type="text" placeholder="属性键名 (e.g. Demographics)" value={field.key} 
-                                onChange={(e) => handleUpdateProfileField(field.id, 'key', e.target.value)}
-                                className="w-full bg-black/30 border border-dash-subtle rounded-lg p-2.5 text-[13px] text-dash-gold font-mono focus:outline-none focus:border-dash-primary transition-colors"
-                              />
-                            </div>
-                            <div className="flex-1 w-full">
-                              <textarea 
-                                placeholder="详细履历、牵挂或财务约束内容..." value={field.value} 
-                                onChange={(e) => handleUpdateProfileField(field.id, 'value', e.target.value)}
-                                rows={typeof field.value === 'string' && field.value.length > 60 ? 4 : 1}
-                                className="w-full bg-black/30 border border-dash-subtle rounded-lg p-2.5 text-[13px] text-slate-300 focus:outline-none focus:border-dash-primary transition-colors resize-y min-h-[42px] leading-relaxed scrollbar-thin scrollbar-thumb-dash-subtle"
-                              />
-                            </div>
-                            <button onClick={() => handleRemoveProfileField(field.id)} className="absolute -right-2 -top-2 sm:opacity-0 sm:group-hover:opacity-100 opacity-100 p-1.5 bg-red-500/90 text-white rounded-full shadow-lg hover:bg-red-500 transition-all border border-red-400">
-                              <X className="w-3 h-3" />
-                            </button>
+                      <div className="bg-dash-surface border border-dash-subtle p-5 rounded-xl flex flex-col gap-4">
+                        <label className="block text-slate-300 text-xs font-bold uppercase tracking-wider">Natural Language Memory Injection</label>
+                        <textarea 
+                          className="w-full bg-black/20 border border-dash-subtle rounded-lg p-3 text-sm text-white focus:outline-none focus:border-dash-primary transition-colors min-h-[120px]"
+                          placeholder="用自然语言描述您的新履历、财务状况或上传报表..."
+                          value={naturalInput}
+                          onChange={e => setNaturalInput(e.target.value)}
+                        />
+                        
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                             <label className="cursor-pointer bg-dash-surface-hover hover:bg-dash-subtle transition-colors border border-dash-subtle px-3 py-1.5 rounded-lg text-xs font-medium text-slate-300 flex items-center gap-2">
+                               <input type="file" multiple className="hidden" onChange={handleFileChange} />
+                               📎 添加附件 ({tempAttachments.length})
+                             </label>
+                             {tempAttachments.length > 0 && (
+                               <button onClick={() => setTempAttachments([])} className="text-xs text-red-400 hover:text-red-300">
+                                 清除附件
+                               </button>
+                             )}
                           </div>
-                        ))}
-                      </div>
-
-                      {/* 专属保存按钮 */}
-                      <div className="pt-6 border-t border-dash-subtle flex justify-end shrink-0">
-                        <button onClick={handleSaveProfile} className="px-6 py-2.5 bg-dash-primary hover:bg-white text-black rounded-xl font-bold flex items-center gap-2 shadow-lg tracking-wide transition-colors">
-                          <Save className="w-4 h-4" /> 物理覆盖写入记忆库
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {activeTab === 'routing' && (
-                    <div className="space-y-6">
-                      <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2"><Cpu className="w-4 h-4"/> 分布式模型网关路由</h3>
-                      <div className="grid gap-5">
-                        <div className="bg-dash-surface border border-dash-subtle p-5 rounded-xl">
-                          <label className="block text-slate-300 text-xs font-bold uppercase tracking-wider mb-2">1. Intent Gateway (意图拦截极速节点)</label>
-                          <input className="w-full bg-black/20 border border-dash-subtle rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-dash-primary transition-colors" value={settings.intentModel || ''} onChange={e => setSettings({...settings, intentModel: e.target.value})} placeholder="gemini-2.5-flash" />
-                        </div>
-                        <div className="bg-dash-surface border border-dash-subtle p-5 rounded-xl">
-                          <label className="block text-slate-300 text-xs font-bold uppercase tracking-wider mb-2">2. Orchestrator CEO (核心深度决策节点)</label>
-                          <input className="w-full bg-black/20 border border-dash-subtle rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-dash-primary transition-colors" value={settings.orchestratorModel || ''} onChange={e => setSettings({...settings, orchestratorModel: e.target.value})} placeholder="gemini-2.5-pro" />
-                        </div>
-                        <div className="bg-dash-surface border border-dash-subtle p-5 rounded-xl">
-                          <label className="block text-slate-300 text-xs font-bold uppercase tracking-wider mb-2">3. Sentinel Daemon (后台静默巡检哨兵)</label>
-                          <input className="w-full bg-black/20 border border-dash-subtle rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-dash-primary transition-colors" value={settings.sentinelModel || ''} onChange={e => setSettings({...settings, sentinelModel: e.target.value})} placeholder="gemini-2.5-flash" />
+                          <button 
+                            onClick={handleParseAndSave}
+                            disabled={isParsing || (!naturalInput.trim() && tempAttachments.length === 0)}
+                            className="bg-dash-primary text-black px-4 py-2 rounded-lg text-sm font-bold hover:bg-dash-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2"
+                          >
+                            {isParsing ? '🧠 解析并覆写中...' : '🧠 激活引擎进行结构化合并并覆盖写入'}
+                          </button>
                         </div>
                       </div>
                     </div>
