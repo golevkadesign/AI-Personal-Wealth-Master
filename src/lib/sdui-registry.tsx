@@ -6,6 +6,7 @@ import { getSDUIPieOption, getDonutOption, getExpenseOption, getWaterfallOption,
 import { ChartWidget } from '../components/ChartWidget';
 import { SDUIComponent } from '../types/terminal';
 import { useInteractionStore } from '../hooks/useInteractionStore';
+import { useSDUIEventStore } from '../hooks/useSDUIEventStore';
 
 const bgMap: Record<string, string> = {
   'surface-base': 'bg-dash-surface',
@@ -68,7 +69,8 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
     const subValue = metrics[`${dataKey}Summary`] || '';
     return <Card title={title} value={valueStr} subValue={subValue} isLongSubText={isLongSubText} />;
   },
-  DynamicChart: ({ title, chartType, chartHeight, delay, globalData, onChartClick }) => {
+  DynamicChart: ({ title, chartType, chartHeight, delay, globalData }) => {
+    const dispatchEvent = useSDUIEventStore.getState().dispatch;
     const distData = globalData?.distributions?.[chartType] || [];
     let option = {};
     const mockDataForConfig = { distributions: { [chartType]: distData } };
@@ -91,7 +93,7 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
         delay={delay}
         insight={globalData?.insights?.[insightKey] || ""}
         dataLength={distData.length}
-        onChartClick={onChartClick}
+        onChartClick={(params) => dispatchEvent('CHART_CLICK', params)}
       />
     );
   },
@@ -298,7 +300,7 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
   }
 };
 
-export const SDUIRenderer = ({ schema, globalData, onChartClick }: { schema?: SDUIComponent[], globalData?: any, onChartClick?: (params: any) => void }) => {
+export const SDUIRenderer = ({ schema, globalData }: { schema?: SDUIComponent[], globalData?: any }) => {
   if (!schema || !Array.isArray(schema)) return null;
 
   return (
@@ -313,8 +315,8 @@ export const SDUIRenderer = ({ schema, globalData, onChartClick }: { schema?: SD
            );
         }
         return (
-           <Component key={block.id || i} {...block.props} globalData={globalData} onChartClick={onChartClick}>
-              {block.children && <SDUIRenderer schema={block.children} globalData={globalData} onChartClick={onChartClick} />}
+           <Component key={block.id || i} {...block.props} globalData={globalData}>
+              {block.children && <SDUIRenderer schema={block.children} globalData={globalData} />}
            </Component>
         );
       })}

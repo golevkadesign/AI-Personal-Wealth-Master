@@ -29,6 +29,8 @@ import { DashboardGrid } from './components/DashboardGrid';
 import { PositionIntelligenceDrawer } from './components/PositionIntelligenceDrawer';
 import { ComponentRegistry, SDUIRenderer } from './lib/sdui-registry';
 
+import { useSDUIEventStore } from './hooks/useSDUIEventStore';
+
 export interface Attachment {
   mimeType: string;
   data: string;
@@ -57,12 +59,19 @@ export default function App() {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [selectedHolding, setSelectedHolding] = useState<any | null>(null);
 
-  const handleChartClick = useCallback((params: any) => {
-    if (data.distributions?.publicHoldings && params.name) {
-      const hit = data.distributions.publicHoldings.find((h: any) => h.name === params.name || h.symbol === params.name);
-      if (hit) setSelectedHolding(hit);
+  const lastEvent = useSDUIEventStore(state => state.lastEvent);
+  const clearEvent = useSDUIEventStore(state => state.clearEvent);
+
+  useEffect(() => {
+    if (lastEvent?.type === 'CHART_CLICK' && lastEvent.payload) {
+      const params = lastEvent.payload;
+      if (data.distributions?.publicHoldings && params.name) {
+        const hit = data.distributions.publicHoldings.find((h: any) => h.name === params.name || h.symbol === params.name);
+        if (hit) setSelectedHolding(hit);
+      }
+      clearEvent(); // 消费完必须清空
     }
-  }, [data.distributions?.publicHoldings]);
+  }, [lastEvent, data.distributions?.publicHoldings, clearEvent]);
 
   const donutOption = useMemo(() => getDonutOption(data), [data?.distributions?.liquidity]);
 
@@ -140,8 +149,8 @@ export default function App() {
     }
   };
 
-  const renderSDUI = (schema: any, globalData: any, keyPrefix: string, onCC?: (params: any) => void) => (
-    <SDUIRenderer key={keyPrefix} schema={schema} globalData={globalData} onChartClick={onCC} />
+  const renderSDUI = (schema: any, globalData: any, keyPrefix: string) => (
+    <SDUIRenderer key={keyPrefix} schema={schema} globalData={globalData} />
   );
 
   return (
@@ -216,7 +225,6 @@ export default function App() {
       <DashboardGrid 
         data={data}
         renderSDUI={renderSDUI}
-        onChartClick={handleChartClick}
       />
 
       {/* 阶段性人生策略建议 (Life Strategies Timeline) */}

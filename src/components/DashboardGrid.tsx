@@ -4,11 +4,10 @@ import { TerminalState } from '../types/terminal';
 
 interface DashboardGridProps {
   data: TerminalState;
-  renderSDUI: (schema: any, globalData: any, keyPrefix: string, onChartClick?: (params: any) => void) => React.ReactNode;
-  onChartClick: (params: any) => void;
+  renderSDUI: (schema: any, globalData: any, keyPrefix: string) => React.ReactNode;
 }
 
-export const DashboardGrid: React.FC<DashboardGridProps> = ({ data, renderSDUI, onChartClick }) => {
+export const DashboardGrid: React.FC<DashboardGridProps> = ({ data, renderSDUI }) => {
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth z-10 custom-scrollbar relative">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -23,7 +22,7 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({ data, renderSDUI, 
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95 }}
                 >
-                  {renderSDUI(widget, data, `widget-${i}`, onChartClick)}
+                  {renderSDUI(widget, data, `widget-${i}`)}
                 </motion.div>
               ))}
             </div>
@@ -37,7 +36,7 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({ data, renderSDUI, 
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
           >
-            {renderSDUI(data.dashboardSchema, data, 'main-dashboard', onChartClick)}
+            {renderSDUI(data.dashboardSchema, data, 'main-dashboard')}
           </motion.div>
         )}
       </div>
