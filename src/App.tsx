@@ -244,7 +244,7 @@ export default function App() {
       {/* Footer Version */}
       <footer className="text-center pb-8 pt-4">
         <span className="text-[10px] font-mono text-dash-tertiary uppercase tracking-widest opacity-50">
-          Terminal Build v1.0.3
+          Terminal Build v1.05
         </span>
       </footer>
 
