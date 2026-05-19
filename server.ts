@@ -16,7 +16,7 @@ const __dirname = dirname(__filename);
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   // Rate Limiting (Simple In-Memory)
   const rateLimitMap = new Map<string, { count: number, resetTime: number }>();
@@ -54,7 +54,7 @@ async function startServer() {
 
   const corsOptions = {
     origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-        if (!origin || origin.includes('localhost') || origin.includes('.run.app') || origin.includes('google.com')) {
+        if (!origin || origin.includes('localhost') || origin.includes('.run.app') || origin.includes('.onrender.com') || origin.includes('google.com')) {
             callback(null, true);
         } else {
             callback(new Error('Not allowed by CORS'));
