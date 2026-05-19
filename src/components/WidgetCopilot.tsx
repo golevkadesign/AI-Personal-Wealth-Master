@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { X, Send, Zap, Bot, Loader2 } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { getSettings } from '../lib/settings';
+import { motion } from 'motion/react';
 
 export interface WidgetCopilotProps {
   isOpen: boolean;
@@ -27,13 +28,28 @@ export const WidgetCopilot: React.FC<WidgetCopilotProps> = ({
   const [messages, setMessages] = useState<{ role: 'user' | 'model', content: string }[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [isAutoScroll, setIsAutoScroll] = useState(true);
 
+  // 💥 1. 防冲突滚动侦测
+  const handleScroll = () => {
+    if (!scrollRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+    // 设定 60px 的触底容差阈值。如果用户往上滑超过 60px，立刻切断自动滚动。
+    const isAtBottom = scrollHeight - scrollTop - clientHeight < 60;
+    setIsAutoScroll(isAtBottom);
+  };
+
+  // 💥 2. 极其平滑的自动锚定
   useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (isAutoScroll && scrollRef.current) {
+      // 采用 smooth 行为，让流出时的视窗跟随像水流一样平滑
+      scrollRef.current.scrollTo({
+        top: scrollRef.current.scrollHeight,
+        behavior: 'smooth' 
+      });
     }
-  }, [messages]);
+  }, [messages, isTyping, isAutoScroll]);
 
   const handleSend = async () => {
     if (!input.trim() || isTyping) return;
@@ -176,7 +192,7 @@ export const WidgetCopilot: React.FC<WidgetCopilotProps> = ({
         )}
 
         {/* Chat Area */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scroll bg-[#0a0a0c] min-h-[350px]">
+        <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto p-4 space-y-4 custom-scroll bg-[#0a0a0c] min-h-[350px]">
           {messages.length === 0 ? (
             <div className="h-full flex items-center justify-center text-center px-4 opacity-60">
                <p className="text-xs text-dash-tertiary leading-relaxed">
@@ -187,7 +203,14 @@ export const WidgetCopilot: React.FC<WidgetCopilotProps> = ({
             </div>
           ) : (
             messages.map((msg, idx) => (
-              <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <motion.div 
+                key={idx} 
+                layout 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, ease: 'easeOut' }}
+                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
                 <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-[13px] ${
                   msg.role === 'user' 
                     ? 'bg-dash-primary text-black rounded-br-none font-medium shadow-[0_4px_12px_rgba(202,236,155,0.15)]' 
@@ -196,10 +219,15 @@ export const WidgetCopilot: React.FC<WidgetCopilotProps> = ({
                   {msg.role === 'user' ? (
                      msg.content
                   ) : (
-                     <Markdown>{msg.content}</Markdown>
+                     <div className="markdown-body">
+                        <Markdown>{msg.content}</Markdown>
+                        {isTyping && idx === messages.length - 1 && (
+                          <span className="inline-block w-1.5 h-4 ml-1 align-middle bg-dash-primary/80 animate-pulse rounded-sm shadow-[0_0_8px_rgba(201,178,132,0.6)]" />
+                        )}
+                     </div>
                   )}
                 </div>
-              </div>
+              </motion.div>
             ))
           )}
           
@@ -211,7 +239,6 @@ export const WidgetCopilot: React.FC<WidgetCopilotProps> = ({
                </div>
              </div>
           )}
-          <div ref={messagesEndRef} />
         </div>
 
         {/* Input Area */}
