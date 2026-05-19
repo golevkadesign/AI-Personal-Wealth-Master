@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { getUniversalAiClient } from "../utils/ai-universal";
+import { resolveRequestSettings } from "../utils/settings";
 import { DEFAULT_PROMPTS } from "../../src/lib/defaultPrompts";
 
 export const sandboxRouter = Router();
@@ -14,7 +15,7 @@ sandboxRouter.post("/chat", async (req, res) => {
     else if (expertRole.includes("高净值") || expertRole.includes("家族") || expertRole.includes("UHNWI")) hardCoreMethodology = DEFAULT_PROMPTS.hnw;
     else if (expertRole.includes("杠精") || expertRole.includes("压力") || expertRole.includes("黑天鹅")) hardCoreMethodology = DEFAULT_PROMPTS.devil;
 
-    const passedSettings = settings || {};
+    const passedSettings = resolveRequestSettings(settings);
     const ai = getUniversalAiClient(passedSettings);
 
     // 数据轻量化脱水
