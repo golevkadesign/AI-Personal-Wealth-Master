@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { getUniversalAiClient } from "../utils/ai-universal";
+import { resolveRequestSettings } from "../utils/settings";
 
 export const sentinelRouter = Router();
 const clients = new Set<any>();
@@ -50,7 +51,7 @@ sentinelRouter.post("/scan", async (req, res) => {
       ? `\n【历史时序快照 (T-1 基准)】:\n上次状态 (时间: ${new Date(historySnapshots[0].timestamp).toLocaleString()}):\n${JSON.stringify({ metrics: historySnapshots[0].metrics, distributions: historySnapshots[0].distributions }, null, 2)}`
       : '';
 
-    const passedSettings = settings || {};
+    const passedSettings = resolveRequestSettings(settings);
     const ai = getUniversalAiClient(passedSettings);
     const targetModel = passedSettings.geminiFastModel || "gemini-2.5-flash";
 
