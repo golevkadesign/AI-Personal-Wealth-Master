@@ -2,6 +2,20 @@ import { runAnalysisAgent } from "./agents";
 import { getUniversalAiClient } from "../utils/ai-universal";
 import { DEFAULT_PROMPTS } from "../../src/lib/defaultPrompts";
 
+function dehydrateExternalData(data: any) {
+    if (!data) return data;
+    const cleanData = JSON.parse(JSON.stringify(data));
+    if (cleanData.livePortfolio) {
+        cleanData.livePortfolio.forEach((pos: any) => {
+            if (pos.quantSignals) {
+                delete pos.quantSignals.history; // 💥 物理剥离海量 K 线数组
+                delete pos.quantSignals.raw;
+            }
+        });
+    }
+    return cleanData;
+}
+
 // 使用免费、极速的 Flash 模型做第一层意图拦截与提取
 export async function analyzeIntentWithFlash(message: string, history: any[], settings?: any, userTier: string = "General", userProfile: any = {}, ragSchema: string = "", attachments: any[] = []) {
   const prompt = `You are the RAG Memory Agent and Gateway for a top-tier AI Financial Advisor system.
@@ -100,11 +114,14 @@ export async function evaluateWealthStatus(userTier: string, message: string, hi
   console.log(`[Orchestrator] 开始评估用户财务状态. Tier: ${userTier}`);
   if (onProgress) onProgress(`⏳ [阶段 3.1] Orchestrator 核心调度：基于 ${userTier} 分发并行分析线程...`);
 
+  // 💥 在派发所有子节点前，进行数据脱水
+  const cleanExternalData = dehydrateExternalData(externalData);
+
   // 根据Tier和上下文，并行调用不同的专家Agent分析各个板块
   if ((targetModules.length === 0 && userTier === "Debt Focus") || (targetModules.length > 0 && targetModules.includes("Debt Focus"))) {
     if (onProgress) onProgress(`⏳ [子节点派发] 唤醒 Debt Crisis Intervention Advisor 专属通道...`);
     agentTasks.push(
-      runAnalysisAgent(userTier, externalData, history, "Debt Focus", message, settings, attachments).then((res: any) => { 
+      runAnalysisAgent(userTier, cleanExternalData, history, "Debt Focus", message, settings, attachments).then((res: any) => { 
         agentResults['债务与现金流诊断'] = res; 
         if (onProgress) onProgress(`\n✅ **[阶段 3.x] [债务专家评估完成]**\n${res}\n\n---\n`);
       }).catch(e => {
@@ -117,7 +134,7 @@ export async function evaluateWealthStatus(userTier: string, message: string, hi
   if ((targetModules.length === 0 && userTier === "High Net Worth Individual") || (targetModules.length > 0 && targetModules.includes("High Net Worth"))) {
     if (onProgress) onProgress(`⏳ [子节点派发] 拉起 UHNWI 家族办公室专属资源...`);
     agentTasks.push(
-      runAnalysisAgent(userTier, externalData, history, "High Net Worth", message, settings, attachments).then((res: any) => { 
+      runAnalysisAgent(userTier, cleanExternalData, history, "High Net Worth", message, settings, attachments).then((res: any) => { 
         agentResults['家族财富与资产配置'] = res; 
         if (onProgress) onProgress(`\n✅ **[阶段 3.x] [家族理财评估完成]**\n${res}\n\n---\n`);
       }).catch(e => {
@@ -130,7 +147,7 @@ export async function evaluateWealthStatus(userTier: string, message: string, hi
   if ((targetModules.length === 0 && userTier !== "Debt Focus" && userTier !== "High Net Worth Individual") || (targetModules.length > 0 && targetModules.includes("General Finance"))) {
     if (onProgress) onProgress(`⏳ [子节点派发] 连通 CFP 全栖财务规划师节点...`);
     agentTasks.push(
-      runAnalysisAgent(userTier, externalData, history, "General Finance", message, settings, attachments).then((res: any) => { 
+      runAnalysisAgent(userTier, cleanExternalData, history, "General Finance", message, settings, attachments).then((res: any) => { 
         agentResults['综合理财规划'] = res; 
         if (onProgress) onProgress(`\n✅ **[阶段 3.x] [个人综合财务评估完成]**\n${res}\n\n---\n`);
       }).catch(e => {
@@ -147,7 +164,7 @@ export async function evaluateWealthStatus(userTier: string, message: string, hi
       (externalData?.livePortfolio && externalData.livePortfolio.length > 0))) {
     if (onProgress) onProgress(`⏳ [子节点派发] 请求外部数据交汇汇流，唤醒华尔街量化分析节点...`);
     agentTasks.push(
-      runAnalysisAgent(userTier, externalData, history, "Market Analysis", "请帮我分析我持有的或提到的这些标的", settings, attachments).then((res: any) => { 
+      runAnalysisAgent(userTier, cleanExternalData, history, "Market Analysis", "请帮我分析我持有的或提到的这些标的", settings, attachments).then((res: any) => { 
         agentResults['市场与标的分析'] = res; 
         if (onProgress) onProgress(`\n✅ **[阶段 3.x] [量化趋势推演完成]**\n${res}\n\n---\n`);
       }).catch(e => {
@@ -160,7 +177,7 @@ export async function evaluateWealthStatus(userTier: string, message: string, hi
   if (shouldRun("Devil Advocate")) {
     if (onProgress) onProgress(`⏳ [子节点派发] 唤醒 Devil's Advocate (杠精节点) 进行抗脆性黑天鹅压测...`);
     agentTasks.push(
-      runAnalysisAgent(userTier, externalData, history, "Devil Advocate", message, settings, attachments).then((res: any) => { 
+      runAnalysisAgent(userTier, cleanExternalData, history, "Devil Advocate", message, settings, attachments).then((res: any) => { 
         agentResults['极端压力测试与黑天鹅警告'] = res; 
         if (onProgress) onProgress(`\n✅ **[阶段 3.x] [黑天鹅杠精压测完成]**\n${res}\n\n---\n`);
       }).catch(e => {
@@ -187,6 +204,8 @@ export async function evaluateWealthStatus(userTier: string, message: string, hi
 export async function streamSynthesis(userTier: string, message: string, externalData: any, agentResults: any, settings?: any, onProgress?: (msg: string) => void) {
   const ai = getUniversalAiClient(settings);
   if (onProgress) onProgress(`⏳ [阶段 3.8] 各节点数据已回流，启动 CEO 级全局 Synthesizer 流式结论汇总...`);
+
+  const cleanExternalData = dehydrateExternalData(externalData);
 
   // 上下文脱水：手动剔除 ECharts 配置等过长的渲染源码，仅保留分析结论
   const dehydratedResults: Record<string, string> = { ...agentResults };
@@ -221,6 +240,7 @@ export async function streamSynthesis(userTier: string, message: string, externa
 第二步：在回答的所有文字结束后，最后输出一个包含 JSON 数据的代码块，用于底层系统的前端渲染 SDUI JSON Schema 更新补丁（Patch）。
 
 核心规则：
+- 【全量资产雷达 (CRITICAL)】：请务必遍历并客观评估 [LIVE_PORTFOLIO] 中列出的每一只标的，不得因为数量多而遗漏或仅挑选部分分析！
 - 除必须格式外，所有UI标题（如图表标题）使用中文。
 - metrics 中包含 netWorthSummary, liquiditySummary, safetyRatioSummary, fcfSummary 四个字段。
 - 对于股票持仓(publicHoldings)：如果有新分析，则在 \`insights.publicText\` 中输出纯文字结论（一只股票一行信息，枚举数量/成本/市值等）；在 \`insights.publicSummary\` 输出总体总结。
@@ -306,7 +326,7 @@ ${temporalContext}
     .replace('{userTier}', () => userTier)
     .replace('{message}', () => message)
     .replace('{userProfileRAG}', () => JSON.stringify(externalData?.contextData?.userProfile || {}, null, 2))
-    .replace('{livePortfolioRAG}', () => JSON.stringify(externalData?.livePortfolio || externalData?.contextData?.distributions?.publicHoldings || [], null, 2))
+    .replace('{livePortfolioRAG}', () => JSON.stringify(cleanExternalData?.livePortfolio || cleanExternalData?.contextData?.distributions?.publicHoldings || [], null, 2))
     .replace('{marketDataRAG}', () => JSON.stringify(externalData?.marketData || {}, null, 2))
     .replace('{agentResults}', () => JSON.stringify(dehydratedResults, null, 2))
     + "\n" + uiSummaryInstructions;
