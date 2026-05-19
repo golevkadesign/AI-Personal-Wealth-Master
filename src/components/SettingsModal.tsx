@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Settings, Loader2, RefreshCw } from 'lucide-react';
+import { X, Settings, Loader2, RefreshCw, Wallet } from 'lucide-react';
 import { getSettings, saveSettings as persistSettings, AppSettings } from '../lib/settings';
 
 export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
@@ -214,43 +214,40 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
               外部数据连接源 (External Data Providers)
             </h3>
             
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Longbridge App Key</label>
-                <input
-                  type="text"
-                  value={settings.longbridgeAppKey || ''}
-                  onChange={(e) => setSettings({...settings, longbridgeAppKey: e.target.value})}
-                  placeholder="App Key (若使用 OAuth Token 则留空)"
-                  className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-dash-textMain focus:outline-none focus:border-emerald-500/50 font-mono transition-colors"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Longbridge App Secret</label>
-                <input
-                  type="password"
-                  value={settings.longbridgeAppSecret || ''}
-                  onChange={(e) => setSettings({...settings, longbridgeAppSecret: e.target.value})}
-                  placeholder="App Secret (若使用 OAuth Token 则留空)"
-                  className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-dash-textMain focus:outline-none focus:border-emerald-500/50 font-mono transition-colors"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Longbridge Access Token</label>
-                <input
-                  type="password"
-                  value={settings.longbridgeKey || ''}
-                  onChange={(e) => setSettings({...settings, longbridgeKey: e.target.value})}
-                  placeholder="在此输入您的 Access Token (或 OAuth Token)..."
-                  className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-dash-textMain focus:outline-none focus:border-emerald-500/50 font-mono transition-colors"
-                />
-              </div>
-              <p className="text-xs text-dash-textSub mt-2 leading-relaxed">
-                用于自动同步美港股实时持仓、盈亏状况进入智能推演网络。API Key 鉴权模式需要同时填写 App Key, App Secret 和 Access Token。如果您拥有的是 OAuth 获取的 Auth Token，由于无需计算 HMAC 签名，您可以直接仅填写 Access Token 字段。
-              </p>
-            </div>
+            <div className="space-y-4 border-t border-dash-subtle pt-6 mt-4">
+             <div className="flex justify-between items-center">
+               <h4 className="text-xs font-bold text-dash-gold uppercase tracking-wider flex items-center"><Wallet className="w-4 h-4 mr-2" /> 长桥实盘专线 (Longbridge)</h4>
+               <button 
+                 onClick={() => {
+                   const newAcc = { id: Math.random().toString(36).substring(7), name: `长桥账户 ${settings.longbridgeAccounts?.length ? settings.longbridgeAccounts.length + 1 : 1}`, appKey: '', appSecret: '', accessToken: '' };
+                   setSettings({ ...settings, longbridgeAccounts: [...(settings.longbridgeAccounts || []), newAcc] });
+                 }}
+                 className="px-3 py-1 bg-dash-primary/10 text-dash-primary hover:bg-dash-primary/20 rounded border border-dash-primary/30 text-[10px] font-bold transition-colors"
+               >
+                 + 绑定新账户
+               </button>
+             </div>
+             
+             <div className="space-y-3">
+               {(!settings.longbridgeAccounts || settings.longbridgeAccounts.length === 0) && (
+                 <div className="text-xs text-slate-500 text-center py-4 border border-dashed border-dash-subtle rounded-lg">暂无绑定的长桥账户，系统将使用模拟或公共数据源。</div>
+               )}
+               {settings.longbridgeAccounts?.map(acc => (
+                 <div key={acc.id} className="bg-black/30 border border-dash-subtle rounded-xl p-4 relative group">
+                   <button onClick={() => setSettings({...settings, longbridgeAccounts: settings.longbridgeAccounts?.filter(a => a.id !== acc.id)})} className="absolute top-2 right-2 p-1 text-slate-500 hover:text-dash-red opacity-0 group-hover:opacity-100 transition-opacity"><X className="w-4 h-4"/></button>
+                   <input type="text" placeholder="账户备注 (如: 长桥长线主仓)" value={acc.name} onChange={e => { const newAccs = settings.longbridgeAccounts?.map(a => a.id === acc.id ? {...a, name: e.target.value} : a); setSettings({...settings, longbridgeAccounts: newAccs}); }} className="w-full bg-transparent text-sm font-bold text-white mb-3 focus:outline-none placeholder-slate-600" />
+                   <div className="space-y-2">
+                     <input type="text" placeholder="App Key" value={acc.appKey} onChange={e => { const newAccs = settings.longbridgeAccounts?.map(a => a.id === acc.id ? {...a, appKey: e.target.value} : a); setSettings({...settings, longbridgeAccounts: newAccs}); }} className="w-full bg-black/40 border border-dash-subtle rounded-lg p-2 text-xs text-slate-300 focus:border-dash-primary focus:outline-none font-mono" />
+                     <input type="password" placeholder="App Secret" value={acc.appSecret} onChange={e => { const newAccs = settings.longbridgeAccounts?.map(a => a.id === acc.id ? {...a, appSecret: e.target.value} : a); setSettings({...settings, longbridgeAccounts: newAccs}); }} className="w-full bg-black/40 border border-dash-subtle rounded-lg p-2 text-xs text-slate-300 focus:border-dash-primary focus:outline-none font-mono" />
+                     <input type="password" placeholder="Access Token" value={acc.accessToken} onChange={e => { const newAccs = settings.longbridgeAccounts?.map(a => a.id === acc.id ? {...a, accessToken: e.target.value} : a); setSettings({...settings, longbridgeAccounts: newAccs}); }} className="w-full bg-black/40 border border-dash-subtle rounded-lg p-2 text-xs text-slate-300 focus:border-dash-primary focus:outline-none font-mono" />
+                   </div>
+                 </div>
+               ))}
+               <p className="text-xs text-dash-textSub mt-2 leading-relaxed">
+                 用于自动同步美港股实时持仓、盈亏状况进入智能推演网络。API Key 鉴权模式需要同时填写 App Key, App Secret 和 Access Token。如果您拥有的是 OAuth 获取的 Auth Token，由于无需计算 HMAC 签名，您可以直接仅填写 Access Token 字段。
+               </p>
+             </div>
+          </div>
           </div>
           
           <div className="text-xs text-dash-textSub leading-relaxed">

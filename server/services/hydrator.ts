@@ -1,6 +1,7 @@
 import { getRealTimeQuotes } from "./marketData";
 import { extractTickers } from "./utils";
 import { analyzeStock } from "./quantEngine";
+import { aggregateLongbridgePortfolios } from "./longbridgeAdapter";
 
 import * as crypto from 'crypto';
 
@@ -230,6 +231,23 @@ export async function hydrateContext(message: string, contextData: any, settings
     
     // Auto-sync market prices into portfolio if available
     let workingPortfolio = hydratedData.livePortfolio;
+    // 💥 [新增] 第一防线：优先聚合长桥实盘多账户数据
+    if (settings?.longbridgeAccounts && settings.longbridgeAccounts.length > 0) {
+        console.log(`[Hydrator] 侦测到长桥配置，启动多账户实盘聚合...`);
+        const lbHoldings = await aggregateLongbridgePortfolios(settings.longbridgeAccounts);
+        
+        if (lbHoldings.length > 0) {
+            workingPortfolio = lbHoldings.map(pos => ({
+                symbol: pos.symbol,
+                name: pos.name,
+                quantity: pos.quantity,
+                costPrice: pos.costPrice,
+                marketValue: pos.quantity * (pos.currentPrice || pos.costPrice) // 初始估值
+            }));
+            hydratedData.livePortfolio = workingPortfolio;
+        }
+    }
+
     if (!workingPortfolio || workingPortfolio.length === 0) {
         if (contextData?.distributions?.publicHoldings?.length > 0) {
             workingPortfolio = JSON.parse(JSON.stringify(contextData.distributions.publicHoldings));
@@ -248,6 +266,8 @@ export async function hydrateContext(message: string, contextData: any, settings
                         return {
                             ...holding,
                             symbol: symbolToFetch,
+                            value: holding.quantity ? holding.quantity * quantData.currentPrice : (holding.value || 0),
+                            marketValue: holding.quantity ? holding.quantity * quantData.currentPrice : (holding.marketValue || 0),
                             quantSignals: quantData
                         };
                     }

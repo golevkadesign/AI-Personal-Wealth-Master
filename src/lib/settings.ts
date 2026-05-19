@@ -1,3 +1,11 @@
+export interface LongbridgeAccount {
+  id: string;
+  name: string;
+  appKey: string;
+  appSecret: string;
+  accessToken: string;
+}
+
 export interface AppSettings {
   provider: 'gemini' | 'openai';
   geminiKey: string;
@@ -5,6 +13,7 @@ export interface AppSettings {
   longbridgeAppKey?: string;
   longbridgeAppSecret?: string;
   longbridgeKey?: string;
+  longbridgeAccounts?: LongbridgeAccount[];
   geminiFastModel: string;
   geminiAdvancedModel: string;
   openaiFastModel: string;
@@ -27,6 +36,7 @@ export const defaultSettings: AppSettings = {
   longbridgeAppKey: '',
   longbridgeAppSecret: '',
   longbridgeKey: '',
+  longbridgeAccounts: [],
   geminiFastModel: 'gemini-3-flash-preview',
   geminiAdvancedModel: 'gemini-3.1-pro-preview',
   openaiFastModel: 'gpt-4o-mini',
