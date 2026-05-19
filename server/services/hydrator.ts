@@ -229,28 +229,46 @@ export async function hydrateContext(message: string, contextData: any, settings
         }
     }
     
-    // Auto-sync market prices into portfolio if available
-    let workingPortfolio = hydratedData.livePortfolio;
+    // 获取手动填报或已有的持仓数据
+    let manualHoldings: any[] = [];
+    if (hydratedData.livePortfolio && hydratedData.livePortfolio.length > 0) {
+        manualHoldings = hydratedData.livePortfolio;
+    } else if (contextData?.distributions?.publicHoldings?.length > 0) {
+        manualHoldings = JSON.parse(JSON.stringify(contextData.distributions.publicHoldings));
+    }
+
+    let workingPortfolio = manualHoldings;
+
     // 💥 [新增] 第一防线：优先聚合长桥实盘多账户数据
     if (settings?.longbridgeAccounts && settings.longbridgeAccounts.length > 0) {
         console.log(`[Hydrator] 侦测到长桥配置，启动多账户实盘聚合...`);
         const lbHoldings = await aggregateLongbridgePortfolios(settings.longbridgeAccounts);
         
         if (lbHoldings.length > 0) {
-            workingPortfolio = lbHoldings.map(pos => ({
+            const lbMappedHoldings = lbHoldings.map(pos => ({
                 symbol: pos.symbol,
                 name: pos.name,
                 quantity: pos.quantity,
                 costPrice: pos.costPrice,
-                marketValue: pos.quantity * (pos.currentPrice || pos.costPrice) // 初始估值
+                marketValue: pos.quantity * (pos.currentPrice || pos.costPrice), // 初始估值
+                value: pos.quantity * (pos.currentPrice || pos.costPrice)
             }));
-            hydratedData.livePortfolio = workingPortfolio;
-        }
-    }
 
-    if (!workingPortfolio || workingPortfolio.length === 0) {
-        if (contextData?.distributions?.publicHoldings?.length > 0) {
-            workingPortfolio = JSON.parse(JSON.stringify(contextData.distributions.publicHoldings));
+            // 利用 Map 进行基于 symbol 的去重合并 (长桥优先级最高，后写入)
+            const mergedMap = new Map();
+            
+            manualHoldings.forEach((h: any) => {
+                const key = h.symbol || h.name;
+                if (key) mergedMap.set(key, h);
+            });
+            
+            lbMappedHoldings.forEach((h: any) => {
+                mergedMap.set(h.symbol, h); // 如果长桥也有，直接用长桥的绝对精准数据覆盖手填数据
+            });
+
+            // 将合并后的集合转回数组
+            workingPortfolio = Array.from(mergedMap.values());
+            hydratedData.livePortfolio = workingPortfolio;
         }
     }
     

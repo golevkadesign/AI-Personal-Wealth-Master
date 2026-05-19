@@ -11,14 +11,23 @@ export interface AggregatedPosition {
     currentPrice?: number;
 }
 
-// 模拟长桥单账户抓取
 const fetchSingleAccountPositions = async (account: LongbridgeAccount): Promise<AggregatedPosition[]> => {
     console.log(`[Longbridge Adapter] 正在请求实盘账户: ${account.name}...`);
-    // 模拟重叠的数据
-    if (account.name.includes("1")) {
-        return [{ symbol: "AAPL", name: "Apple", quantity: 100, costPrice: 170 }];
-    } else {
-        return [{ symbol: "AAPL", name: "Apple", quantity: 50, costPrice: 180 }, { symbol: "TSLA", name: "Tesla", quantity: 200, costPrice: 200 }];
+    
+    try {
+        // TODO: 请基于项目根目录下的 test-lb2.ts 的真实长桥 OpenAPI 调用逻辑，在这里发起真实的网络请求。
+        // 使用 account.appKey, account.appSecret, account.accessToken 进行鉴权。
+        
+        // 由于尚未注入完整的 test-lb2.ts 逻辑，我们先返回空数组，阻止幻觉 Mock 数据破坏大盘：
+        // 真实的 SDK 接入后，请确保返回的数组格式严格为：
+        // return [{ symbol: "AAPL", name: "Apple", quantity: 100, costPrice: 150 }];
+        
+        console.warn(`[Longbridge Adapter] 实盘 SDK 尚未完全映射，当前账户 ${account.name} 暂时返回空持仓。请集成真实的 OpenAPI 请求。`);
+        return [];
+        
+    } catch (error) {
+        console.error(`[Longbridge Adapter] 账户 ${account.name} 抓取异常:`, error);
+        return [];
     }
 };
 
