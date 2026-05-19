@@ -1,37 +1,137 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Noto+Serif+SC:wght@400;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&family=Playfair+Display:wght@600;700&display=swap');
 @import "tailwindcss";
 
 @theme {
-  /* 核心底色：羊皮纸墨灰 / 深邃黑灰 */
-  --color-dash-bg: #121415;
-  --color-dash-base: #181A1C;
-  --color-dash-surface: #1E2124;
-  --color-dash-surface-hover: #24272A;
+  /* ==================================
+     PHASE 1: New Design Tokens (Stitch)
+     ================================== */
   
-  /* 强调色：哑光暗金与柔和沙色 */
-  --color-dash-primary: #C9B284; /* 核心暗金 */
-  --color-dash-secondary: #A39167; /* 辅助深金 */
-  --color-dash-tertiary: #8C8270; /* 灰沙色 */
+  --color-on-tertiary-container: #3f455f;
+  --color-on-secondary-container: #c6b792;
+  --color-inverse-on-surface: #33302c;
+  --color-on-background: #e8e1dc;
+  --color-on-primary-container: #544420;
+  --color-on-surface: #e8e1dc;
+  --color-outline-variant: #4c463b;
+  --color-tertiary-fixed: #dde1ff;
+  --color-error: #ffb4ab;
+  --color-on-tertiary: #2a2f48;
+  --color-error-container: #93000a;
+  --color-secondary-fixed: #f2e1ba;
+  --color-surface-container-highest: #373431;
+  --color-primary: #e6cd9d;
+  --color-surface-bright: #3c3935;
+  --color-secondary-container: #53482b;
+  --color-primary-fixed: #f9e0ae;
+  --color-surface-container-high: #2c2a26;
+  --color-background: #151310;
+  --color-primary-container: #c9b284;
+  --color-tertiary: #caceee;
+  --color-surface-dim: #151310;
+  --color-inverse-primary: #6e5c35;
+  --color-secondary: #d5c59f;
+  --color-surface-variant: #373431;
+  --color-on-surface-variant: #cfc5b7;
+  --color-secondary-fixed-dim: #d5c59f;
+  --color-surface-container-low: #1d1b18;
+  --color-tertiary-container: #aeb3d2;
+  --color-on-secondary: #393014;
+  --color-surface-container-lowest: #100e0b;
+  --color-inverse-surface: #e8e1dc;
+  --color-on-error-container: #ffdad6;
+  --color-on-primary-fixed: #251a00;
+  --color-on-tertiary-fixed-variant: #404560;
+  --color-on-secondary-fixed-variant: #504629;
+  --color-outline: #989083;
+  --color-surface-tint: #dcc494;
+  --color-on-secondary-fixed: #231b03;
+  --color-surface: #151310;
+  --color-surface-container: #211f1c;
+  --color-primary-fixed-dim: #dcc494;
+  --color-on-primary: #3d2e0c;
+  --color-on-tertiary-fixed: #141a32;
+  --color-on-primary-fixed-variant: #554520;
+  --color-tertiary-fixed-dim: #c0c5e4;
+  --color-on-error: #690005;
+
+  --color-trend-up: #4ade80; 
+  --color-trend-down: #f87171; 
+
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-xxl: 64px;
+  --spacing-gutter: 24px;
+  --spacing-container-max: 1600px;
+  --spacing-unit: 8px;
+
+  /* Typography Fonts */
+  --font-body-md: 'Inter', sans-serif;
+  --font-data-md: 'JetBrains Mono', monospace;
+  --font-headline-lg: 'Playfair Display', serif;
+  --font-label-caps: 'Inter', sans-serif;
+  --font-data-lg: 'JetBrains Mono', monospace;
+  --font-display-lg: 'Playfair Display', serif;
+  --font-headline-md: 'Playfair Display', serif;
+  --font-body-sm: 'Inter', sans-serif;
+  --font-body-lg: 'Inter', sans-serif;
   
-  /* 状态色：低饱和、克制 */
-  --color-dash-green: #6B8E6B; /* Barbour绿 */
-  --color-dash-red: #A65D57; /* 哑光绛红 */
-  --color-dash-gold: #D4AF37; 
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Playfair Display', ui-serif, Georgia, serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+
+  /* Typography Sizes */
+  --text-body-md: 16px;
+  --text-body-md--line-height: 1.5;
   
-  /* 线条与文本 */
-  --color-dash-subtle: rgba(201, 178, 132, 0.15); /* 带有一丝金色的细线 */
-  --color-dash-strong: rgba(201, 178, 132, 0.3);
+  --text-data-md: 14px;
+  --text-data-md--line-height: 1.2;
+  
+  --text-headline-lg: 32px;
+  --text-headline-lg--line-height: 1.3;
+  
+  --text-label-caps: 12px;
+  --text-label-caps--line-height: 1.0;
+  
+  --text-data-lg: 20px;
+  --text-data-lg--line-height: 1.2;
+  
+  --text-display-lg: 48px;
+  --text-display-lg--line-height: 1.2;
+  
+  --text-headline-md: 24px;
+  --text-headline-md--line-height: 1.4;
+  
+  --text-body-sm: 14px;
+  --text-body-sm--line-height: 1.5;
+  
+  --text-body-lg: 18px;
+  --text-body-lg--line-height: 1.6;
 
   /* Legacy mapping to prevent breaking existing UI */
+  --color-dash-bg: #151310;
+  --color-dash-base: #100e0b;
+  --color-dash-surface: #1d1b18; 
+  --color-dash-surface-hover: #211f1c; 
+  
+  --color-dash-primary: #e6cd9d;
+  --color-dash-secondary: #d5c59f;
+  --color-dash-tertiary: #caceee;
+  
+  --color-dash-green: #4ade80;
+  --color-dash-red: #f87171;
+  --color-dash-gold: #c9b284;
+  
+  --color-dash-subtle: rgba(201, 178, 132, 0.15);
+  --color-dash-strong: rgba(201, 178, 132, 0.3);
+
   --color-dash-card: var(--color-dash-surface);
   --color-dash-cardHover: var(--color-dash-surface-hover);
   --color-dash-textMain: var(--color-dash-primary);
   --color-dash-textSub: var(--color-dash-secondary);
-
-  /* Fonts */
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-serif: 'Playfair Display', 'Noto Serif SC', serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
 
   /* Custom Animations */
   --animate-shimmer: shimmer 2.5s ease-in-out infinite;
@@ -45,8 +145,8 @@
   }
 
   @keyframes glow-flow {
-    0% { box-shadow: 0 0 0 1px var(--color-dash-subtle), 0 0 8px 0px rgba(46, 170, 164, 0.05); }
-    100% { box-shadow: 0 0 0 1px var(--color-dash-strong), 0 0 20px 2px rgba(46, 170, 164, 0.15); }
+    0% { box-shadow: 0 0 0 1px var(--color-dash-subtle), 0 0 8px 0px rgba(201, 178, 132, 0.05); }
+    100% { box-shadow: 0 0 0 1px var(--color-dash-strong), 0 0 20px 2px rgba(201, 178, 132, 0.15); }
   }
 
   @keyframes fadeIn {
@@ -61,7 +161,7 @@
 }
 
 body {
-  @apply bg-dash-bg text-slate-300 font-sans antialiased;
+  @apply bg-background text-on-surface font-sans antialiased selection:bg-primary-container/30 selection:text-primary;
   margin: 0;
   padding: 0;
   overflow-x: hidden;
@@ -75,15 +175,29 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  @apply bg-dash-subtle rounded-full;
+  @apply bg-outline-variant rounded-full;
 }
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-dash-tertiary;
+  @apply bg-outline;
 }
 
 .tabular-nums {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
+}
+
+/* Glass panel styling reflecting the new premium aesthetic */
+.glass-panel {
+  background-color: var(--color-surface-container-low);
+  border: 1px solid var(--color-outline-variant);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 12px;
+  transition: border-color 0.3s ease;
+}
+
+.glass-panel:hover {
+  border-color: rgba(201, 178, 132, 0.4);
 }
 
 .ai-message p, .markdown-body p {
@@ -93,7 +207,7 @@ body {
   margin-bottom: 0;
 }
 .ai-message strong, .markdown-body strong {
-  color: var(--color-dash-primary);
+  color: var(--color-primary);
   font-weight: 600;
 }
 .ai-message ul, .markdown-body ul {
@@ -110,14 +224,14 @@ body {
   font-weight: 600;
   margin-top: 1rem;
   margin-bottom: 0.5rem;
-  color: var(--color-dash-primary);
+  color: var(--color-primary);
   letter-spacing: -0.01em;
 }
 .ai-message h4, .markdown-body h4 {
   font-weight: 500;
   margin-top: 0.75rem;
   margin-bottom: 0.5rem;
-  color: var(--color-dash-primary);
+  color: var(--color-primary);
 }
 
 .loading-dots:after {
@@ -127,30 +241,21 @@ body {
 
 @keyframes dots {
   0%, 20% { color: transparent; text-shadow: .25em 0 0 transparent, .5em 0 0 transparent;}
-  40% { color: var(--color-dash-secondary); text-shadow: .25em 0 0 transparent, .5em 0 0 transparent;}
-  60% { text-shadow: .25em 0 0 var(--color-dash-secondary), .5em 0 0 transparent;}
-  80%, 100% { text-shadow: .25em 0 0 var(--color-dash-secondary), .5em 0 0 var(--color-dash-secondary);}
+  40% { color: var(--color-primary-container); text-shadow: .25em 0 0 transparent, .5em 0 0 transparent;}
+  60% { text-shadow: .25em 0 0 var(--color-primary-container), .5em 0 0 transparent;}
+  80%, 100% { text-shadow: .25em 0 0 var(--color-primary-container), .5em 0 0 var(--color-primary-container);}
 }
 
 .animate-fade-in {
   animation: var(--animate-fade-in);
 }
 
-/* Glass panel styling reflecting the new premium aesthetic */
-.glass-panel {
-  background: var(--color-dash-surface);
-  border: 1px solid var(--color-dash-subtle);
-  border-radius: 12px;
-  box-shadow: 0 4px 24px -4px rgba(0, 0, 0, 0.3);
-}
-
-/* Base utility for shimmer effect */
 .skeleton-shimmer {
   background: linear-gradient(
     90deg,
-    var(--color-dash-surface) 25%,
-    var(--color-dash-surface-hover) 50%,
-    var(--color-dash-surface) 75%
+    var(--color-surface-container-low) 25%,
+    var(--color-surface-container) 50%,
+    var(--color-surface-container-low) 75%
   );
   background-size: 200% 100%;
   animation: var(--animate-shimmer);
