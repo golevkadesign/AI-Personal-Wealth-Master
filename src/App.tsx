@@ -16,7 +16,7 @@ import { useInteractionStore } from './hooks/useInteractionStore';
 
 // Replaced by getUniversalAiClient
 
-import { Sparkles, LogOut, ChevronDown, User, Activity, Loader2, RefreshCw, Cpu, Settings, Bot, Database } from 'lucide-react';
+import { Sparkles, LogOut, ChevronDown, User, Activity, Loader2, RefreshCw, Cpu, Settings, Bot, Database, AlertTriangle } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { ChartWidget } from './components/ChartWidget';
 import { ProfileReportView } from './components/ProfileReportView';
@@ -84,7 +84,18 @@ export default function App() {
   const optionsOption = useMemo(() => getOptionsOption(data), [data?.distributions?.options]);
 
   if (loadingAuth) {
-    return <div className="min-h-screen flex items-center justify-center bg-dash-bg text-dash-primary font-mono tracking-widest text-[13px] uppercase font-semibold">Initializing Security Context...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="arbitra-panel border-dash-subtle rounded-2xl p-8 max-w-sm w-full flex flex-col items-center justify-center text-center shadow-2xl backdrop-blur-md">
+          <div className="w-12 h-12 rounded-[12px] bg-surface flex items-center justify-center mb-6 border border-dash-subtle shadow-inner">
+            <div className="w-5 h-5 rounded-full border-2 border-dash-primary/30 border-t-dash-primary animate-spin" />
+          </div>
+          <p className="arbitra-text-mono text-[10px] tracking-[0.2em] arbitra-text-tertiary uppercase mb-2">系统状态</p>
+          <h2 className="text-sm font-medium arbitra-text-primary mb-2">正在初始化安全财富上下文...</h2>
+          <p className="text-xs arbitra-text-secondary">正在同步加密画像与工作区</p>
+        </div>
+      </div>
+    );
   }
 
   if (!user) {
@@ -179,97 +190,62 @@ export default function App() {
       />
       
       <main className="max-w-[1600px] mx-auto px-4 md:px-6">
-        {/* Top Feature: AI Strategic Overview */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ type: "spring", stiffness: 400, damping: 25 }}
-          className="bg-dash-surface border border-dash-subtle rounded-3xl p-6 sm:p-8 relative overflow-hidden group mt-6 mb-6 md:mb-10 shadow-sm transition-colors hover:bg-dash-surface-hover"
-        >
-          <div className="flex justify-between items-start mb-4">
-            <h2 className="relative z-10 flex items-center gap-2 text-dash-tertiary text-[11px] font-semibold uppercase tracking-[0.15em]">
-               <Activity className="w-4 h-4 text-dash-primary"/> Strategic Overview
-            </h2>
-            <button
-               className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity bg-dash-primary/10 text-dash-primary border border-dash-primary/20 hover:bg-dash-primary/20 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 z-20 shadow-sm"
-               onClick={() => openCopilot('Strategic Overview', data.insights?.global, '首席宏观策略师')}
-            >
-               <Bot className="w-3.5 h-3.5" /> 专家探讨
-            </button>
-          </div>
-          <p className="relative z-10 text-dash-primary text-[15px] sm:text-xl font-medium tracking-tight leading-relaxed">
-             {data.insights?.global || "Waiting for deep financial sync..."}
-          </p>
-        </motion.div>
-
-      {/* 新增: 用户画像 (User Persona) */}
-      {(data.userPersona?.description && !data.userPersona.description.includes("当前信息不足以")) && (
-      <div className="bg-dash-surface border border-dash-subtle rounded-3xl p-6 md:p-8 mb-8 shadow-sm">
-        <h3 className="text-lg font-bold text-dash-primary mb-4 flex items-center gap-2 tracking-tight">
-          <User className="w-5 h-5 text-dash-secondary" /> User Persona
-        </h3>
-        <p className="text-dash-secondary text-[13px] leading-relaxed mb-6 font-medium">
-          {data.userPersona?.description || "Insufficient data for detailed persona..."}
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {(data.userPersona?.tags || []).map((tag: string, idx: number) => (
-             <span key={idx} className="bg-dash-surface-hover text-dash-primary px-3 py-1.5 rounded-lg text-[11px] uppercase tracking-wider font-semibold border border-dash-subtle">
-               {tag}
-             </span>
-          ))}
-        </div>
-      </div>
-      )}
-
       {/* 核心数据网格视图 */}
       <DashboardGrid 
         data={data}
         renderSDUI={renderSDUI}
       />
 
-      {/* 阶段性人生策略建议 (Life Strategies Timeline) */}
-      <LifeStrategyTimeline 
-         lifeStrategiesShort={data.lifeStrategiesShort}
-         lifeStrategiesLong={data.lifeStrategiesLong}
-         nodePlans={nodePlans}
-         handleInlineNodePlan={handleInlineNodePlan}
-      />
-
-      {/* 底部目标追踪卡片 (Goal Tracker) */}
-      {data.goal?.name && data.goal.name !== '等待设定目标' && (
-         <GoalTracker goal={data.goal} globalCurSymbol={globalCurSymbol} />
-      )}
+      {/* Bottom Planning Section */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 md:gap-10 mb-10">
+        <div className="xl:col-span-7 2xl:col-span-8 flex">
+          {/* 阶段性人生策略建议 (Life Strategies Timeline) */}
+          <LifeStrategyTimeline 
+             lifeStrategiesShort={data.lifeStrategiesShort}
+             lifeStrategiesLong={data.lifeStrategiesLong}
+             nodePlans={nodePlans}
+             handleInlineNodePlan={handleInlineNodePlan}
+          />
+        </div>
+        <div className="xl:col-span-5 2xl:col-span-4 flex">
+          {/* 底部目标追踪卡片 (Goal Tracker) */}
+          <GoalTracker goal={data.goal} globalCurSymbol={globalCurSymbol} />
+        </div>
+      </div>
       </main>
 
       {/* Footer Version */}
       <footer className="text-center pb-8 pt-4">
         <span className="text-[10px] font-mono text-dash-tertiary uppercase tracking-widest opacity-50">
-          Terminal Build v1.05
+          Terminal Build v1.0.3
         </span>
       </footer>
 
       {/* Confirm Clear Modal */}
       {showClearConfirm && (
-        <div className="fixed inset-0 bg-dash-bg/80 backdrop-blur-xl z-[998] flex justify-center items-center p-4">
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-dash-surface border border-dash-red/30 shadow-lg rounded-[24px] w-full max-w-md overflow-hidden relative p-8 z-[999]">
-            <h3 className="text-[15px] font-bold text-dash-red mb-3 uppercase tracking-widest flex items-center gap-2">
-               Reset Workspace
+        <div className="arbitra-overlay-backdrop z-[998] flex justify-center items-center p-4">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="arbitra-modal-panel border border-dash-red/30 shadow-[0_24px_80px_-40px_rgba(211,76,76,0.3)] rounded-[20px] w-full max-w-md overflow-hidden relative p-6 sm:p-8 z-[999]">
+            <div className="w-12 h-12 rounded-[12px] bg-rose-500/10 flex items-center justify-center mb-5 border border-rose-500/20 shadow-inner">
+               <AlertTriangle className="w-6 h-6 text-rose-500" />
+            </div>
+            <h3 className="text-lg font-medium arbitra-text-primary mb-2 flex items-center gap-2">
+               重置工作区
             </h3>
-            <p className="text-dash-secondary mb-8 text-[13px] leading-relaxed font-medium">
-              This action will permanently erase all AI analysis history and workspace artifacts for the current user. This action cannot be undone. Do you wish to proceed?
+            <p className="arbitra-text-secondary mb-8 text-sm leading-relaxed">
+               此操作将永久擦除当前用户的所有 AI 分析历史和工作区产物。此操作无法撤销。是否继续？
             </p>
             <div className="flex gap-3">
               <button 
                 onClick={() => setShowClearConfirm(false)}
-                className="flex-1 px-4 py-3 bg-dash-surface text-dash-primary border border-dash-subtle rounded-xl text-[13px] font-semibold hover:bg-dash-surface-hover transition-colors uppercase tracking-widest shadow-sm"
+                className="flex-1 arbitra-btn-base arbitra-btn-ghost arbitra-focus-ring text-sm"
               >
-                Cancel
+                取消
               </button>
               <button 
                 onClick={confirmClearData}
-                className="flex-1 px-4 py-3 bg-dash-red text-white border border-dash-red/50 rounded-xl text-[13px] font-bold hover:bg-red-500 transition-colors shadow-sm uppercase tracking-widest"
+                className="flex-1 arbitra-btn-base arbitra-btn-primary !bg-rose-500/20 !text-rose-500 !border-rose-500/30 hover:!bg-rose-600 hover:!text-white arbitra-focus-ring text-sm transition-all"
               >
-                Confirm
+                确认重置
               </button>
             </div>
           </motion.div>

@@ -14,18 +14,40 @@ export function getSDUIPieOption(data: any) {
   };
 }
 
+const SHADES_GOLD = ['#C9B284', '#A39167', '#8C8270', '#5A5141', '#373228', '#211E18'];
+
 export function getDonutOption(data: any) {
   const arr = data?.distributions?.liquidity || [];
   return {
     tooltip: { 
       trigger: 'item', 
+      backgroundColor: 'rgba(24, 26, 28, 0.9)',
+      borderColor: 'rgba(201, 178, 132, 0.2)',
+      textStyle: { color: '#E7D7B0', fontFamily: 'JetBrains Mono' },
       formatter: (p: any) => `${p.name}: ${getCurrencySymbol(arr[p.dataIndex]?.currency)}${(p.value || 0).toLocaleString()} (${p.percent}%)` 
     },
-    legend: { orient: 'vertical', left: 'left', textStyle: { color: '#cbd5e1' }, top: 'middle' },
-    color: ['#14b8a6', '#0ea5e9', '#3b82f6', '#0284c7', '#0369a1'],
+    legend: { 
+      orient: 'vertical', 
+      right: '0%', 
+      top: 'middle',
+      icon: 'circle',
+      textStyle: { color: '#AFA692', fontSize: 11, fontFamily: 'sans-serif' },
+      itemWidth: 8,
+      itemHeight: 8,
+      formatter: (name: string) => {
+         const item = arr.find((a: any) => a.name === name);
+         let pct = '';
+         if (item && item.value) {
+            const total = arr.reduce((sum: number, v: any) => sum + v.value, 0);
+            pct = total > 0 ? `  ${((item.value / total) * 100).toFixed(1)}%` : '';
+         }
+         return `${name}${pct}`;
+      }
+    },
+    color: SHADES_GOLD,
     series: [{
-      type: 'pie', radius: ['50%', '70%'], center: ['70%', '50%'],
-      itemStyle: { borderRadius: 6, borderColor: '#0B0C0E', borderWidth: 2 },
+      type: 'pie', radius: ['55%', '75%'], center: ['35%', '50%'],
+      itemStyle: { borderRadius: 4, borderColor: '#181A1C', borderWidth: 2 },
       label: { show: false }, data: arr.length ? arr : [{ name: '无数据', value: 0 }]
     }]
   };
@@ -36,13 +58,33 @@ export function getExpenseOption(data: any) {
   return {
     tooltip: { 
       trigger: 'item', 
+      backgroundColor: 'rgba(24, 26, 28, 0.9)',
+      borderColor: 'rgba(201, 178, 132, 0.2)',
+      textStyle: { color: '#E7D7B0', fontFamily: 'JetBrains Mono' },
       formatter: (p: any) => `${p.name}: ${getCurrencySymbol(arr[p.dataIndex]?.currency)}${(p.value || 0).toLocaleString()} (${p.percent}%)` 
     },
-    legend: { orient: 'vertical', left: 'left', textStyle: { color: '#cbd5e1' }, top: 'middle' },
-    color: ['#0d9488', '#0891b2', '#2563eb', '#1e40af', '#115e59', '#1e3a8a'],
+    legend: { 
+      orient: 'vertical', 
+      right: '0%', 
+      top: 'middle',
+      icon: 'circle',
+      textStyle: { color: '#AFA692', fontSize: 11, fontFamily: 'sans-serif' },
+      itemWidth: 8,
+      itemHeight: 8,
+      formatter: (name: string) => {
+         const item = arr.find((a: any) => a.name === name);
+         let pct = '';
+         if (item && item.value) {
+            const total = arr.reduce((sum: number, v: any) => sum + v.value, 0);
+            pct = total > 0 ? `  ${((item.value / total) * 100).toFixed(1)}%` : '';
+         }
+         return `${name}${pct}`;
+      }
+    },
+    color: ['#A65D57', '#C9B284', '#6B8E6B', '#8C8270', '#D4AF37', '#5A5141'],
     series: [{
-      type: 'pie', radius: ['50%', '70%'], center: ['70%', '50%'],
-      itemStyle: { borderRadius: 6, borderColor: '#0B0C0E', borderWidth: 2 },
+      type: 'pie', radius: ['55%', '75%'], center: ['35%', '50%'],
+      itemStyle: { borderRadius: 4, borderColor: '#181A1C', borderWidth: 2 },
       label: { show: false }, data: arr.length ? arr : [{ name: '无数据', value: 0 }]
     }]
   };
@@ -50,7 +92,7 @@ export function getExpenseOption(data: any) {
 
 export function getWaterfallOption(data: any) {
   const arr = data?.distributions?.privateAssets || [];
-  const names = arr.map((v: any) => v.name).concat(['总净现值']);
+  const names = arr.map((v: any) => v.name).concat(['总计']);
   const total = arr.reduce((sum: number, v: any) => sum + v.value, 0);
 
   let currentSum = 0;
@@ -61,20 +103,36 @@ export function getWaterfallOption(data: any) {
     tooltip: { 
       trigger: 'axis', 
       axisPointer: { type: 'shadow' }, 
+      backgroundColor: 'rgba(24, 26, 28, 0.9)',
+      borderColor: 'rgba(201, 178, 132, 0.2)',
+      textStyle: { color: '#E7D7B0', fontFamily: 'JetBrains Mono' },
       formatter: (p: any) => {
         const idx = p[1].dataIndex;
         const cur = idx < arr.length ? arr[idx].currency : arr[0]?.currency;
         return p[1].name + ' : ' + getCurrencySymbol(cur) + (p[1].value?.toLocaleString() || 0);
       }
     },
-    grid: { left: '3%', right: '4%', bottom: '15%', top: '15%', containLabel: true },
-    xAxis: { type: 'category', splitLine: { show: false }, data: names.length > 1 ? names : ['无数据'], axisLabel: { color: '#cbd5e1', interval: 0, formatter: (val: string) => val.length > 4 ? val.slice(0, 4) + '...' : val } },
-    yAxis: { type: 'value', splitLine: { lineStyle: { color: '#334155', type: 'dashed' } }, axisLabel: { show: false } },
+    grid: { left: '2%', right: '2%', bottom: '8%', top: '15%', containLabel: true },
+    xAxis: { 
+      type: 'category', 
+      splitLine: { show: false }, 
+      data: names.length > 1 ? names : ['无数据'], 
+      axisLabel: { color: '#AFA692', fontSize: 11, interval: 0, formatter: (val: string) => val.length > 4 ? val.slice(0, 4) + '...' : val },
+      axisLine: { lineStyle: { color: 'rgba(201, 178, 132, 0.2)' } }
+    },
+    yAxis: { 
+      type: 'value', 
+      splitLine: { lineStyle: { color: 'rgba(201, 178, 132, 0.1)', type: 'dashed' } }, 
+      axisLabel: { color: '#AFA692', fontSize: 10, formatter: (val: number) => val >= 10000 ? (val / 10000) + 'w' : val } 
+    },
     series: [
       { type: 'bar', stack: 'Total', itemStyle: { borderColor: 'transparent', color: 'transparent' }, data: helpData },
       {
-        type: 'bar', stack: 'Total', label: { show: true, position: 'top', formatter: (p: any) => p.value >= 10000 ? (p.value / 10000).toFixed(1) + 'w' : (p.value?.toLocaleString() || '0'), color: '#f8fafc', fontSize: 10 },
-        itemStyle: { color: (p: any) => p.dataIndex === names.length - 1 ? '#f8fafc' : '#0ea5e9', borderRadius: [4, 4, 0, 0] }, data: mainData.length ? mainData : [0]
+        type: 'bar', stack: 'Total', 
+        label: { show: true, position: 'top', formatter: (p: any) => p.value >= 10000 ? (p.value / 10000).toFixed(0) : (p.value?.toLocaleString() || '0'), color: '#C9B284', fontSize: 11, fontFamily: 'JetBrains Mono' },
+        itemStyle: { color: (p: any) => p.dataIndex === names.length - 1 ? '#D4AF37' : '#C9B284', borderRadius: [2, 2, 0, 0] }, 
+        data: mainData.length ? mainData : [0],
+        barWidth: '40%'
       }
     ]
   };
@@ -82,49 +140,39 @@ export function getWaterfallOption(data: any) {
 
 export function getHoldingsOption(data: any) {
   const arr = data?.distributions?.publicHoldings || [];
-  // Sort array by value to make horizontal chart look better (descending)
   const sortedArr = [...arr].sort((a: any, b: any) => (a.value ?? a.marketValue ?? 0) - (b.value ?? b.marketValue ?? 0));
   
   const symbols = sortedArr.map((v: any) => v.name || v.symbol || '未知');
   const values = sortedArr.map((v: any) => v.value ?? v.marketValue ?? 0);
+  const total = values.reduce((sum: number, v: number) => sum + v, 0);
   
   return {
     tooltip: { 
       trigger: 'axis', 
       axisPointer: { type: 'shadow' }, 
+      backgroundColor: 'rgba(24, 26, 28, 0.9)',
+      borderColor: 'rgba(201, 178, 132, 0.2)',
+      textStyle: { color: '#E7D7B0', fontFamily: 'JetBrains Mono' },
       formatter: (p: any) => {
         const idx = p[0].dataIndex;
         return p[0].name + ' : ' + getCurrencySymbol(sortedArr[idx]?.currency) + (p[0].value?.toLocaleString() || 0);
       }
     },
-    grid: { left: '3%', right: '15%', bottom: '5%', top: '5%', containLabel: true },
-    dataZoom: [
-      {
-        type: 'inside',
-        yAxisIndex: 0,
-        start: sortedArr.length > 8 ? Math.floor((1 - 8 / sortedArr.length) * 100) : 0, 
-        end: 100
-      },
-      {
-        type: 'slider',
-        yAxisIndex: 0,
-        show: sortedArr.length > 8,
-        width: 12,
-        right: 0,
-        borderColor: 'transparent',
-        backgroundColor: '#1e293b',
-        fillerColor: '#38BDF855',
-        handleSize: '100%',
-      }
-    ],
-    xAxis: [{ type: 'value', splitLine: { lineStyle: { color: '#334155', type: 'dashed' } }, axisLabel: { show: false } }],
-    yAxis: [{ type: 'category', data: symbols.length ? symbols : ['无数据'], axisLabel: { color: '#cbd5e1', interval: 0, width: 80, overflow: 'truncate' } }],
+    grid: { left: '2%', right: '12%', bottom: '0%', top: '5%', containLabel: true },
+    xAxis: [{ type: 'value', splitLine: { show: false }, axisLabel: { show: false } }],
+    yAxis: [{ 
+      type: 'category', 
+      data: symbols.length ? symbols : ['无数据'], 
+      axisLabel: { color: '#AFA692', fontSize: 11, interval: 0 },
+      axisLine: { lineStyle: { color: 'rgba(201, 178, 132, 0.2)' } },
+      axisTick: { show: false }
+    }],
     series: [{ 
       type: 'bar', 
-      label: { show: true, position: 'right', formatter: (p: any) => p.value >= 10000 ? (p.value / 10000).toFixed(1) + 'w' : (p.value?.toLocaleString() || '0'), color: '#14b8a6', fontSize: 10 }, 
-      barWidth: '60%', 
+      label: { show: true, position: 'right', formatter: (p: any) => total > 0 ? ((p.value / total) * 100).toFixed(1) + '%' : '0%', color: '#C9B284', fontSize: 11, fontFamily: 'JetBrains Mono' }, 
+      barWidth: '35%', 
       data: values.length ? values : [0], 
-      itemStyle: { color: '#14b8a6', borderRadius: [0, 4, 4, 0] } 
+      itemStyle: { color: '#A39167', borderRadius: [0, 4, 4, 0] } 
     }]
   };
 }
@@ -137,31 +185,32 @@ export function getOptionsOption(data: any) {
     tooltip: { 
       trigger: 'axis', 
       axisPointer: { type: 'shadow' }, 
+      backgroundColor: 'rgba(24, 26, 28, 0.9)',
+      borderColor: 'rgba(201, 178, 132, 0.2)',
+      textStyle: { color: '#E7D7B0', fontFamily: 'JetBrains Mono' },
       formatter: (p: any) => {
         const idx = p[0].dataIndex;
         return p[0].name + ' : ' + getCurrencySymbol(arr[idx]?.currency) + (p[0].value?.toLocaleString() || 0);
       }
     },
-    grid: { left: '3%', right: '4%', bottom: '15%', top: '15%', containLabel: true },
-    dataZoom: [
-      {
-        type: 'inside',
-        start: 0,
-        end: arr.length > 5 ? Math.floor((5 / arr.length) * 100) : 100
-      },
-      {
-        type: 'slider',
-        show: arr.length > 5,
-        height: 12,
-        bottom: 0,
-        borderColor: 'transparent',
-        backgroundColor: '#1e293b',
-        fillerColor: '#38BDF855',
-        handleSize: '100%',
-      }
-    ],
-    xAxis: [{ type: 'category', data: symbols.length ? symbols : ['无数据'], axisLabel: { color: '#cbd5e1', interval: 0, rotate: symbols.length > 4 ? 30 : 0 } }],
-    yAxis: [{ type: 'value', splitLine: { lineStyle: { color: '#334155', type: 'dashed' } }, axisLabel: { show: false } }],
-    series: [{ type: 'bar', label: { show: true, position: 'top', formatter: (p: any) => p.value >= 10000 ? (p.value / 10000).toFixed(1) + 'w' : (p.value?.toLocaleString() || '0'), color: '#0369a1', fontSize: 10 }, barWidth: '40%', data: values.length ? values : [0], itemStyle: { color: '#0369a1', borderRadius: [4, 4, 0, 0] } }]
+    grid: { left: '2%', right: '2%', bottom: '8%', top: '15%', containLabel: true },
+    xAxis: [{ 
+       type: 'category', 
+       data: symbols.length ? symbols : ['无数据'], 
+       axisLabel: { color: '#AFA692', fontSize: 11, interval: 0 },
+       axisLine: { lineStyle: { color: 'rgba(201, 178, 132, 0.2)' } }
+    }],
+    yAxis: [{ 
+       type: 'value', 
+       splitLine: { lineStyle: { color: 'rgba(201, 178, 132, 0.1)', type: 'dashed' } }, 
+       axisLabel: { color: '#AFA692', fontSize: 10, formatter: (val: number) => val >= 10000 ? (val / 10000) + 'w' : val }
+    }],
+    series: [{ 
+       type: 'bar', 
+       label: { show: true, position: 'top', formatter: (p: any) => p.value >= 10000 ? (p.value / 10000).toFixed(0) : (p.value?.toLocaleString() || '0'), color: '#8C8270', fontSize: 10, fontFamily: 'JetBrains Mono' }, 
+       barWidth: '40%', 
+       data: values.length ? values : [0], 
+       itemStyle: { color: '#6B8E6B', borderRadius: [2, 2, 0, 0] } 
+    }]
   };
 }

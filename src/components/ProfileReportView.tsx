@@ -57,7 +57,7 @@ export const ProfileReportView = ({ isOpen, onClose, data, commitData }: any) =>
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-center p-4">
       <div className="bg-[#111315] border border-[#2A2B2D] rounded-2xl w-full max-w-4xl overflow-hidden shadow-2xl relative flex flex-col max-h-[90vh] min-h-[60vh]">
-        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors z-10">
+        <button onClick={onClose} aria-label="关闭画像报告" className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors z-10 arbitra-focus-ring">
           <X className="w-5 h-5" />
         </button>
         <div className="px-6 py-5 border-b border-[#2A2B2D] shrink-0 flex items-center justify-between">
@@ -68,7 +68,7 @@ export const ProfileReportView = ({ isOpen, onClose, data, commitData }: any) =>
             <button
                onClick={handleGenerate}
                disabled={isGenerating}
-               className="flex flex-row items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-white/5 hover:bg-white/10 text-white transition-colors disabled:opacity-50"
+               className="flex flex-row items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-white/5 hover:bg-white/10 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
                {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                {isGenerating ? "生成中..." : "重新生成"}

@@ -1,6 +1,5 @@
 import { Router } from "express";
 import { getUniversalAiClient } from "../utils/ai-universal";
-import { resolveRequestSettings } from "../utils/settings";
 import { analyzeIntentWithFlash } from '../services/orchestrator';
 
 export const profileRouter = Router();
@@ -10,7 +9,7 @@ profileRouter.post("/generate", async (req, res) => {
     const { data, settings, contextData } = req.body;
     const finalData = data || contextData || {};
 
-    const passedSettings = resolveRequestSettings(settings);
+    const passedSettings = settings || {};
     const ai = getUniversalAiClient(passedSettings);
     const targetModel = passedSettings.geminiFastModel || "gemini-2.5-flash"; // 优先使用用户配置
 
@@ -50,7 +49,7 @@ profileRouter.post('/parse', async (req, res) => {
         const result = await analyzeIntentWithFlash(
             message, 
             [], 
-            resolveRequestSettings(req.body.settings), // 如果前端传了
+            req.body.settings, // 如果前端传了
             "General", 
             currentProfile || {}, 
             ragSchema || "", 
@@ -85,7 +84,7 @@ ${value || '暂无文字输入'}
 3. 请将精炼后的结果以高度结构化的文本格式输出。如果原数据有明确的 JSON 结构意图，请尝试输出合法的紧凑 JSON（如数组或字典）。
 4. 绝对不要输出任何前言、后语或 Markdown 代码块标记（不要写 \`\`\`json），只输出精炼后的纯净内容本身，以便前端直接填入 Textarea！`;
 
-        const passedSettings = resolveRequestSettings(req.body.settings);
+        const passedSettings = req.body.settings || {};
         const ai = getUniversalAiClient(passedSettings);
         const targetModel = passedSettings.geminiFastModel || "gemini-2.5-flash";
 

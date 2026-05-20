@@ -309,10 +309,10 @@ export const ChatList = React.memo(function ChatList({ messages, isTyping, onReg
                         handleCopy(fullScreenCode.code, -1);
                       }} className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/5 transition-colors">
                         {copiedIndex === -1 ? <Check className="w-3.5 h-3.5 text-dash-green" /> : <Copy className="w-3.5 h-3.5" />}
-                        {copiedIndex === -1 ? '已复制 (Copied)' : '复制 (Copy)'}
+                        {copiedIndex === -1 ? '已复制' : '复制代码'}
                       </button>
                       <button onClick={() => setFullScreenCode(null)} className="flex items-center gap-1 text-xs text-rose-400 hover:text-rose-300 px-3 py-1.5 rounded-lg border border-rose-500/20 hover:bg-rose-500/10 transition-colors ml-2">
-                        <X className="w-4 h-4" /> 关闭 (Close)
+                        <X className="w-4 h-4" /> 关闭
                       </button>
                    </div>
                 </div>

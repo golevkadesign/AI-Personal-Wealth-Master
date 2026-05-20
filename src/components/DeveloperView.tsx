@@ -216,7 +216,7 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({ isOpen, onClose, u
                 <ShieldAlert className="w-3.5 h-3.5" /> 彻底清空资料与状态记录
               </button>
             )}
-            <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full text-slate-400 hover:text-white transition-colors">
+            <button onClick={onClose} aria-label="Close Developer View" className="p-2 hover:bg-white/10 rounded-full text-slate-400 hover:text-white transition-colors arbitra-focus-ring">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -329,13 +329,13 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({ isOpen, onClose, u
                       <div className="flex space-x-2">
                         {isEditing ? (
                           <>
-                            <button onClick={handleSavePrompt} className="px-2.5 py-1 text-[10px] bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 rounded border border-emerald-500/30 uppercase tracking-wide font-bold">Save</button>
-                            <button onClick={() => setIsEditing(false)} className="px-2.5 py-1 text-[10px] bg-dash-base text-slate-400 hover:text-white rounded border border-dash-subtle uppercase tracking-wide font-bold">Cancel</button>
+                            <button onClick={handleSavePrompt} className="px-2.5 py-1 text-[10px] bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 rounded border border-emerald-500/30 uppercase tracking-wide font-bold">保存</button>
+                            <button onClick={() => setIsEditing(false)} className="px-2.5 py-1 text-[10px] bg-dash-base text-slate-400 hover:text-white rounded border border-dash-subtle uppercase tracking-wide font-bold">取消</button>
                           </>
                         ) : (
                           <>
-                            <button onClick={() => { setEditContent(activeAgent.pe); setIsEditing(true); }} className="px-2.5 py-1 text-[10px] bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 rounded border border-blue-500/30 uppercase tracking-wide font-bold">Edit</button>
-                            <button onClick={handleRestoreDefault} className="px-2.5 py-1 text-[10px] bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded border border-red-500/30 uppercase tracking-wide font-bold">Reset</button>
+                            <button onClick={() => { setEditContent(activeAgent.pe); setIsEditing(true); }} className="px-2.5 py-1 text-[10px] bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 rounded border border-blue-500/30 uppercase tracking-wide font-bold">编辑</button>
+                            <button onClick={handleRestoreDefault} className="px-2.5 py-1 text-[10px] bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded border border-red-500/30 uppercase tracking-wide font-bold">重置</button>
                           </>
                         )}
                       </div>
@@ -442,11 +442,11 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({ isOpen, onClose, u
                                       setProfileFields(profileFields.map(f => f.id === field.id ? { ...f, isAnalyzing: false } : f));
                                     }
                                   }}
-                                  className="px-3 py-1.5 bg-dash-primary/10 text-dash-primary rounded-lg border border-dash-primary/30 font-bold text-[11px] hover:bg-dash-primary hover:text-black transition-all disabled:opacity-30"
+                                  className="px-3 py-1.5 bg-dash-primary/10 text-dash-primary rounded-lg border border-dash-primary/30 font-bold text-[11px] hover:bg-dash-primary hover:text-black transition-all disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-dash-primary/10 disabled:hover:text-dash-primary"
                                 >
                                   {field.isAnalyzing ? "精炼中..." : "🧠 智能清洗本行"}
                                 </button>
-                                <button onClick={() => handleRemoveProfileField(field.id)} className="px-2 py-1.5 text-slate-500 hover:text-dash-red transition-colors"><X className="w-4 h-4" /></button>
+                                <button onClick={() => handleRemoveProfileField(field.id)} aria-label="Remove Field" className="px-2 py-1.5 text-slate-500 hover:text-dash-red transition-colors arbitra-focus-ring"><X className="w-4 h-4" /></button>
                               </div>
                             </div>
                           </div>
@@ -483,7 +483,7 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({ isOpen, onClose, u
                           <button 
                             onClick={handleParseAndSave}
                             disabled={isParsing || (!naturalInput.trim() && tempAttachments.length === 0)}
-                            className="bg-dash-primary text-black px-4 py-2 rounded-lg text-sm font-bold hover:bg-dash-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2"
+                            className="bg-dash-primary text-black px-4 py-2 rounded-lg text-sm font-bold hover:bg-dash-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                           >
                             {isParsing ? '🧠 解析并覆写中...' : '🧠 激活引擎进行结构化合并并覆盖写入'}
                           </button>

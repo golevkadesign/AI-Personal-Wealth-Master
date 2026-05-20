@@ -4,7 +4,6 @@ import { extractTickers } from "../services/utils";
 import { evaluateWealthStatus } from "../services/orchestrator";
 import { hydrateContext } from "../services/hydrator";
 import { getUniversalAiClient } from "../utils/ai-universal";
-import { resolveRequestSettings } from "../utils/settings";
 
 import { DEFAULT_RAG_SCHEMA } from "../../src/lib/defaultPrompts";
 
@@ -69,7 +68,16 @@ chatRouter.post("/", async (req, res) => {
     sendProgress("⏳ [阶段 0] 已接收通讯矩阵指令与上下文凭证...");
     const { message, contextData = {}, history = [], customApiKey, settings, userProfile = {}, userId, attachments = [], skipMemoryUpdate = false } = req.body;
     
-    const passedSettings = resolveRequestSettings(settings, customApiKey);
+    const passedSettings = settings || {};
+    if (customApiKey) {
+      if (!passedSettings.geminiKey && passedSettings.provider === 'gemini') {
+        passedSettings.geminiKey = customApiKey;
+      } else if (!passedSettings.openaiKey && passedSettings.provider === 'openai') {
+        passedSettings.openaiKey = customApiKey;
+      } else if (!passedSettings.provider) {
+        passedSettings.geminiKey = customApiKey;
+      }
+    }
     
     const ai = getUniversalAiClient(passedSettings);
 

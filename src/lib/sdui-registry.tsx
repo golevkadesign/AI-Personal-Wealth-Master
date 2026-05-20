@@ -180,14 +180,14 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
 
     if (!data || data.length === 0) {
       return (
-        <div className="bg-dash-surface-hover rounded-3xl border border-dash-subtle p-6 h-[350px] shadow-sm flex flex-col items-center justify-center animate-pulse">
+        <div className="arbitra-panel arbitra-panel-hover rounded-2xl p-6 h-[350px] flex flex-col items-center justify-center animate-pulse">
           <div className="w-40 h-40 rounded-full border-8 border-dash-subtle/30 border-t-dash-subtle/60 animate-spin" />
           <div className="mt-6 h-3 w-24 bg-dash-subtle/50 rounded-full" />
         </div>
       );
     }
     return (
-      <div className="bg-dash-surface-hover rounded-3xl border border-dash-subtle p-6 h-[350px] shadow-sm flex flex-col">
+      <div className="arbitra-panel arbitra-panel-hover rounded-2xl p-6 h-[350px] flex flex-col">
          <div className="flex-1 min-h-0">
             <ReactECharts option={option} />
          </div>
@@ -197,7 +197,7 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
   Timeline12X: ({ title, nodes }) => {
     if (!nodes || nodes.length === 0) {
       return (
-         <div className="bg-dash-surface-hover rounded-3xl border border-dash-subtle p-6 shadow-sm relative overflow-hidden animate-pulse">
+         <div className="arbitra-panel arbitra-panel-hover rounded-2xl p-6 relative overflow-hidden animate-pulse">
             <div className="h-6 w-48 bg-dash-subtle/50 rounded-lg mb-8" />
             <div className="relative border-l border-dash-subtle ml-4 space-y-10 my-4">
                {[1,2,3].map(i => (
@@ -213,19 +213,19 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
       );
     }
     return (
-      <div className="bg-dash-surface-hover rounded-3xl border border-dash-subtle p-6 shadow-sm relative overflow-hidden">
-        <h3 className="text-xl font-bold text-dash-primary mb-6 flex items-center gap-2 tracking-tight">
-            <Sparkles className="w-5 h-5 text-dash-primary" /> {title}
+      <div className="arbitra-panel arbitra-panel-hover rounded-2xl p-6 relative overflow-hidden">
+        <h3 className="text-xl font-bold arbitra-text-primary mb-6 flex items-center gap-2 tracking-tight">
+            <Sparkles className="w-5 h-5 arbitra-text-gold" /> {title}
         </h3>
         <div className="relative border-l border-dash-subtle ml-4 space-y-10 my-4">
            {nodes?.map((item: any, idx: number) => (
              <div key={idx} className="pl-8 relative">
                  <div className="absolute w-4 h-4 bg-dash-primary rounded-full -left-[8.5px] top-1 ring-4 ring-dash-base shadow-sm" />
-                 <div className="inline-block bg-dash-surface text-dash-primary font-mono font-semibold text-xs px-3 py-1 rounded-md mb-3 border border-dash-subtle">
+                 <div className="inline-block bg-dash-surface arbitra-text-gold arbitra-text-mono font-semibold text-xs px-3 py-1 rounded-md mb-3 border border-dash-subtle">
                    {item.timeNode}
                  </div>
-                 <h4 className="text-lg font-bold text-dash-primary mb-2">{item.title}</h4>
-                 <p className="text-sm text-dash-secondary leading-relaxed bg-dash-surface p-4 rounded-2xl border border-dash-subtle">
+                 <h4 className="text-lg font-medium arbitra-text-primary mb-2">{item.title}</h4>
+                 <p className="text-sm arbitra-text-secondary leading-relaxed bg-dash-surface p-4 rounded-xl border border-dash-subtle">
                    {item.description}
                  </p>
              </div>
@@ -244,8 +244,8 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
     const isCritical = level === 'critical';
     
     return (
-      <div className={`relative overflow-hidden rounded-3xl border p-6 shadow-xl w-full
-        ${isCritical ? 'bg-red-950/20 border-red-500/50 shadow-red-900/20' : 'bg-amber-950/20 border-amber-500/50 shadow-amber-900/20'}
+      <div className={`relative overflow-hidden rounded-2xl border p-6 shadow-xl w-full
+        ${isCritical ? 'bg-red-950/20 border-red-500/50 shadow-red-900/20' : 'bg-amber-950/20 border-amber-500/50 shadow-amber-900/20 hover:border-amber-500/80 transition-colors duration-300'}
       `}>
          {/* visual flair like a breathing light or corner accent */}
          {isCritical && (
