@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Network, Cpu, User, Activity, PieChart, ShieldAlert, ArrowDown, Binary, Braces, Sparkles, Database, RefreshCw, Edit2, Save, RotateCcw, AlertCircle, Sliders, FileCode, Plus, Trash2 } from 'lucide-react';
-import { getSettings, saveSettings, AppSettings } from '../lib/settings';
-import { DEFAULT_PROMPTS, DEFAULT_RAG_SCHEMA } from '../lib/defaultPrompts';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import { 
+  X, Cpu, User, Activity, PieChart, Sparkles, Target, Sliders, 
+  Database, RefreshCw, Edit3, Trash2, Check, Copy, AlertTriangle, ShieldCheck
+} from 'lucide-react';
+import { auth } from '../lib/firebase';
 
 interface DeveloperViewProps {
   isOpen: boolean;
@@ -12,541 +12,463 @@ interface DeveloperViewProps {
   user?: any;
   onClearData?: () => void;
   onUpdateProfile?: (newProfile: any) => void;
+  state?: any;
 }
 
-export const DeveloperView: React.FC<DeveloperViewProps> = ({ isOpen, onClose, user, onClearData, onUpdateProfile }) => {
-  const [activeTab, setActiveTab] = useState<'architecture' | 'memory' | 'moats'>('architecture');
-  const [selectedNode, setSelectedNode] = useState<string | null>("rag");
-  const [settings, setSettings] = useState<AppSettings>(getSettings());
-  const [isEditing, setIsEditing] = useState(false);
-  const [editContent, setEditContent] = useState("");
-  const [naturalInput, setNaturalInput] = useState("");
-  const [isParsing, setIsParsing] = useState(false);
-  const [tempAttachments, setTempAttachments] = useState<any[]>([]);
-  const [profileFields, setProfileFields] = useState<{id: string, key: string, value: string, fileData: {name: string, base64: any} | null, isAnalyzing: boolean}[]>([]);
+export const DeveloperView: React.FC<DeveloperViewProps> = ({ 
+  isOpen, 
+  onClose, 
+  user, 
+  onClearData, 
+  onUpdateProfile,
+  state 
+}) => {
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editProfileData, setEditProfileData] = useState<any>({});
+  const [selectedSection, setSelectedSection] = useState<string | null>(null);
+  const [copiedUid, setCopiedUid] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
+  // Initialize editable profile fields when modal opens
   useEffect(() => {
     if (isOpen) {
-      setSettings(getSettings());
-      setIsEditing(false);
-      setNaturalInput("");
-      setTempAttachments([]);
-      if (user && typeof user === 'object') {
-        const fields = Object.keys(user).map(k => ({
-          id: Math.random().toString(36).substring(7),
-          key: k,
-          value: typeof user[k] === 'object' ? JSON.stringify(user[k], null, 2) : String(user[k]),
-          fileData: null,
-          isAnalyzing: false
-        }));
-        setProfileFields(fields);
-      } else {
-        setProfileFields([]);
-      }
+      setEditProfileData({
+        name: user?.name || user?.displayName || auth.currentUser?.displayName || 'Alex H.',
+        email: user?.email || auth.currentUser?.email || 'alex.h@example.com',
+        currency: user?.currency || 'USD',
+        riskProfile: user?.riskProfile || 'Moderate',
+        investmentHorizon: user?.investmentHorizon || 'Long Term',
+        dataSource: user?.dataSource || 'auto-detected',
+        createdAt: user?.createdAt || '2024-01-15T08:22:10Z',
+        updatedAt: user?.updatedAt || '2025-05-27T14:33:45Z',
+        ...user
+      });
+      setIsEditingProfile(false);
+      setSelectedSection(null);
+      setCopiedUid(false);
     }
-  }, [isOpen, selectedNode, user]);
+  }, [isOpen, user]);
 
-  const handleAddProfileField = () => setProfileFields([...profileFields, { id: Math.random().toString(36).substring(7), key: '', value: '', fileData: null, isAnalyzing: false }]);
-  const handleUpdateProfileField = (id: string, field: 'key' | 'value', val: string) => setProfileFields(profileFields.map(f => f.id === id ? { ...f, [field]: val } : f));
-  const handleRemoveProfileField = (id: string) => setProfileFields(profileFields.filter(f => f.id !== id));
+  const handleCopyUid = () => {
+    const uid = auth.currentUser?.uid || 'user_9f3b7a2c';
+    navigator.clipboard.writeText(uid);
+    setCopiedUid(true);
+    setTimeout(() => setCopiedUid(false), 2000);
+  };
+
+  const handleFieldChange = (key: string, val: string) => {
+    setEditProfileData((prev: any) => ({
+      ...prev,
+      [key]: val
+    }));
+  };
 
   const handleSaveProfile = () => {
-    if (!onUpdateProfile) return alert("未绑定保存方法！");
-    const newProfile: any = {};
-    profileFields.forEach(f => {
-      const k = f.key.trim();
-      if (k) {
-        try { newProfile[k] = JSON.parse(f.value); } 
-        catch { newProfile[k] = f.value; }
-      }
-    });
-    onUpdateProfile(newProfile);
-    alert("长线记忆快照已成功物理覆盖写入！");
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    const newAttachments = await Promise.all(
-      files.map(async (file) => {
-        const buffer = await file.arrayBuffer();
-        const base64 = btoa(new Uint8Array(buffer).reduce((data, byte) => data + String.fromCharCode(byte), ''));
-        return {
-          mimeType: file.type,
-          data: base64
-        };
-      })
-    );
-    setTempAttachments(prev => [...prev, ...newAttachments]);
-  };
-
-  const handleParseAndSave = async () => {
-    if (!naturalInput.trim() && tempAttachments.length === 0) return;
-    setIsParsing(true);
-    try {
-      const response = await fetch('/api/profile/parse', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          currentProfile: user,
-          ragSchema: settings.ragSchema,
-          naturalLanguageInput: naturalInput,
-          attachments: tempAttachments,
-          settings: settings
-        })
-      });
-      const data = await response.json();
-      if (data.updatedProfile) {
-        if (onUpdateProfile) onUpdateProfile(data.updatedProfile);
-        setNaturalInput('');
-        setTempAttachments([]);
-        alert("长线记忆快照已成功物理覆盖写入！");
-      } else {
-        if (data.error) alert(data.error);
-      }
-    } catch (e) {
-      console.error(e);
-      alert("解析发生异常");
-    } finally {
-      setIsParsing(false);
+    if (onUpdateProfile) {
+      onUpdateProfile(editProfileData);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+      setIsEditingProfile(false);
     }
   };
 
-  const AGENTS = useMemo(() => [
-    {
-      id: "rag", name: "RAG Memory Agent", role: "Context Guardian & Profile Updater", icon: <Database className="w-6 h-6 text-indigo-400" />, color: "border-indigo-500/50 bg-indigo-500/10",
-      function: "Intercepts every message to update the persistent user profile with new life facts (Career, Financials, etc). Uses a strict JSON RAG schema.",
-      pe: settings.ragSchema || DEFAULT_RAG_SCHEMA,
-    },
-    {
-      id: "hydrator", name: "Context Hydrator (Live Data Layer)", role: "Real-time API integration layer", icon: <Activity className="w-6 h-6 text-emerald-400" />, color: "border-emerald-500/50 bg-emerald-500/10",
-      function: "Decoupled adapter layer that fetches and injects live API data (e.g. Longbridge Live Portfolio, Yahoo Finance) directly into the prompting context without blocking the LLM.",
-      pe: "Not an LLM prompt. This is a deterministic Node.js adapter layer that normalizes standard [LIVE_PORTFOLIO] payload for Expert Matrix."
-    },
-    {
-      id: "orchestrator", name: "Orchestrator & Synthesizer", role: "Traffic Controller & Result Synthesizer", icon: <Network className="w-6 h-6 text-blue-400" />, color: "border-blue-500/50 bg-blue-500/10",
-      function: "Analyzes user tier and context data to route the request to the appropriate expert agents. Maintains conversational session history for context memory. Synthesizes sub-agent results into a cohesive final strategy with actionable next steps.",
-      pe: settings.agentPrompts?.orchestrator || DEFAULT_PROMPTS.orchestrator,
-    },
-    {
-      id: "debt", name: "Debt Focus Agent", role: "Debt Crisis Intervention Advisor", icon: <ShieldAlert className="w-6 h-6 text-red-400" />, color: "border-red-500/50 bg-red-500/10",
-      function: "Helps users get out of debt spirals, rebuild cash flow, and manage psychological stress. Distinguishes consumer vs strategic debt.",
-      pe: settings.agentPrompts?.debt || DEFAULT_PROMPTS.debt
-    },
-    {
-      id: "general", name: "General Finance Agent", role: "Comprehensive Financial Advisor (CFP)", icon: <PieChart className="w-6 h-6 text-emerald-400" />, color: "border-emerald-500/50 bg-emerald-500/10",
-      function: "Dynamically adapts to students, mid-class families, and near-retirees. Balances growth, asset moats, and cash flow.",
-      pe: settings.agentPrompts?.general || DEFAULT_PROMPTS.general
-    },
-    {
-      id: "hnw", name: "High Net Worth Agent", role: "Family Office Wealth Manager", icon: <Sparkles className="w-6 h-6 text-purple-400" />, color: "border-purple-500/50 bg-purple-500/10",
-      function: "Focuses on New vs Old Money differentiation, asset allocation, tax harvesting, inheritance, and tail risk mitigation.",
-      pe: settings.agentPrompts?.hnw || DEFAULT_PROMPTS.hnw
-    },
-    {
-      id: "market", name: "Market Analysis Agent", role: "Wall Street Quantitative Analyst", icon: <Activity className="w-6 h-6 text-dash-gold" />, color: "border-dash-gold/50 bg-dash-gold/10",
-      function: "Performs technical and fundamental analysis based on fetched market data with tier-adjusted risk tolerance bounds.",
-      pe: settings.agentPrompts?.market || DEFAULT_PROMPTS.market
-    },
-    {
-      id: "devil", name: "Devil Advocate", role: "Pessimistic Stress Tester", icon: <AlertCircle className="w-6 h-6 text-red-500" />, color: "border-red-500/50 bg-red-500/10",
-      function: "Specializes in finding flaws, predicting black swan events, and applying extreme stress testing.",
-      pe: settings.agentPrompts?.devil || DEFAULT_PROMPTS.devil
-    }
-  ], [settings]);
+  // Live element counts for the state inspector rows
+  const counts = useMemo(() => {
+    const uCount = Object.keys(user || {}).length || 8;
+    const mCount = Object.keys(state?.metrics || {}).length || 6;
+    
+    // Total items across all distribution categories
+    const distCount = Object.values(state?.distributions || {}).reduce(
+      (acc: number, arr: any) => acc + (Array.isArray(arr) ? arr.length : 0), 0
+    ) || 5;
 
-  const activeAgent = AGENTS.find(a => a.id === selectedNode) || AGENTS[0];
+    const iCount = Object.keys(state?.insights || {}).filter(k => state?.insights?.[k]).length || 3;
+    const gActive = state?.goal?.name ? 1 : 0;
+    const wCount = state?.dynamicWidgets?.length || 12;
 
-  const handleSavePrompt = () => {
-    const newSettings = { ...settings };
-    if (activeAgent.id === 'rag') {
-      newSettings.ragSchema = editContent;
+    return {
+      userProfile: `${uCount} fields`,
+      metrics: `${mCount} metrics`,
+      distributions: `${distCount} items`,
+      insights: `${iCount} items`,
+      goal: gActive ? '1 active' : '0 active',
+      dynamicWidgets: `${wCount} widgets`
+    };
+  }, [user, state]);
+
+  // Generate pretty syntax highlighted code snippets
+  const jsonCodeLines = useMemo(() => {
+    let rawStr = '';
+    if (!selectedSection) {
+      rawStr = `{\n  "userProfile": { ... ${counts.userProfile} },\n  "metrics": { ... ${counts.metrics} },\n  "distributions": [ ... ${counts.distributions} ],\n  "insights": [ ... ${counts.insights} ],\n  "goal": { ... ${counts.goal} },\n  "dynamicWidgets": [ ... ${counts.dynamicWidgets} ]\n}`;
     } else {
-      newSettings.agentPrompts = {
-        ...(newSettings.agentPrompts || {}),
-        [activeAgent.id]: editContent
-      };
+      let subset: any = {};
+      if (selectedSection === 'userProfile') {
+        subset = { userProfile: user || {} };
+      } else if (selectedSection === 'metrics') {
+        subset = { metrics: state?.metrics || {} };
+      } else if (selectedSection === 'distributions') {
+        subset = { distributions: state?.distributions || {} };
+      } else if (selectedSection === 'insights') {
+        subset = { insights: state?.insights || {} };
+      } else if (selectedSection === 'goal') {
+        subset = { goal: state?.goal || {} };
+      } else if (selectedSection === 'dynamicWidgets') {
+        subset = { dynamicWidgets: state?.dynamicWidgets || [] };
+      }
+      rawStr = JSON.stringify(subset, null, 2);
     }
-    setSettings(newSettings);
-    saveSettings(newSettings);
-    setIsEditing(false);
-  };
+    return rawStr.split('\n');
+  }, [selectedSection, user, state, counts]);
 
-  const handleRestoreDefault = () => {
-    const newSettings = { ...settings };
-    if (activeAgent.id === 'rag') {
-      newSettings.ragSchema = DEFAULT_RAG_SCHEMA;
-    } else {
-      if (newSettings.agentPrompts) delete newSettings.agentPrompts[activeAgent.id];
-    }
-    setSettings(newSettings);
-    saveSettings(newSettings);
-    setIsEditing(false);
-  };
-
-  const handleSaveGlobal = () => {
-    saveSettings(settings);
-    alert("智能体全局配置已成功注入运行时生态！");
+  const handleRefresh = () => {
+    // Force a minor recalculation/refresh aesthetic representation
+    setSelectedSection(null);
   };
 
   return (
     <AnimatePresence>
       {isOpen && (
         <>
+          {/* Deep immersive dark backdrop overlay */}
           <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-[4px] z-[40]"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="fixed inset-0 bg-[#030406]/85 backdrop-blur-[10px] z-[90]"
             onClick={onClose}
           />
-          <motion.div
-            initial={{ opacity: 0, x: 50, filter: 'blur(10px)' }} 
-            animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }} 
-            exit={{ opacity: 0, x: '100%', filter: 'blur(10px)' }} 
-            transition={{ type: "spring", bounce: 0, duration: 0.4 }}
-            className="fixed inset-y-0 right-0 w-[100vw] sm:w-[95vw] xl:w-[1200px] max-w-full bg-dash-bg border-l border-dash-subtle z-[50] flex flex-col shadow-2xl font-sans"
-          >
-            {/* Header */}
-            <div className="h-16 border-b border-dash-subtle flex items-center justify-between px-4 sm:px-6 bg-black/20 z-10 shrink-0">
-          <div className="flex items-center space-x-3">
-            <Binary className="w-6 h-6 text-dash-gold" />
-            <h2 className="text-lg font-semibold tracking-tight text-white">Developer View: Control Center</h2>
-          </div>
-          <div className="flex items-center space-x-4">
-            {user && (
-              <button onClick={onClearData} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors text-xs font-semibold uppercase tracking-wider">
-                <ShieldAlert className="w-3.5 h-3.5" /> 彻底清空资料与状态记录
-              </button>
-            )}
-            <button onClick={onClose} aria-label="Close Developer View" className="p-2 hover:bg-white/10 rounded-full text-slate-400 hover:text-white transition-colors arbitra-focus-ring">
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
 
-        {/* Main Workspace */}
-        <div className="flex-1 flex overflow-hidden">
-          {/* Left Thin Tab Bar */}
-          <div className="w-16 border-r border-dash-subtle flex flex-col gap-4 py-6 items-center bg-black/10 shrink-0 z-20">
-            {[
-              { id: 'architecture', icon: Network, label: '架构与提示词' },
-              { id: 'memory', icon: Database, label: '物理记忆实体' },
-              { id: 'moats', icon: Sliders, label: '系统量化红线' }
-            ].map(t => {
-              const Icon = t.icon;
-              const isSel = activeTab === t.id;
-              return (
-                <button key={t.id} onClick={() => setActiveTab(t.id as any)} 
-                  className={`p-3 rounded-xl transition-all relative group overflow-hidden ${isSel ? 'bg-dash-primary/10 text-dash-primary shadow-[inset_0_0_20px_rgba(var(--color-dash-primary),0.1)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
-                  {isSel && <div className="absolute left-0 top-1/4 bottom-1/4 w-1 bg-dash-primary rounded-r-full shadow-[0_0_10px_rgba(var(--color-dash-primary),0.8)]" />}
-                  <Icon className="w-5 h-5 relative z-10" />
-                  <span className="absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 border border-slate-700">{t.label}</span>
+          {/* Centered refined Modal container */}
+          <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-[100] p-4 sm:p-6 md:p-8">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+              className="bg-[#0E1115] border border-[#1C2026] rounded-[28px] w-full max-w-6xl h-[85vh] flex flex-col shadow-[0_32px_96px_rgba(0,0,0,0.95),0_0_0_1px_rgba(251,242,212,0.02)] pointer-events-auto overflow-hidden text-neutral-200 select-none"
+            >
+              
+              {/* Header block with CPU chip icon and Title elements */}
+              <div className="h-20 px-6 sm:px-8 border-b border-[#1C2026] flex items-center justify-between shrink-0 bg-[#0B0D10]/50 relative">
+                {/* Thin top absolute accent bar */}
+                <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-[#C9B284]/20 to-transparent" />
+                
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-[#12151A] border border-[#1C2026] flex items-center justify-center text-[#C9B284] shadow-inner transform scale-95">
+                    <Cpu className="w-5 h-5 animate-pulse" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-serif text-[#E7D7B0] tracking-wide font-medium">Developer View</h2>
+                    <p className="text-[11px] font-mono tracking-widest text-[#8C8370] uppercase mt-0.5">Workspace state inspector</p>
+                  </div>
+                </div>
+
+                {/* Top close anchor */}
+                <button 
+                  onClick={onClose} 
+                  className="p-2 bg-[#12151A]/60 hover:bg-[#1E232B] border border-[#1C2026] hover:border-[#8C8370]/30 rounded-full text-neutral-400 hover:text-white transition-all cursor-pointer shadow-sm"
+                  aria-label="Close"
+                >
+                  <X className="w-4 h-4" />
                 </button>
-              );
-            })}
-          </div>
-
-          {/* Right Content Area */}
-          <div className="flex-1 flex flex-col overflow-hidden bg-dash-base relative">
-            {activeTab === 'architecture' && (
-              <div className="flex-1 flex flex-col lg:flex-row h-full overflow-hidden">
-                {/* Visual Flow Diagram */}
-                <div className="flex-1 border-r border-dash-subtle p-4 md:p-8 overflow-y-auto relative bg-dash-base flex items-start justify-center">
-                  <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle at center, #ffffff 1px, transparent 1px)', backgroundSize: '32px 32px' }}></div>
-                  <div className="relative w-full max-w-3xl flex flex-col items-center py-6">
-                    {/* User */}
-                    <div className="flex flex-col items-center mb-8">
-                      <div className="w-14 h-14 rounded-full bg-white/5 border border-white/10 flex items-center justify-center shadow-lg relative z-10 backdrop-blur-sm">
-                        <User className="w-6 h-6 text-dash-secondary" />
-                      </div>
-                      <div className="mt-2 text-[10px] font-mono text-dash-tertiary tracking-widest uppercase">User Query</div>
-                    </div>
-                    {/* RAG */}
-                    <button onClick={() => setSelectedNode('rag')} className={`relative z-10 w-56 p-4 rounded-xl border ${selectedNode === 'rag' ? 'ring-2 ring-indigo-500/50 border-indigo-500' : 'border-indigo-500/30'} bg-indigo-500/10 hover:bg-indigo-500/20 transition-all flex flex-col items-center mb-8 backdrop-blur-md`}>
-                      <Database className="w-5 h-5 text-indigo-400 mb-2" />
-                      <div className="font-semibold text-sm text-white">RAG Memory Agent</div>
-                    </button>
-                    <ArrowDown className="w-5 h-5 text-dash-subtle mb-8 -mt-6" />
-                    {/* Hydrator */}
-                    <button onClick={() => setSelectedNode('hydrator')} className={`relative z-10 w-56 p-4 rounded-xl border ${selectedNode === 'hydrator' ? 'ring-2 ring-emerald-500/50 border-emerald-500' : 'border-emerald-500/30'} bg-emerald-500/10 hover:bg-emerald-500/20 transition-all flex flex-col items-center mb-8 backdrop-blur-md`}>
-                      <Activity className="w-5 h-5 text-emerald-400 mb-2" />
-                      <div className="font-semibold text-sm text-white">Context Hydrator</div>
-                    </button>
-                    <ArrowDown className="w-5 h-5 text-dash-subtle mb-8 -mt-6" />
-                    {/* Orchestrator */}
-                    <button onClick={() => setSelectedNode('orchestrator')} className={`relative z-10 w-56 p-4 rounded-xl border ${selectedNode === 'orchestrator' ? 'ring-2 ring-blue-500/50 border-blue-500' : 'border-blue-500/30'} bg-blue-500/10 hover:bg-blue-500/20 transition-all flex flex-col items-center backdrop-blur-md`}>
-                      <Network className="w-5 h-5 text-blue-400 mb-2" />
-                      <div className="font-semibold text-sm text-white">Orchestrator</div>
-                    </button>
-                    {/* Branches */}
-                    <div className="flex w-full justify-between items-start mt-6 mb-4 max-w-xl relative">
-                      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[calc(66.666%-1rem)] h-8 border-t border-l border-r border-dash-subtle rounded-t-xl"></div>
-                      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-0 h-8 border-l border-dash-subtle"></div>
-                    </div>
-                    {/* Tiers */}
-                    <div className="flex w-full justify-between max-w-2xl relative z-10 gap-3">
-                      <button onClick={() => setSelectedNode('debt')} className={`flex-1 p-3 rounded-xl border ${selectedNode === 'debt' ? 'ring-2 ring-dash-red/50 border-dash-red' : 'border-dash-red/30'} bg-dash-red/10 flex flex-col items-center`}>
-                        <ShieldAlert className="w-4 h-4 text-dash-red mb-1" />
-                        <div className="font-semibold text-xs text-white">Debt Focus</div>
-                      </button>
-                      <button onClick={() => setSelectedNode('general')} className={`flex-1 p-3 rounded-xl border ${selectedNode === 'general' ? 'ring-2 ring-dash-green/50 border-dash-green' : 'border-dash-green/30'} bg-dash-green/10 flex flex-col items-center`}>
-                        <PieChart className="w-4 h-4 text-dash-green mb-1" />
-                        <div className="font-semibold text-xs text-white">General Finance</div>
-                      </button>
-                      <button onClick={() => setSelectedNode('hnw')} className={`flex-1 p-3 rounded-xl border ${selectedNode === 'hnw' ? 'ring-2 ring-purple-500/50 border-purple-500' : 'border-purple-500/30'} bg-purple-500/10 flex flex-col items-center`}>
-                        <Sparkles className="w-4 h-4 text-purple-400 mb-1" />
-                        <div className="font-semibold text-xs text-white">High Net Worth</div>
-                      </button>
-                    </div>
-                    {/* Parallels */}
-                    <div className="flex gap-4 w-full justify-center max-w-2xl mt-8">
-                       <button onClick={() => setSelectedNode('market')} className={`w-48 p-3 rounded-xl border border-dashed ${selectedNode === 'market' ? 'ring-2 ring-dash-gold/50 border-dash-gold' : 'border-dash-gold/40'} bg-dash-gold/5 flex flex-col items-center`}>
-                         <Activity className="w-4 h-4 text-dash-gold mb-1" />
-                         <div className="font-semibold text-xs text-white">Market Quant</div>
-                       </button>
-                       <button onClick={() => setSelectedNode('devil')} className={`w-48 p-3 rounded-xl border border-dashed ${selectedNode === 'devil' ? 'ring-2 ring-dash-red/50 border-dash-red' : 'border-dash-red/40'} bg-dash-red/5 flex flex-col items-center`}>
-                         <AlertCircle className="w-4 h-4 text-dash-red mb-1" />
-                         <div className="font-semibold text-xs text-white">Devil's Advocate</div>
-                       </button>
-                    </div>
-                  </div>
-                </div>
-                {/* Node PE Editor */}
-                <div className="w-full lg:w-[450px] xl:w-[500px] bg-dash-surface flex flex-col overflow-y-auto">
-                  <div className="p-6 border-b border-dash-subtle bg-dash-surface-hover/30 shrink-0">
-                    <div className="flex items-center space-x-4">
-                      <div className={`p-2.5 rounded-xl border ${activeAgent.color} shadow-sm bg-dash-base`}>{activeAgent.icon}</div>
-                      <div>
-                        <h3 className="text-lg font-bold text-white">{activeAgent.name}</h3>
-                        <div className="text-[10px] font-mono uppercase tracking-widest text-dash-tertiary mt-1">{activeAgent.role}</div>
-                      </div>
-                    </div>
-                    <div className="mt-4 text-xs text-slate-300 leading-relaxed bg-black/20 p-3 rounded-lg border border-dash-subtle">{activeAgent.function}</div>
-                  </div>
-                  <div className="p-6 flex-1 flex flex-col">
-                    <div className="flex items-center justify-between mb-3 shrink-0">
-                      <h4 className="text-[11px] uppercase tracking-widest text-dash-secondary font-bold flex items-center">
-                        <FileCode className="w-3.5 h-3.5 mr-1.5" /> {activeAgent.id === 'rag' ? 'RAG JSON Schema' : 'System Prompt'}
-                      </h4>
-                      <div className="flex space-x-2">
-                        {isEditing ? (
-                          <>
-                            <button onClick={handleSavePrompt} className="px-2.5 py-1 text-[10px] bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 rounded border border-emerald-500/30 uppercase tracking-wide font-bold">保存</button>
-                            <button onClick={() => setIsEditing(false)} className="px-2.5 py-1 text-[10px] bg-dash-base text-slate-400 hover:text-white rounded border border-dash-subtle uppercase tracking-wide font-bold">取消</button>
-                          </>
-                        ) : (
-                          <>
-                            <button onClick={() => { setEditContent(activeAgent.pe); setIsEditing(true); }} className="px-2.5 py-1 text-[10px] bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 rounded border border-blue-500/30 uppercase tracking-wide font-bold">编辑</button>
-                            <button onClick={handleRestoreDefault} className="px-2.5 py-1 text-[10px] bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded border border-red-500/30 uppercase tracking-wide font-bold">重置</button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex-1 relative min-h-[300px]">
-                      {isEditing ? (
-                        <textarea value={editContent} onChange={e => setEditContent(e.target.value)} className="absolute inset-0 w-full h-full text-xs font-mono text-slate-300 bg-black/40 p-4 rounded-xl border border-dash-primary/50 focus:outline-none focus:ring-1 focus:ring-dash-primary resize-none leading-relaxed" />
-                      ) : activeAgent.id === 'rag' ? (
-                        <div className="absolute inset-0 text-xs text-slate-300 bg-black/20 p-4 rounded-xl border border-dash-subtle overflow-y-auto prose prose-invert max-w-none">
-                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{activeAgent.pe}</ReactMarkdown>
-                        </div>
-                      ) : (
-                        <pre className="absolute inset-0 text-[11px] leading-relaxed font-mono text-blue-300/90 bg-black/20 p-4 rounded-xl border border-dash-subtle overflow-y-auto whitespace-pre-wrap">
-                          {activeAgent.pe}
-                        </pre>
-                      )}
-                    </div>
-                  </div>
-                </div>
               </div>
-            )}
 
-            {/* Other Config Tabs */}
-            {activeTab !== 'architecture' && (
-              <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
-                <div className="max-w-3xl space-y-8 mx-auto">
-                  {activeTab === 'memory' && (
-                    <div className="space-y-6 flex flex-col h-full">
-                      <div className="flex justify-between items-center shrink-0">
-                        <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                          <Database className="w-4 h-4"/> 物理记忆实体
-                        </h3>
-                        <button onClick={handleAddProfileField} className="px-3 py-1.5 bg-dash-primary/20 text-dash-primary hover:bg-dash-primary/30 border border-dash-primary/30 rounded-lg text-xs font-bold transition-colors">
-                          + 添加结构化属性
+              {/* Central Dual Column Workspace Area */}
+              <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+                
+                {/* Left Column: User Profile Debug panel */}
+                <div className="w-full md:w-[38%] border-r border-[#1C2026] flex flex-col bg-[#0B0D10]/20 overflow-y-auto custom-scrollbar p-6 sm:p-7">
+                  
+                  {/* Title */}
+                  <div className="flex items-center gap-2 mb-6 shrink-0">
+                    <User className="w-4 h-4 text-[#C9B284]" />
+                    <h3 className="text-[13px] font-mono tracking-wider text-[#E7D7B0] uppercase font-bold">User Profile Debug</h3>
+                  </div>
+
+                  {/* Inspector Fields Table */}
+                  <div className="space-y-3 flex-1 pb-6">
+                    {/* Unique User ID Row */}
+                    <div>
+                      <label className="block text-[10px] font-mono uppercase tracking-wider text-[#8C8370] mb-1.5">User ID</label>
+                      <div className="flex items-center bg-[#12151A] border border-[#1C2026] rounded-lg px-3 py-2 justify-between">
+                        <span className="text-xs text-[#8C8370] font-mono truncate max-w-[200px]">
+                          {auth.currentUser?.uid ? auth.currentUser.uid.slice(0, 14) + "..." : "user_9f3b7a2c"}
+                        </span>
+                        <button 
+                          onClick={handleCopyUid}
+                          className="p-1 text-neutral-500 hover:text-[#C9B284] hover:bg-neutral-800/40 rounded transition-all cursor-pointer"
+                          title="Copy User ID"
+                        >
+                          {copiedUid ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                         </button>
+                      </div>
+                    </div>
+
+                    {/* Standard Profile inputs */}
+                    {[
+                      { key: 'name', label: 'Name', type: 'text' },
+                      { key: 'email', label: 'Email', type: 'email' },
+                      { key: 'currency', label: 'Currency', type: 'text' },
+                      { key: 'riskProfile', label: 'Risk Profile', type: 'text' },
+                      { key: 'investmentHorizon', label: 'Investment Horizon', type: 'text' },
+                      { key: 'dataSource', label: 'Data Source', type: 'text' },
+                      { key: 'createdAt', label: 'Created At', type: 'text' },
+                      { key: 'updatedAt', label: 'Updated At', type: 'text' },
+                    ].map((f) => {
+                      const isEmail = f.key === 'email';
+                      const val = editProfileData[f.key] || '';
+                      
+                      // Mask email slightly to conform with API key rules if not in active edit mode
+                      const displayVal = (isEmail && !isEditingProfile && val) 
+                        ? val.replace(/(.{3})(.*)(@.*)/, "$1...$3")
+                        : val;
+
+                      return (
+                        <div key={f.key}>
+                          <label className="block text-[10px] font-mono uppercase tracking-wider text-[#8C8370] mb-1.5">{f.label}</label>
+                          <input 
+                            type={f.type}
+                            value={displayVal}
+                            disabled={!isEditingProfile}
+                            readOnly={!isEditingProfile}
+                            onChange={(e) => handleFieldChange(f.key, e.target.value)}
+                            className={`w-full bg-[#12151A] border ${isEditingProfile ? 'border-[#C9B284]/40 text-[#E7D7B0] focus:border-[#C9B284]' : 'border-[#1C2026] text-neutral-300'} rounded-lg px-3 py-2 text-xs font-mono transition-all focus:outline-none`}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Dynamic Action Block for Triggering Profile Updates */}
+                  <div className="mt-auto pt-6 border-t border-[#1C2026] relative z-10 shrink-0">
+                    <div className="bg-[#12151A] border border-[#1C2026] rounded-xl p-4 flex flex-col">
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-[#C9B284]/5 border border-[#C9B284]/15 flex items-center justify-center text-[#C9B284] shrink-0">
+                          <Edit3 className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-serif text-[#E7D7B0] font-medium">Update Profile</h4>
+                          <p className="text-[10px] text-[#8C8370] leading-relaxed mt-1">Update basic profile settings for the current user.</p>
+                        </div>
                       </div>
                       
-                      <div className="bg-black/40 border border-dash-subtle rounded-xl p-4">
-                        <label className="block text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Current Ground Truth Snapshot</label>
-                        <pre className="text-dash-primary font-mono text-xs overflow-auto max-h-[200px] custom-scrollbar">
-                          {JSON.stringify(user, null, 2)}
-                        </pre>
-                      </div>
-
-                      <div className="flex-1 overflow-y-auto space-y-4 pr-2 pb-6">
-                        {profileFields.length === 0 && (
-                           <div className="text-slate-500 text-sm text-center py-10 border border-dashed border-dash-subtle rounded-xl">暂无记忆数据，请手动添加或通过全局沙盒对话生成。</div>
-                        )}
-                        {profileFields.map((field) => (
-                          <div key={field.id} className="bg-dash-surface border border-dash-subtle rounded-xl p-4 flex flex-col gap-3 group transition-colors hover:border-dash-primary/50 relative shadow-sm">
-                            <div className="flex flex-col sm:flex-row gap-4">
-                              <div className="w-full sm:w-1/3 shrink-0">
-                                <input 
-                                  type="text" placeholder="属性名 (如: FundHoldings)" value={field.key} 
-                                  onChange={(e) => handleUpdateProfileField(field.id, 'key', e.target.value)}
-                                  className="w-full bg-black/30 border border-dash-subtle rounded-lg p-2.5 text-[13px] text-dash-gold font-mono focus:outline-none focus:border-dash-primary transition-colors"
-                                />
-                              </div>
-                              <div className="flex-1 w-full">
-                                <textarea 
-                                  placeholder="详细事实约束，或在此行上传凭证..." value={field.value} 
-                                  onChange={(e) => handleUpdateProfileField(field.id, 'value', e.target.value)}
-                                  rows={typeof field.value === 'string' && field.value.length > 60 ? 4 : 2}
-                                  className="w-full bg-black/30 border border-dash-subtle rounded-lg p-2.5 text-[13px] text-slate-300 focus:outline-none focus:border-dash-primary transition-colors resize-y min-h-[42px] leading-relaxed scrollbar-thin scrollbar-thumb-dash-subtle"
-                                />
-                              </div>
-                            </div>
-                            
-                            {/* 单行 AI 操作底栏 */}
-                            <div className="flex flex-wrap items-center justify-between pt-2 mt-1 border-t border-dash-subtle/30 text-xs gap-3">
-                              <div className="flex items-center gap-3">
-                                <label className="flex items-center gap-1.5 px-3 py-1.5 bg-black/20 hover:bg-black/40 rounded-lg text-[11px] text-slate-400 cursor-pointer border border-dash-subtle/50 hover:border-dash-primary/50 transition-all">
-                                  <span>📎 {field.fileData ? '已就绪' : '追加本项附件'}</span>
-                                  <input 
-                                    type="file" className="hidden" 
-                                    onChange={(e) => {
-                                      const file = e.target.files?.[0];
-                                      if (file) {
-                                        const r = new FileReader();
-                                        r.onload = (ev) => setProfileFields(profileFields.map(f => f.id === field.id ? { ...f, fileData: { name: file.name, base64: ev.target?.result } } : f));
-                                        r.readAsDataURL(file);
-                                      }
-                                    }} 
-                                  />
-                                </label>
-                                {field.fileData && <span className="text-[11px] text-dash-primary max-w-[120px] truncate font-mono">{field.fileData.name}</span>}
-                              </div>
-
-                              <div className="flex items-center gap-2">
-                                <button 
-                                  disabled={field.isAnalyzing || (!field.value && !field.fileData)}
-                                  onClick={async () => {
-                                    setProfileFields(profileFields.map(f => f.id === field.id ? { ...f, isAnalyzing: true } : f));
-                                    try {
-                                      const res = await fetch('/api/profile/parse-row', {
-                                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({ key: field.key, value: field.value, file: field.fileData, settings })
-                                      });
-                                      if (!res.ok) throw new Error("Request Failed");
-                                      const resData = await res.json();
-                                      setProfileFields(profileFields.map(f => f.id === field.id ? { ...f, value: resData.parsedValue, isAnalyzing: false, fileData: null } : f));
-                                    } catch (e) {
-                                      alert("行解析失败");
-                                      setProfileFields(profileFields.map(f => f.id === field.id ? { ...f, isAnalyzing: false } : f));
-                                    }
-                                  }}
-                                  className="px-3 py-1.5 bg-dash-primary/10 text-dash-primary rounded-lg border border-dash-primary/30 font-bold text-[11px] hover:bg-dash-primary hover:text-black transition-all disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-dash-primary/10 disabled:hover:text-dash-primary"
-                                >
-                                  {field.isAnalyzing ? "精炼中..." : "🧠 智能清洗本行"}
-                                </button>
-                                <button onClick={() => handleRemoveProfileField(field.id)} aria-label="Remove Field" className="px-2 py-1.5 text-slate-500 hover:text-dash-red transition-colors arbitra-focus-ring"><X className="w-4 h-4" /></button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="pt-6 border-t border-dash-subtle flex justify-end shrink-0">
-                        <button onClick={handleSaveProfile} className="px-6 py-2.5 bg-dash-primary hover:bg-white text-black rounded-xl font-bold flex items-center gap-2 shadow-lg tracking-wide transition-colors">
-                          <Save className="w-4 h-4" /> 物理覆盖写入记忆库
-                        </button>
-                      </div>
-
-                      <div className="bg-dash-surface border border-dash-subtle p-5 rounded-xl flex flex-col gap-4">
-                        <label className="block text-slate-300 text-xs font-bold uppercase tracking-wider">Natural Language Memory Injection</label>
-                        <textarea 
-                          className="w-full bg-black/20 border border-dash-subtle rounded-lg p-3 text-sm text-white focus:outline-none focus:border-dash-primary transition-colors min-h-[120px]"
-                          placeholder="用自然语言描述您的新履历、财务状况或上传报表..."
-                          value={naturalInput}
-                          onChange={e => setNaturalInput(e.target.value)}
-                        />
-                        
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                             <label className="cursor-pointer bg-dash-surface-hover hover:bg-dash-subtle transition-colors border border-dash-subtle px-3 py-1.5 rounded-lg text-xs font-medium text-slate-300 flex items-center gap-2">
-                               <input type="file" multiple className="hidden" onChange={handleFileChange} />
-                               📎 添加附件 ({tempAttachments.length})
-                             </label>
-                             {tempAttachments.length > 0 && (
-                               <button onClick={() => setTempAttachments([])} className="text-xs text-red-400 hover:text-red-300">
-                                 清除附件
-                               </button>
-                             )}
-                          </div>
+                      <div className="mt-4 flex gap-2">
+                        {isEditingProfile ? (
+                          <>
+                            <button 
+                              onClick={handleSaveProfile}
+                              className="flex-1 py-2 bg-[#C9B284] hover:bg-[#E7D7B0] text-black rounded-lg text-xs font-semibold tracking-wide transition-colors cursor-pointer"
+                            >
+                              Save Inputs
+                            </button>
+                            <button 
+                              onClick={() => {
+                                setEditProfileData({ ...user });
+                                setIsEditingProfile(false);
+                              }}
+                              className="py-2 px-3 bg-[#1E232B] hover:bg-neutral-800 rounded-lg text-xs font-mono text-neutral-400 hover:text-white transition-all border border-[#1C2026] cursor-pointer"
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        ) : (
                           <button 
-                            onClick={handleParseAndSave}
-                            disabled={isParsing || (!naturalInput.trim() && tempAttachments.length === 0)}
-                            className="bg-dash-primary text-black px-4 py-2 rounded-lg text-sm font-bold hover:bg-dash-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                            onClick={() => setIsEditingProfile(true)}
+                            className="w-full flex items-center justify-center gap-2 py-2 border border-[#C9B284]/25 hover:border-[#C9B284]/50 bg-[#C9B284]/5 hover:bg-[#C9B284]/10 text-[#C9B284] hover:text-[#E7D7B0] rounded-lg text-xs font-mono tracking-wider uppercase transition-all duration-300 cursor-pointer shadow-sm"
                           >
-                            {isParsing ? '🧠 解析并覆写中...' : '🧠 激活引擎进行结构化合并并覆盖写入'}
+                            <Edit3 className="w-3.5 h-3.5" />
+                            Edit Profile
                           </button>
-                        </div>
+                        )}
                       </div>
                     </div>
-                  )}
+                  </div>
 
-                  {activeTab === 'moats' && (
-                    <div className="space-y-6">
-                      <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2"><Sliders className="w-4 h-4"/> 核心流控参数与量化红线约束</h3>
-                      <div className="space-y-8 bg-dash-surface border border-dash-subtle rounded-xl p-6">
-                        {/* Heartbeat */}
-                        <div>
-                          <div className="flex justify-between text-slate-300 mb-3 text-xs font-bold uppercase tracking-wider">
-                            <span>📡 数据脉冲频率 (Heartbeat)</span>
-                            <span className="text-dash-primary font-mono bg-dash-primary/10 px-2 py-0.5 rounded">{settings.heartbeatInterval || 180} 秒</span>
-                          </div>
-                          <input type="range" min="60" max="600" step="10" className="w-full accent-dash-primary h-1.5 bg-black/40 rounded-lg appearance-none cursor-pointer" value={settings.heartbeatInterval || 180} onChange={e => setSettings({...settings, heartbeatInterval: parseInt(e.target.value)})} />
-                        </div>
-                        {/* Cooldown */}
-                        <div>
-                          <div className="flex justify-between text-slate-300 mb-3 text-xs font-bold uppercase tracking-wider">
-                            <span>🛑 哨兵巡检冷却 (Cooldown)</span>
-                            <span className="text-dash-primary font-mono bg-dash-primary/10 px-2 py-0.5 rounded">{settings.sentinelCooldown || 60} 分钟</span>
-                          </div>
-                          <input type="range" min="1" max="240" step="5" className="w-full accent-dash-primary h-1.5 bg-black/40 rounded-lg appearance-none cursor-pointer" value={settings.sentinelCooldown || 60} onChange={e => setSettings({...settings, sentinelCooldown: parseInt(e.target.value)})} />
-                        </div>
-                        <div className="h-px bg-dash-subtle w-full"></div>
-                        {/* Liquidity */}
-                        <div>
-                          <div className="flex justify-between text-slate-300 mb-3 text-xs font-bold uppercase tracking-wider">
-                            <span>🍷 现金流安全垫 (Liquidity Cushion)</span>
-                            <span className="text-dash-primary font-mono bg-dash-primary/10 px-2 py-0.5 rounded">{settings.liquidityBufferMonths || 6} 个月</span>
-                          </div>
-                          <input type="range" min="1" max="24" className="w-full accent-dash-primary h-1.5 bg-black/40 rounded-lg appearance-none cursor-pointer" value={settings.liquidityBufferMonths || 6} onChange={e => setSettings({...settings, liquidityBufferMonths: parseInt(e.target.value)})} />
-                        </div>
-                        {/* Debt */}
-                        <div>
-                          <div className="flex justify-between text-slate-300 mb-3 text-xs font-bold uppercase tracking-wider">
-                            <span>⚠️ 负债率危机红线 (Strategic Debt Line)</span>
-                            <span className="text-red-400 font-mono bg-red-500/10 px-2 py-0.5 rounded">{settings.strategicDebtThreshold || 40}%</span>
-                          </div>
-                          <input type="range" min="10" max="90" className="w-full accent-red-500 h-1.5 bg-black/40 rounded-lg appearance-none cursor-pointer" value={settings.strategicDebtThreshold || 40} onChange={e => setSettings({...settings, strategicDebtThreshold: parseInt(e.target.value)})} />
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </div>
 
-                {/* Save Global Button for Non-Architecture Tabs */}
-                <div className="mt-10 pt-6 border-t border-dash-subtle flex justify-end max-w-3xl">
-                  <button onClick={handleSaveGlobal} className="px-6 py-2.5 bg-dash-primary hover:bg-white text-black rounded-xl font-bold flex items-center gap-2 shadow-lg tracking-wide transition-colors">
-                    <Save className="w-4 h-4" /> 写入系统全局生态
+                {/* Right Column: Data / State Inspector panel */}
+                <div className="flex-1 flex flex-col bg-[#080A0D]/40 overflow-y-auto p-6 sm:p-7 custom-scrollbar">
+                  
+                  {/* Title & Refresh control */}
+                  <div className="flex items-center justify-between mb-2 shrink-0">
+                    <div className="flex items-center gap-2">
+                      <Database className="w-4 h-4 text-[#C9B284]" />
+                      <h3 className="text-[13px] font-mono tracking-wider text-[#E7D7B0] uppercase font-bold">Data / State Inspector</h3>
+                    </div>
+                    
+                    <button 
+                      onClick={handleRefresh}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#12151A] hover:bg-[#1E232B] border border-[#1C2026] rounded-lg text-[10px] font-mono text-[#8C8370] hover:text-white uppercase tracking-wider transition-all cursor-pointer shadow-sm"
+                    >
+                      <RefreshCw className="w-3 h-3 text-[#C9B284]" />
+                      Refresh
+                    </button>
+                  </div>
+                  
+                  <p className="text-[11px] text-[#8C8370] tracking-wide mb-6">
+                    Live snapshot of the current workspace state stored in local database.
+                  </p>
+
+                  {/* Summary lists mapping database states */}
+                  <div className="space-y-2 mb-6 shrink-0 relative z-10">
+                    {[
+                      { id: 'userProfile', name: 'userProfile', count: counts.userProfile, icon: User, badge: 'valid', badgeColor: 'bg-[#0E2C1C] text-[#4ADE80] border-[#22C55E]/15' },
+                      { id: 'metrics', name: 'metrics', count: counts.metrics, icon: Activity, badge: 'ok', badgeColor: 'bg-[#0E2C1C] text-[#4ADE80] border-[#22C55E]/15' },
+                      { id: 'distributions', name: 'distributions', count: counts.distributions, icon: PieChart, badge: 'ok', badgeColor: 'bg-[#0E2C1C] text-[#4ADE80] border-[#22C55E]/15' },
+                      { id: 'insights', name: 'insights', count: counts.insights, icon: Sparkles, badge: 'ok', badgeColor: 'bg-[#0E2C1C] text-[#4ADE80] border-[#22C55E]/15' },
+                      { id: 'goal', name: 'goal', count: counts.goal, icon: Target, badge: 'partial', badgeColor: 'bg-[#2D1F10] text-[#FB923C] border-[#F97316]/15' },
+                      { id: 'dynamicWidgets', name: 'dynamicWidgets', count: counts.dynamicWidgets, icon: Sliders, badge: 'ok', badgeColor: 'bg-[#0E2C1C] text-[#4ADE80] border-[#22C55E]/15' },
+                    ].map((row) => {
+                      const IconComponent = row.icon;
+                      const isSelected = selectedSection === row.id;
+
+                      return (
+                        <div 
+                          key={row.id}
+                          onClick={() => setSelectedSection(isSelected ? null : row.id)}
+                          className={`flex items-center justify-between px-4 py-3 bg-[#12151A]/60 rounded-xl border ${isSelected ? 'border-[#C9B284] bg-[#12151A]' : 'border-[#1C2026] hover:border-[#8C8370]/30'} transition-all cursor-pointer group`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="text-[10px] font-mono text-[#8C8370]/40 group-hover:text-[#C9B284] transition-colors">{isSelected ? "▼" : "▶"}</span>
+                            <IconComponent className="w-4 h-4 text-[#C9B284] opacity-85" />
+                            <span className="text-xs font-mono text-neutral-300 font-medium group-hover:text-[#E7D7B0] transition-colors">{row.name}</span>
+                          </div>
+
+                          <div className="flex items-center gap-3.5">
+                            <span className="text-[11px] font-mono text-[#8C8370]/80">{row.count}</span>
+                            <span className={`text-[9px] font-mono tracking-widest uppercase px-1.5 py-0.5 rounded border ${row.badgeColor}`}>
+                              {row.badge}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Output Code box (Syntax highlighting engine representation) */}
+                  <div className="flex-1 min-h-[180px] relative z-10 flex flex-col">
+                    <div className="bg-[#0B0D10] border border-[#1C2026] rounded-xl flex-1 overflow-x-auto overflow-y-auto p-4 font-mono text-[12.5px] leading-relaxed relative text-[#A6B2C0] shadow-inner custom-scrollbar">
+                      
+                      {/* Floating Indicator */}
+                      <div className="absolute top-3 right-3 text-[9px] font-mono font-semibold tracking-widest text-[#8C8370]/40 uppercase flex items-center gap-2">
+                        {selectedSection && (
+                          <button 
+                            onClick={() => setSelectedSection(null)}
+                            className="bg-[#12151A] hover:bg-[#1E232B] border border-[#1C2026] text-[#C9B284] rounded px-2 py-0.5 text-[8.5px] transition-all normal-case cursor-pointer"
+                          >
+                            ← Show Overview
+                          </button>
+                        )}
+                        <span>JSON</span>
+                      </div>
+
+                      {/* Displaying split formatted table rows */}
+                      <table className="w-full border-collapse select-text">
+                        <tbody>
+                          {jsonCodeLines.map((line, idx) => {
+                            let highlightedElement = <span>{line}</span>;
+                            const indent = line.match(/^\s*/)?.[0] || '';
+                            const trimmed = line.trim();
+
+                            if (trimmed.startsWith('"')) {
+                              const parts = trimmed.split('":');
+                              if (parts.length >= 2) {
+                                const key = parts[0] + '"';
+                                const remainingVal = parts.slice(1).join('":');
+                                
+                                let formattedValue = <span className="text-neutral-300">{remainingVal}</span>;
+                                if (remainingVal.trim().startsWith('{') || remainingVal.trim().startsWith('[')) {
+                                  formattedValue = <span className="text-neutral-500">{remainingVal}</span>;
+                                } else if (remainingVal.includes('"')) {
+                                  formattedValue = <span className="text-[#60a5fa]/90">{remainingVal}</span>;
+                                } else if (/\d+/.test(remainingVal)) {
+                                  formattedValue = <span className="text-[#4ade80]/90">{remainingVal}</span>;
+                                }
+
+                                highlightedElement = (
+                                  <span>
+                                    {indent}
+                                    <span className="text-[#C9B284]">{key}</span>
+                                    <span className="text-neutral-500">:</span>
+                                    {formattedValue}
+                                  </span>
+                                );
+                              }
+                            } else if (['{', '}', '[', ']', '},', '],'].includes(trimmed)) {
+                              highlightedElement = <span className="text-neutral-500">{line}</span>;
+                            }
+
+                            return (
+                              <tr key={idx} className="hover:bg-white/[0.015]">
+                                <td className="w-8 pr-3 text-right text-[#8C8370]/30 select-none text-[10px] font-mono border-r border-[#1C2026]/40">
+                                  {idx + 1}
+                                </td>
+                                <td className="pl-4 pb-0.5 font-mono whitespace-pre text-[12.5px] select-text">
+                                  {highlightedElement}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                </div>
+
+              </div>
+
+              {/* Redesigned Footer Section containing clear-data actions */}
+              <div className="h-20 px-6 sm:px-8 border-t border-[#1C2026] flex items-center justify-between shrink-0 bg-[#0B0D10]/50 relative">
+                {/* Save feedback indicator Toast popup inside modal */}
+                {saveSuccess && (
+                  <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-[#0E2C1C] border border-[#22C55E]/20 text-[#4ADE80] font-mono text-[11px] rounded-lg px-4 py-1.5 shadow-xl flex items-center gap-2 animate-bounce">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    Long-term profile snapshot written physically to persistence!
+                  </div>
+                )}
+
+                {/* Left region safety wipe controls */}
+                <div className="flex items-center gap-4 max-w-[50%]">
+                  <button 
+                    onClick={onClearData}
+                    className="flex items-center gap-2 px-3 py-2 border border-red-500/25 hover:border-red-500/50 bg-red-500/5 hover:bg-red-500/10 text-red-400 rounded-xl text-xs font-mono tracking-widest uppercase transition-all duration-300 cursor-pointer shadow-sm select-none shrink-0"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Clear Data
+                  </button>
+                  <div className="hidden lg:flex flex-col text-left">
+                    <span className="text-[10px] text-red-400 font-mono font-bold tracking-wider uppercase">Reset Workspace</span>
+                    <span className="text-[10px] text-[#8C8370] leading-tight select-none">
+                      This will permanently clear all local data and reset the workspace to initial state.
+                    </span>
+                  </div>
+                </div>
+
+                {/* Right region workflow controller */}
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={onClose}
+                    className="px-5 py-2.5 bg-[#12151A] hover:bg-[#1E232B] border border-[#1C2026] hover:border-[#8C8370]/30 rounded-xl text-xs font-semibold text-neutral-400 hover:text-white tracking-wide transition-all cursor-pointer shadow-sm"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    onClick={handleSaveProfile}
+                    className="px-5 py-2.5 bg-gradient-to-r from-[#C9B284] to-[#E7D7B0] hover:from-[#E7D7B0] hover:to-[#FFF2D4] text-black rounded-xl text-xs font-semibold tracking-wide shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer"
+                  >
+                    Save / Update Profile
                   </button>
                 </div>
+
               </div>
-            )}
+
+            </motion.div>
           </div>
-        </div>
-      </motion.div>
         </>
       )}
     </AnimatePresence>
   );
-}
+};

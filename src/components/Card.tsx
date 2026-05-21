@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { useInteractionStore } from '../hooks/useInteractionStore';
-import { Sparkles } from 'lucide-react';
+import { Briefcase, Droplet, Shield, TrendingUp } from 'lucide-react';
 
 interface CardProps {
   title: string;
@@ -15,61 +15,113 @@ interface CardProps {
   badge?: React.ReactNode;
 }
 
+const getCardIcon = (title: string) => {
+  const t = title.toLowerCase();
+  if (t.includes('net worth') || t.includes('净资产')) {
+    return <Briefcase className="w-5 h-5 text-dash-primary/80" />;
+  }
+  if (t.includes('liquidity') || t.includes('可用现金') || t.includes('现金池')) {
+    return <Droplet className="w-5 h-5 text-dash-primary/80" />;
+  }
+  if (t.includes('safety') || t.includes('抗风险') || t.includes('系数')) {
+    return <Shield className="w-5 h-5 text-dash-primary/80" />;
+  }
+  if (t.includes('fcf') || t.includes('自由现金流') || t.includes('月自由')) {
+    return <TrendingUp className="w-5 h-5 text-dash-primary/80" />;
+  }
+  return null;
+};
+
+const getTrendSeed = (title: string) => {
+  const t = title.toLowerCase();
+  if (t.includes('net worth') || t.includes('净资产')) return 'netWorth';
+  if (t.includes('liquidity') || t.includes('可用现金') || t.includes('现金池')) return 'liquidity';
+  if (t.includes('safety') || t.includes('抗风险') || t.includes('系数')) return 'safetyRatio';
+  if (t.includes('fcf') || t.includes('自由现金流') || t.includes('月自由')) return 'fcf';
+  return '';
+};
+
+const MiniTrendLine: React.FC<{ seed: string }> = ({ seed }) => {
+  const paths: Record<string, string> = {
+    netWorth: "M0,15 C10,12 20,18 30,10 C40,2 50,8 60,3 L65,2",
+    liquidity: "M0,18 C10,15 20,12 30,18 C40,20 50,10 60,6 L65,5",
+    safetyRatio: "M0,10 C10,12 20,8 30,15 C40,16 50,5 60,4 L65,3",
+    fcf: "M0,20 C10,18 20,15 30,10 C40,12 50,6 60,2 L65,1"
+  };
+  const path = paths[seed] || "M0,15 Q30,5 60,15";
+  return (
+    <svg className="w-16 h-8 text-dash-primary/60" viewBox="0 0 70 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d={path} />
+    </svg>
+  );
+};
+
 export const Card: React.FC<CardProps> = ({ title, value, subValue, trendGood = true, isLongSubText = false, children, delay, className = "", badge }) => {
-  const titleParts = title.split(' ');
-  const cnTitle = titleParts[0];
-  const enTitle = titleParts.slice(1).join(' ');
+  const isPositive = subValue ? (subValue.includes('+') || subValue.includes('▲') || subValue.includes('升')) : false;
+  const isNegative = subValue ? (subValue.includes('-') || subValue.includes('▼') || subValue.includes('降')) : false;
+  const statusColor = isPositive ? 'text-dash-green' : (isNegative ? 'text-dash-red' : 'text-dash-tertiary');
+  const cardIcon = getCardIcon(title);
+  const trendSeed = getTrendSeed(title);
 
   return (
     <motion.div 
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: "spring", stiffness: 400, damping: 25, delay: delay || 0 }}
-      className={`arbitra-panel arbitra-panel-subtle rounded-2xl p-5 md:p-6 relative overflow-hidden flex flex-col justify-between group h-[160px] md:h-[180px] shadow-sm ${className}`}
+      className={`bg-dash-surface border border-dash-subtle rounded-2xl p-6 relative overflow-hidden flex flex-col justify-between group h-full hover:border-[#C9B284]/30 hover:bg-dash-surface-hover/80 transition-all duration-300 ${className}`}
     >
-      <div className="relative z-10 flex flex-col h-full">
+      <div className="relative z-10 flex flex-col h-full justify-between">
         
-        {/* Header */}
-        <div className="flex justify-between items-start mb-4">
-          <h3 className="flex flex-col gap-1 text-[14px] font-medium text-dash-primary mb-0 font-sans tracking-wide">
-            <span>{cnTitle}</span>
-            <span className="text-[10px] sm:text-[11px] uppercase tracking-widest text-dash-secondary font-sans font-normal opacity-70 leading-none">{enTitle}</span>
-          </h3>
+        {/* Card Header */}
+        <div className="flex justify-between items-start mb-4 gap-2">
+          <div>
+            <h3 className="text-dash-tertiary text-[11px] font-mono uppercase tracking-[0.15em] font-semibold flex items-center gap-1.5">
+              {title}
+            </h3>
+          </div>
           <div className="flex items-center gap-2">
-            {badge}
+            {badge && <div>{badge}</div>}
+            
+            <button
+               className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity bg-[#202326] hover:bg-[#262A2E] text-dash-primary border border-dash-subtle px-2.5 py-1 font-semibold text-[10px] rounded-lg cursor-pointer"
+               onClick={() => useInteractionStore.getState().openCopilot(title, { value, subValue }, '垂直领域专家')}
+               title="专家探讨"
+               aria-label="专家探讨"
+            >
+               ✨ 空中脑暴
+            </button>
+            
+            {cardIcon && (
+              <div className="w-8 h-8 rounded-lg bg-dash-base/60 border border-dash-subtle flex items-center justify-center shadow-inner">
+                {cardIcon}
+              </div>
+            )}
           </div>
         </div>
-        
-        {/* Main Value */}
+
+        {/* Card Value Body */}
         {value !== undefined && (
-          <div className="text-[28px] md:text-[34px] font-serif tracking-tight text-dash-primary mb-auto leading-none pt-2 font-medium">
+          <div className="text-[28px] md:text-[32px] font-mono font-medium text-dash-primary tracking-tight leading-none mb-4 tabular-nums">
             {value}
           </div>
         )}
-        
+
         {children}
-        
-        {/* Footer / Trend */}
-        <div className="flex items-center justify-between mt-auto">
-           {subValue && (
-             <div className="flex items-center gap-2 text-[12px]">
-                <span className="text-dash-secondary">较上月</span>
-                <span className="text-dash-tertiary opacity-50 font-mono text-[9px] uppercase">vs Last Month</span>
-                <span className={trendGood ? 'text-dash-success font-mono font-medium ml-2' : 'text-dash-danger font-mono font-medium ml-2'}>
-                  {subValue}
-                </span>
-                <span className={trendGood ? 'text-dash-success ml-1 text-[10px] flex items-center' : 'text-dash-danger ml-1 text-[10px] flex items-center'}>
-                  {trendGood ? '▲' : '▼'}
-                </span>
-             </div>
-           )}
-           {/* Mini Sparkline Placeholder */}
-           <div className="h-6 w-16 opacity-40">
-             <svg viewBox="0 0 100 30" className="w-full h-full stroke-dash-primary fill-none" strokeWidth="1.5">
-               <path d={trendGood ? "M0,25 L20,20 L40,25 L60,10 L80,15 L100,5" : "M0,5 L20,10 L40,5 L60,20 L80,15 L100,25"} />
-             </svg>
-           </div>
-        </div>
+
+        {/* Card Footer: trend and sparkline side by side */}
+        {subValue && (
+          <div className="mt-auto flex justify-between items-end pt-2 w-full">
+            <div className={`text-xs ${isLongSubText ? 'text-dash-tertiary leading-relaxed max-w-[70%]' : `${statusColor} font-semibold flex items-center gap-1`}`}>
+              {!isLongSubText && (isPositive ? '▲' : isNegative ? '▼' : '')}
+              {subValue}
+            </div>
+            {trendSeed && (
+              <div className="shrink-0 bg-dash-base/30 rounded px-1 py-0.5 border border-transparent">
+                <MiniTrendLine seed={trendSeed} />
+              </div>
+            )}
+          </div>
+        )}
 
       </div>
     </motion.div>

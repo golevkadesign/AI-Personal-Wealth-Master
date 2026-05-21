@@ -19,112 +19,93 @@ export function TerminalHeader({
   setShowSettingsModal
 }: TerminalHeaderProps) {
   return (
-      <header className="sticky top-0 z-40 bg-[#0E1011]/90 backdrop-blur-md border-b border-dash-subtle mb-6 md:mb-8 transition-colors">
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 h-[72px] flex justify-between items-center">
-          
-          {/* Brand Area */}
-          <div className="flex items-center gap-4 cursor-default">
-            {/* Dark Golden Sphere Icon Placeholder */}
-            <div className="w-10 h-10 rounded-full flex items-center justify-center relative overflow-hidden group">
-              <div className="absolute inset-0 rounded-full border border-dash-gold/40"></div>
-              <div className="absolute w-[120%] h-[120%] rounded-full bg-[radial-gradient(circle,rgba(201,178,132,0.15)_0%,transparent_60%)]"></div>
-              {/* Point Field simulation */}
-              <div className="grid grid-cols-4 grid-rows-4 gap-0.5 opacity-60">
-                 {Array.from({length: 16}).map((_, i) => (
-                    <div key={i} className="w-[1.5px] h-[1.5px] bg-dash-gold rounded-full"></div>
-                 ))}
-              </div>
-            </div>
-            <div className="flex flex-col justify-center">
-              <h1 className="text-[22px] font-serif tracking-wide text-dash-primary leading-tight">
-                Arbitra
-              </h1>
-              <span className="text-[11px] font-sans text-dash-tertiary tracking-[0.1em] mt-0">Terminal</span>
-            </div>
+    <header className="sticky top-0 z-40 bg-dash-bg/80 backdrop-blur-md border-b border-[#312B20] mb-6 md:mb-8 transition-colors">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 h-[72px] flex justify-between items-center">
+        
+        {/* Brand Area */}
+        <div className="flex items-center gap-3 sm:gap-4 select-none">
+          <div className="bg-[#1C1F22] border border-dash-subtle shadow-inner w-10 h-10 rounded-xl flex items-center justify-center relative overflow-hidden group">
+            <div className="absolute inset-0 bg-[#C9B284]/10 opacity-30 group-hover:opacity-50 transition-opacity"></div>
+            {/* Elegant dark gold dot */}
+            <div className="w-3.5 h-3.5 rounded-full bg-[#C9B284] shadow-[0_0_12px_rgba(201,178,132,0.6)]"></div>
           </div>
-          
-          {/* Actions Area */}
-          <div className="flex items-center gap-3">
-            
-            <button
-              onClick={() => setShowProfileReport(true)}
-              className="hidden lg:flex items-center gap-2.5 px-4 h-[42px] rounded-[10px] border border-dash-subtle bg-dash-surface-hover hover:bg-dash-hover transition-colors text-left group"
-            >
-              <Database className="w-4 h-4 text-dash-secondary group-hover:text-dash-primary" />
-              <div className="flex flex-col leading-none">
-                 <span className="text-[12px] font-medium text-dash-primary">长线记忆</span>
-                 <span className="text-[9px] font-mono tracking-widest text-dash-tertiary uppercase mt-0.5">Memory</span>
-              </div>
-            </button>
-
-            <button
-              onClick={() => setShowDeveloperView(true)}
-              className="hidden lg:flex items-center gap-2.5 px-4 h-[42px] rounded-[10px] border border-dash-subtle bg-dash-surface-hover hover:bg-dash-hover transition-colors text-left group"
-            >
-              <Cpu className="w-4 h-4 text-dash-secondary group-hover:text-dash-primary" />
-              <div className="flex flex-col leading-none">
-                 <span className="text-[12px] font-medium text-dash-primary">开发者</span>
-                 <span className="text-[9px] font-mono tracking-widest text-dash-tertiary uppercase mt-0.5">Developer</span>
-              </div>
-            </button>
-
-            <motion.button 
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setDrawerOpen(true)} 
-              className="hidden md:flex items-center gap-2.5 px-4 h-[42px] rounded-[10px] bg-dash-gold/20 border border-dash-gold/40 hover:bg-dash-gold/30 transition-colors text-left"
-            >
-              <Sparkles className="w-4 h-4 text-dash-gold" />
-              <div className="flex flex-col leading-none">
-                 <span className="text-[12px] font-medium text-[#f0e6d2]">询问 Arbitra</span>
-                 <span className="text-[9px] font-mono tracking-widest text-dash-gold uppercase mt-0.5">Ask Arbitra</span>
-              </div>
-            </motion.button>
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setDrawerOpen(true)} 
-              className="flex md:hidden items-center justify-center w-[42px] h-[42px] rounded-[10px] bg-dash-gold/20 border border-dash-gold/40 hover:bg-dash-gold/30 transition-colors"
-            >
-               <Sparkles className="w-[18px] h-[18px] text-dash-gold" />
-            </motion.button>
-
-            <div 
-              className="w-[42px] h-[42px] rounded-full border border-dash-subtle overflow-hidden shrink-0 mx-1" 
-              title={user.displayName} 
-            >
-              <img src={user.photoURL} alt="User Avatar" className="w-full h-full object-cover" />
-            </div>
-
-            <button
-              onClick={() => setShowSettingsModal(true)}
-              className="hidden md:flex items-center gap-2.5 px-4 h-[42px] rounded-[10px] border border-dash-subtle bg-dash-surface-hover hover:bg-dash-hover transition-colors text-left group"
-            >
-              <Settings className="w-4 h-4 text-dash-secondary group-hover:text-dash-primary" />
-              <div className="flex flex-col leading-none">
-                 <span className="text-[12px] font-medium text-dash-primary">设置</span>
-                 <span className="text-[9px] font-mono tracking-widest text-dash-tertiary uppercase mt-0.5">Settings</span>
-              </div>
-            </button>
-
-            <button
-              onClick={logout}
-              className="hidden sm:flex items-center gap-2.5 px-4 h-[42px] rounded-[10px] border border-dash-subtle bg-dash-surface-hover hover:bg-dash-hover hover:border-dash-danger/30 transition-colors text-left group"
-            >
-              <LogOut className="w-4 h-4 text-dash-secondary group-hover:text-dash-danger" />
-              <div className="flex flex-col leading-none">
-                 <span className="text-[12px] font-medium text-dash-primary group-hover:text-dash-danger">退出登录</span>
-                 <span className="text-[9px] font-mono tracking-widest text-dash-tertiary group-hover:text-dash-danger/70 uppercase mt-0.5">LogOut</span>
-              </div>
-            </button>
-            <button
-              onClick={logout}
-              className="flex sm:hidden items-center justify-center w-[42px] h-[42px] rounded-[10px] border border-dash-subtle bg-dash-surface-hover transition-colors"
-            >
-               <LogOut className="w-[18px] h-[18px] text-dash-secondary" />
-            </button>
-
+          <div className="flex flex-col justify-center">
+            <h1 className="text-xl font-bold tracking-tight text-white leading-none font-sans">
+              ARBITRA
+            </h1>
+            <span className="text-[10px] font-mono tracking-widest uppercase text-[#A39167] mt-1 font-semibold">
+              Sovereign Operating System
+            </span>
           </div>
         </div>
-      </header>
+        
+        {/* Actions Area */}
+        <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+          
+          <button
+            onClick={() => setShowProfileReport(true)}
+            className="hidden sm:inline-flex items-center gap-2 bg-[#1A1D1F] hover:bg-[#202326] text-dash-primary border border-dash-subtle px-3 py-1.5 rounded-xl font-mono text-[11px] font-semibold tracking-wider transition-colors duration-200"
+            title="长线记忆"
+            aria-label="长线记忆"
+          >
+            <Database className="w-3.5 h-3.5 text-[#A39167]" />
+            <span>长线记忆</span>
+          </button>
+
+          <button
+            onClick={() => setShowDeveloperView(true)}
+            className="hidden sm:inline-flex items-center gap-2 bg-[#1A1D1F] hover:bg-[#202326] text-dash-primary border border-dash-subtle px-3 py-1.5 rounded-xl font-mono text-[11px] font-semibold tracking-wider transition-colors duration-200"
+            title="开发者视图"
+            aria-label="开发者"
+          >
+            <Cpu className="w-3.5 h-3.5 text-[#A39167]" />
+            <span>核心节点</span>
+          </button>
+
+          {/* Sparkly Premium AI Button */}
+          <motion.button 
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => setDrawerOpen(true)} 
+            className="bg-[#C9B284] hover:bg-[#D4AF37] text-[#121415] hover:text-[#0c0d0e] flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs sm:text-sm shadow-lg transition-colors cursor-pointer"
+            title="询问 Arbitra"
+            aria-label="询问 Arbitra"
+          >
+            <Sparkles className="w-4 h-4 text-current shrink-0" />
+            <span>询问 Arbitra</span>
+          </motion.button>
+
+          <div className="h-6 w-px bg-dash-subtle/80 mx-1"></div>
+
+          <button
+            onClick={() => setShowSettingsModal(true)}
+            className="text-dash-tertiary hover:text-[#C9B284] w-10 h-10 flex items-center justify-center rounded-xl hover:bg-[#1A1D1F]/60 transition-colors"
+            title="设置"
+            aria-label="设置"
+          >
+            <Settings className="w-4.5 h-4.5 text-current" />
+          </button>
+
+          <button
+            onClick={logout}
+            className="text-dash-tertiary hover:text-red-400 w-10 h-10 flex items-center justify-center rounded-xl hover:bg-[#1A1D1F]/60 transition-colors"
+            title="退出登录"
+            aria-label="退出登录"
+          >
+            <LogOut className="w-4.5 h-4.5 text-current" />
+          </button>
+
+          {/* Avatar frame with gold active boundary ring */}
+          <div 
+            className="w-10 h-10 rounded-xl bg-dash-surface-hover border border-[#C9B284]/30 flex items-center justify-center overflow-hidden shrink-0 shadow-sm hover:border-[#C9B284] transition-all ml-1 duration-300" 
+            title={user.displayName} 
+            aria-label="User Avatar"
+          >
+            <img src={user.photoURL} alt="User Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+          </div>
+
+        </div>
+      </div>
+    </header>
   );
 }

@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { LayoutGrid, GraduationCap, Home, Sailboat } from 'lucide-react';
+import { Target, Trophy, Clock, ChevronRight } from 'lucide-react';
 
 interface GoalTrackerProps {
   goal: any;
@@ -8,98 +8,117 @@ interface GoalTrackerProps {
 }
 
 export function GoalTracker({ goal, globalCurSymbol }: GoalTrackerProps) {
-  
-  // We can fallback to 3 goals if we only have 1 or 0 to match the design (or construct an array from the data)
-  const goals = [];
-  
-  if (goal?.name && goal.name !== '等待设定目标') {
-    goals.push({
-      name: goal.name,
-      icon: GraduationCap,
-      target: goal.target || 3000000,
-      current: goal.current || 2340000,
-      index: goal.index || 0.78
-    });
-  } else {
-    goals.push({
-      name: "子女教育基金",
-      icon: GraduationCap,
-      target: 3000000,
-      current: 2340000,
-      index: 0.78
-    });
-  }
-  
-  if (goals.length < 3) {
-    goals.push({
-      name: "家庭资产保障",
-      icon: Home,
-      target: 5000000,
-      current: 3250000,
-      index: 0.65
-    });
-    goals.push({
-      name: "退休生活储备",
-      icon: Sailboat,
-      target: 10000000,
-      current: 4200000,
-      index: 0.42
-    });
-  }
+  const current = goal?.current || 0;
+  const target = goal?.target || 0;
+  const goalPercent = Math.min(Math.max((goal?.index || (target > 0 ? current / target : 0)) * 100, 0), 100);
+  const remaining = Math.max(target - current, 0);
 
   return (
-    <div className="mb-10 w-full">
-      <div className="flex items-center gap-2 mb-6 px-1">
-        <LayoutGrid className="w-4 h-4 text-dash-secondary" />
-        <h3 className="text-sm font-semibold tracking-wide text-dash-primary flex items-center gap-2">
-           目标追踪 <span className="font-mono text-[10px] tracking-widest text-dash-tertiary uppercase mt-0.5">Goal Tracker</span>
-        </h3>
-      </div>
-      
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {goals.map((g, idx) => {
-          const Icon = g.icon;
-          const pct = Math.min(Math.round((g.index || 0) * 100), 100);
-          return (
-            <motion.div 
-              key={idx}
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ type: "spring", stiffness: 400, damping: 25, delay: idx * 0.1 }}
-              className="arbitra-panel arbitra-panel-subtle p-4 relative overflow-hidden group shadow-sm rounded-xl border-dash-subtle flex flex-col"
-            >
-              <div className="flex flex-col mb-3">
-                <div className="flex items-center gap-2 mb-2">
-                   <div className="w-8 h-8 rounded-lg border border-dash-primary/20 bg-dash-surface flex items-center justify-center shrink-0">
-                     <Icon className="w-4 h-4 text-dash-secondary" />
-                   </div>
-                </div>
-                <h4 className="text-[13px] font-medium text-dash-primary leading-tight">{g.name}</h4>
-              </div>
-              
-              <div className="mb-4">
-                <div className="text-[18px] font-mono font-medium text-dash-success mb-1 tracking-tight">
-                  {pct}%
-                </div>
-                <div className="w-full h-1 bg-dash-surface-hover rounded-full overflow-hidden border border-dash-subtle/50">
-                   <div className="h-full bg-dash-success rounded-full" style={{ width: `${pct}%` }}></div>
-                </div>
-              </div>
+    <motion.div 
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ type: "spring", stiffness: 400, damping: 25 }}
+      className="bg-dash-surface border border-dash-subtle p-6 sm:p-8 rounded-2xl relative overflow-hidden group mb-10 w-full"
+    >
+      {/* Background radial soft light for high-end gold aura */}
+      <div className="absolute right-0 top-0 w-80 h-80 bg-dash-primary/5 rounded-full blur-[100px] pointer-events-none" />
 
-              <div className="flex flex-col gap-1 text-[11px] font-mono mt-auto">
-                 <div className="flex justify-between items-center text-dash-tertiary">
-                   <span>目标</span>
-                   <span className="text-dash-secondary tracking-normal ml-1">{globalCurSymbol}{g.target.toLocaleString()}</span>
-                 </div>
-                 <div className="flex justify-between items-center text-dash-tertiary">
-                   <span>已存</span>
-                   <span className="text-dash-secondary tracking-normal ml-1">{globalCurSymbol}{g.current.toLocaleString()}</span>
-                 </div>
-              </div>
-            </motion.div>
-          )
-        })}
+      {/* Header Info */}
+      <div className="relative z-10 flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-6 pb-6 border-b border-dash-subtle/50">
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="p-1.5 bg-[#202326] border border-dash-subtle rounded-lg text-dash-primary flex items-center justify-center">
+              <Target className="w-4 h-4" />
+            </span>
+            <span className="text-[11px] font-mono tracking-widest text-[#A39167] font-semibold uppercase">
+              战略规划指标 Strategic Target Tracker
+            </span>
+          </div>
+          <h3 className="text-xl sm:text-2xl font-bold text-white tracking-tight break-words antialiased leading-snug">
+            {goal?.name || "家庭信托与长期流动性目标"}
+          </h3>
+        </div>
+
+        {/* Big Index Value */}
+        <div className="flex flex-row md:flex-col items-center md:items-end justify-between gap-1 shrink-0 pt-1">
+          <span className="text-[10px] font-mono font-medium text-dash-tertiary uppercase tracking-widest">
+            Achievement Index
+          </span>
+          <span className={`text-4xl md:text-5xl font-mono font-bold tracking-tighter ${goal?.index >= 1 ? 'text-[#6B8E6B]' : 'text-dash-primary'}`}>
+            {(goal?.index || (target > 0 ? current / target : 0)).toFixed(4)}
+          </span>
+        </div>
       </div>
-    </div>
+
+      {/* Grid of Quantified Amounts */}
+      <div className="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
+        
+        {/* Current State Column */}
+        <div className="bg-dash-base/40 border border-dash-subtle/70 rounded-xl p-4 flex flex-col justify-between">
+          <div className="flex items-center justify-between text-dash-tertiary mb-2">
+            <span className="text-[10px] font-mono uppercase tracking-widest font-semibold">
+              当前蓄水位 CURRENT
+            </span>
+            <div className="w-1.5 h-1.5 rounded-full bg-dash-primary animate-pulse" />
+          </div>
+          <p className="text-2xl font-mono text-white font-bold tracking-tight select-all">
+            {globalCurSymbol}{current.toLocaleString(undefined, { minimumFractionDigits: 0 })}
+          </p>
+        </div>
+
+        {/* Target Amount Column */}
+        <div className="bg-dash-base/40 border border-dash-subtle/70 rounded-xl p-4 flex flex-col justify-between">
+          <div className="flex items-center justify-between text-dash-tertiary mb-2">
+            <span className="text-[10px] font-mono uppercase tracking-widest font-semibold">
+              战略对标目标 TARGET
+            </span>
+            <Trophy className="w-3.5 h-3.5 text-[#C9B284]" />
+          </div>
+          <p className="text-2xl font-mono text-white font-bold tracking-tight select-all">
+            {globalCurSymbol}{target.toLocaleString(undefined, { minimumFractionDigits: 0 })}
+          </p>
+        </div>
+
+        {/* Gap Remaining Column */}
+        <div className="bg-dash-base/40 border border-dash-subtle/70 rounded-xl p-4 flex flex-col justify-between border-dashed">
+          <div className="flex items-center justify-between text-dash-tertiary mb-2">
+            <span className="text-[10px] font-mono uppercase tracking-widest font-semibold">
+              当前战略缺口 REMAINDING
+            </span>
+            <Clock className="w-3.5 h-3.5 text-dash-tertiary" />
+          </div>
+          <p className="text-2xl font-mono text-[#A39167] font-bold tracking-tight select-all">
+            {remaining > 0 ? `${globalCurSymbol}${remaining.toLocaleString(undefined, { minimumFractionDigits: 0 })}` : '🎯 COMPLETED'}
+          </p>
+        </div>
+
+      </div>
+
+      {/* Progress Bar with Percentage Tag */}
+      <div className="relative z-10 rounded-xl bg-dash-base/60 border border-dash-subtle p-3">
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-[10px] font-mono font-semibold tracking-wider text-dash-tertiary uppercase flex items-center gap-1">
+            战略推进进度 Progress Rate <ChevronRight className="w-3 h-3 text-dash-primary" />
+          </span>
+          <span className="text-sm font-mono font-bold text-dash-primary">
+            {goalPercent.toFixed(1)}%
+          </span>
+        </div>
+
+        {/* Multi-segmented or custom polished absolute bar */}
+        <div className="relative w-full h-[10px] bg-[#121415] border border-dash-subtle/40 rounded-full overflow-hidden shadow-inner">
+          <motion.div 
+            initial={{ width: 0 }}
+            animate={{ width: `${goalPercent}%` }}
+            transition={{ duration: 1.2, ease: "easeOut" }}
+            className={`h-full relative z-10 rounded-full transition-all duration-1000 ${
+              goalPercent >= 100 
+                ? 'bg-[#6B8E6B]' 
+                : 'bg-gradient-to-r from-dash-primary/60 to-dash-primary'
+            }`}
+          />
+        </div>
+      </div>
+    </motion.div>
   );
 }

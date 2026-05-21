@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Send, Zap, Bot, Loader2 } from 'lucide-react';
+import { X, Send, Bot, User, Compass } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { getSettings } from '../lib/settings';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 
 export interface WidgetCopilotProps {
   isOpen: boolean;
@@ -13,21 +13,38 @@ export interface WidgetCopilotProps {
   globalData?: any;
   onPromoteIntent: (prompt: string) => void;
   inline?: boolean;
+  initialMessage?: string;
 }
+
+// Stylized Compass Reticle Icon for high-end advisory terminal header and advisor avatar
+const ReticleIcon: React.FC<{ className?: string }> = ({ className = "w-6 h-6" }) => (
+  <div className={`relative flex items-center justify-center shrink-0 rounded-full border border-[#C9B284]/30 bg-[#16181A] p-1.5 shadow-sm ${className}`}>
+    <svg viewBox="0 0 100 100" className="w-full h-full text-[#C9B284]" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="50" cy="50" r="42" stroke="currentColor" strokeWidth="4" strokeDasharray="8 8" className="opacity-40 animate-[spin_40s_linear_infinite]" />
+      <circle cx="50" cy="50" r="30" stroke="currentColor" strokeWidth="6" />
+      <circle cx="50" cy="50" r="12" stroke="currentColor" strokeWidth="6" />
+      <path d="M50 8 L50 92" stroke="currentColor" strokeWidth="6" />
+      <path d="M8 50 L92 50" stroke="currentColor" strokeWidth="6" />
+      <circle cx="50" cy="50" r="5" fill="#6B8E6B" className="animate-pulse" />
+    </svg>
+  </div>
+);
 
 export const WidgetCopilot: React.FC<WidgetCopilotProps> = ({
   isOpen,
   onClose,
   widgetTitle,
   widgetData,
-  expertRole = "首席资产分析师",
+  expertRole = "首席组合策略师",
   globalData,
   onPromoteIntent,
-  inline = false
+  inline = false,
+  initialMessage
 }) => {
   const [messages, setMessages] = useState<{ role: 'user' | 'model', content: string }[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [showSnapshot, setShowSnapshot] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [isAutoScroll, setIsAutoScroll] = useState(true);
 
@@ -51,14 +68,8 @@ export const WidgetCopilot: React.FC<WidgetCopilotProps> = ({
     }
   }, [messages, isTyping, isAutoScroll]);
 
-  const handleSend = async () => {
-    if (!input.trim() || isTyping) return;
-    
-    const userMsg = input.trim();
-    setInput('');
-    setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
+  const executeChatMessage = async (userMsg: string, currentHistory: { role: 'user' | 'model', content: string }[]) => {
     setIsTyping(true);
-
     try {
       const res = await fetch('/api/sandbox/chat', {
         method: 'POST',
@@ -66,7 +77,7 @@ export const WidgetCopilot: React.FC<WidgetCopilotProps> = ({
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          history: messages,
+          history: currentHistory,
           message: userMsg,
           widgetContext: widgetData,
           widgetTitle: widgetTitle,
@@ -139,6 +150,26 @@ export const WidgetCopilot: React.FC<WidgetCopilotProps> = ({
     }
   };
 
+  const handleSend = async () => {
+    if (!input.trim() || isTyping) return;
+    
+    const userMsg = input.trim();
+    setInput('');
+    const newHistory = [...messages, { role: 'user' as const, content: userMsg }];
+    setMessages(newHistory);
+    await executeChatMessage(userMsg, messages);
+  };
+
+  const autoSentRef = useRef(false);
+  useEffect(() => {
+    if (isOpen && initialMessage && !autoSentRef.current) {
+      autoSentRef.current = true;
+      const newHistory = [{ role: 'user' as const, content: initialMessage }];
+      setMessages(newHistory);
+      executeChatMessage(initialMessage, []);
+    }
+  }, [isOpen, initialMessage]);
+
   const handlePromote = () => {
     const lastModelMessage = [...messages].reverse().find(m => m.role === 'model');
     const lastUserMessage = [...messages].reverse().find(m => m.role === 'user');
@@ -158,126 +189,244 @@ export const WidgetCopilot: React.FC<WidgetCopilotProps> = ({
 
   if (!isOpen) return null;
 
+  // ----------------- Extract data from context for Snapshot -----------------
+  const publicHoldings = globalData?.distributions?.publicHoldings || [];
+  const sortedHoldings = [...publicHoldings].sort((a: any, b: any) => (b.value ?? b.marketValue ?? 0) - (a.value ?? a.marketValue ?? 0));
+  const topItem = sortedHoldings[0];
+
+  // 1. Top Holding (Dynamic)
+  const topHoldingSymbol = widgetData?.holdingDetail?.symbol || topItem?.symbol || topItem?.name?.split(' ')[0] || "AAPL";
+  const publicTotal = publicHoldings.reduce((sum: number, item: any) => sum + (Number(item?.value || item?.marketValue) || 0), 0);
+  const topHoldingProportion = widgetData?.holdingDetail?.proportion || (publicTotal > 0 && topItem 
+    ? (((Number(topItem.value || topItem.marketValue) || 0) / publicTotal) * 100).toFixed(2) + '%' 
+    : '7.42%');
+
+  // 2. Allocation (Dynamic)
+  const allDistributionValues = Object.values(globalData?.distributions || {}).flat() as any[];
+  const totalAssets = allDistributionValues.reduce((sum: number, item: any) => sum + (Number(item?.value || item?.marketValue) || 0), 0);
+  const allocationPercent = totalAssets > 0 && publicTotal > 0
+    ? ((publicTotal / totalAssets) * 100).toFixed(1) + '%'
+    : '38.6%';
+  const allocationCategory = widgetData?.holdingDetail?.category || topItem?.category || 'US Equities';
+
+  // 3. Currency (Dynamic)
+  const currencyCode = widgetData?.holdingDetail?.currency || topItem?.currency || globalData?.distributions?.publicHoldings?.[0]?.currency || 'USD';
+
+  // Modal / Container Classes (Redesigned contextual Expert Panel layout)
   const containerClass = inline 
     ? "flex flex-col h-full bg-transparent border-0 min-h-0" 
-    : "fixed inset-0 z-[60] bg-[#090A0C]/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 transition-opacity";
+    : "fixed inset-0 z-[60] bg-black/40 backdrop-blur-[1px] flex items-center justify-end p-4 md:p-6 transition-all duration-300";
 
   const modalClass = inline
     ? "w-full flex-1 flex flex-col min-h-0"
-    : "arbitra-modal-panel w-full max-w-lg flex flex-col min-h-0 max-h-[85vh] sm:max-h-[800px]";
+    : "w-full sm:max-w-[465px] h-[calc(100vh-2rem)] sm:h-[calc(100vh-4rem)] max-h-[820px] flex flex-col bg-[#111315]/95 border border-[#C9B284]/15 rounded-2xl shadow-2xl overflow-hidden transition-all duration-300 relative";
 
   return (
-    <div className={containerClass}>
-      <div className={modalClass}>
-        
-        {/* Header */}
-        {!inline && (
-          <div className="flex items-center justify-between px-5 py-4 border-b border-dash-subtle bg-transparent shrink-0">
-            <div className="flex flex-col">
-              <p className="arbitra-text-mono text-[10px] uppercase tracking-[0.2em] arbitra-text-tertiary mb-1">
-                CONTEXTUAL EXPERT
-              </p>
-              <h3 className="text-lg font-medium arbitra-text-primary flex items-center gap-2">
-                <Bot className="w-4 h-4 arbitra-text-gold" />
-                {widgetTitle} Sandbox
-              </h3>
-              <p className="text-xs arbitra-text-secondary mt-1">
-                Role: {expertRole}
-              </p>
-            </div>
-            <button 
-              onClick={onClose} 
-              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/5 transition-colors arbitra-focus-ring ml-2 shrink-0 self-start mt-1 text-slate-400 hover:text-white"
-              aria-label="关闭"
-            >
-              <X className="w-5 h-5 text-current" />
-            </button>
-          </div>
-        )}
+    <div className={containerClass} onClick={!inline ? onClose : undefined}>
+      <style>{`
+        .copilot-markdown p { margin-bottom: 0.75rem; text-align: justify; }
+        .copilot-markdown p:last-child { margin-bottom: 0px; }
+        .copilot-markdown strong { color: #C9B284; font-weight: 600; }
+        .copilot-markdown ul, .copilot-markdown ol { margin: 0.5rem 0 0.75rem 1.25rem; }
+        .copilot-markdown ul { list-style-type: disc; }
+        .copilot-markdown ol { list-style-type: decimal; }
+        .copilot-markdown li { margin-bottom: 0.4rem; font-size: 13px; color: #E7D7B0; line-height: 1.6; }
+        .copilot-markdown li::marker { color: #8C8270; font-weight: bold; }
+        .copilot-markdown blockquote { border-left: 2px solid #C9B284; padding-left: 0.75rem; color: #8C8270; font-family: monospace; }
+        .custom-scroll::-webkit-scrollbar { width: 5px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: rgba(201, 178, 132, 0.15); border-radius: 999px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: rgba(201, 178, 132, 0.3); }
+      `}</style>
 
-        {/* Chat Area */}
-        <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto p-4 space-y-5 custom-scroll bg-transparent min-h-[350px]">
+      <div className={modalClass} onClick={(e) => e.stopPropagation()}>
+        
+        {/* Header (Compass logo + title + expertRole with active status dot) */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#C9B284]/15 bg-[#121416] shrink-0">
+          <div className="flex items-center gap-3">
+            <ReticleIcon className="w-9 h-9" />
+            <div className="flex flex-col">
+              <h3 className="text-[15px] font-medium text-[#E7D7B0] font-sans flex items-center gap-1.5 leading-tight">
+                {widgetTitle}
+              </h3>
+              <div className="flex items-center gap-1.5 mt-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#6B8E6B] animate-pulse" />
+                <span className="text-[11px] text-[#8C8270] uppercase font-mono tracking-wider font-semibold">
+                  {expertRole}
+                </span>
+              </div>
+            </div>
+          </div>
+          <button 
+            onClick={onClose} 
+            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[#C9B284]/10 transition-colors text-[#8C8270] hover:text-[#E7D7B0] shrink-0"
+            aria-label="Close"
+          >
+            <X className="w-4 h-4 text-current" />
+          </button>
+        </div>
+
+        {/* Scrollable Conversation area and metadata snap */}
+        <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto p-4 space-y-4 custom-scroll bg-[#121415]/65 min-h-[300px]">
+          
+          {/* Data Snapshot (With collapsible button toggle) */}
+          <AnimatePresence>
+            {showSnapshot && (
+              <motion.div
+                initial={{ opacity: 0, height: 0, y: -10 }}
+                animate={{ opacity: 1, height: "auto", y: 0 }}
+                exit={{ opacity: 0, height: 0, y: -10 }}
+                transition={{ duration: 0.3 }}
+                className="overflow-hidden mb-4 rounded-xl border border-[#C9B284]/15 bg-[#16181A] p-3 text-xs shadow-sm font-sans"
+              >
+                <div className="flex items-center justify-between border-b border-[#C9B284]/10 pb-2 mb-2.5 font-mono">
+                  <div className="text-[10px] font-bold text-[#C9B284] uppercase tracking-wider">
+                    Data Snapshot
+                  </div>
+                  <button 
+                    onClick={() => setShowSnapshot(false)} 
+                    className="text-[#8C8270] hover:text-[#C9B284] p-0.5 rounded transition-colors"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {/* Card 1: Top Holding */}
+                  <div className="rounded-lg bg-[#111214] border border-[#C9B284]/10 p-2.5">
+                    <div className="text-[9px] uppercase font-mono tracking-wider text-[#8C8270]">Top Holding</div>
+                    <div className="text-sm font-bold text-[#E7D7B0] mt-1 font-sans">{topHoldingSymbol}</div>
+                    <div className="text-[10px] font-mono text-[#C9B284] mt-0.5">{topHoldingProportion}</div>
+                  </div>
+
+                  {/* Card 2: Allocation */}
+                  <div className="rounded-lg bg-[#111214] border border-[#C9B284]/10 p-2.5">
+                    <div className="text-[9px] uppercase font-mono tracking-wider text-[#8C8270]">Allocation</div>
+                    <div className="text-sm font-bold text-[#E7D7B0] mt-1 font-sans">{allocationPercent}</div>
+                    <div className="text-[10px] font-mono text-[#8C8270] mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis">{allocationCategory}</div>
+                  </div>
+
+                  {/* Card 3: Risk Level */}
+                  <div className="rounded-lg bg-[#111214] border border-[#C9B284]/10 p-2.5">
+                    <div className="text-[9px] uppercase font-mono tracking-wider text-[#8C8270]">Risk Level</div>
+                    <div className="text-sm font-bold text-[#E7D7B0] mt-1 font-sans">Moderate</div>
+                    <div className="w-full bg-neutral-800 h-1 rounded-full mt-2 overflow-hidden">
+                      <div className="bg-[#C9B284] h-full w-[60%]" />
+                    </div>
+                  </div>
+
+                  {/* Card 4: Currency */}
+                  <div className="rounded-lg bg-[#111214] border border-[#C9B284]/10 p-2.5">
+                    <div className="text-[9px] uppercase font-mono tracking-wider text-[#8C8270]">Currency</div>
+                    <div className="text-sm font-bold text-[#E7D7B0] mt-1 font-sans">{currencyCode}</div>
+                    <div className="text-[10px] font-mono text-[#8C8270] mt-0.5">Asset Base</div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {messages.length === 0 ? (
-            <div className="h-full flex items-center justify-center text-center px-4 opacity-70">
-               <p className="text-sm arbitra-text-secondary leading-relaxed">
-                 A secure local sandbox environment.<br/><br/>
-                 You can freely explore scenarios, constraints, and projections regarding <span className="arbitra-text-primary font-medium">{widgetTitle}</span>.<br/>
-                 Changes are isolated until you decide to apply them.
+            <div className="h-full flex flex-col items-center justify-center text-center px-4 py-12 opacity-80">
+               <Compass className="w-8 h-8 text-[#C9B284] mb-4 opacity-40 animate-pulse" />
+               <p className="text-xs text-[#8C8270] leading-relaxed max-w-[280px]">
+                 Local sandbox workspace active. Freely explore specific scenarios and metrics regarding <span className="text-[#E7D7B0] font-medium">{widgetTitle}</span>.
                </p>
             </div>
           ) : (
-            messages.map((msg, idx) => (
-              <motion.div 
-                key={idx} 
-                layout 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, ease: 'easeOut' }}
-                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div className={`max-w-[85%] rounded-[16px] px-4 py-3.5 text-[14px] leading-relaxed ${
-                  msg.role === 'user' 
-                    ? 'bg-dash-primary/10 border border-dash-primary/20 arbitra-text-primary rounded-br-sm shadow-sm' 
-                    : 'arbitra-panel border-dash-subtle arbitra-text-secondary rounded-bl-sm prose prose-invert prose-p:leading-relaxed prose-sm max-w-none shadow-sm'
-                }`}>
-                  {msg.role === 'user' ? (
-                     msg.content
-                  ) : (
-                     <div className="markdown-body">
+            messages.map((msg, idx) => {
+              const isUser = msg.role === 'user';
+              return (
+                <motion.div 
+                  key={idx} 
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.25, ease: 'easeOut' }}
+                  className="flex flex-col items-start gap-1 w-full"
+                >
+                  <div className="flex items-center gap-1.5 text-[10px] font-mono text-[#8C8270]/90 uppercase tracking-wider mb-1 font-bold">
+                    {isUser ? (
+                      <>
+                        <div className="w-4 h-4 rounded-full border border-[#C9B284]/25 bg-[#16181A] flex items-center justify-center p-0.5 shrink-0">
+                          <User className="w-2.5 h-2.5 text-[#C9B284]" />
+                        </div>
+                        <span className="text-[#C9B284]">You</span>
+                      </>
+                    ) : (
+                      <>
+                        <ReticleIcon className="w-4.5 h-4.5 !p-0.5 bg-transparent border-0" />
+                        <span className="text-[#C9B284]">{expertRole}</span>
+                      </>
+                    )}
+                    <span className="text-[#8C8270]/60">•</span>
+                    <span className="text-[#8C8270]/50 font-normal">10:32 AM</span>
+                  </div>
+
+                  <div className="w-full bg-[#16181A] border border-[#C9B284]/15 rounded-2xl p-4 shadow-sm font-sans">
+                    {isUser ? (
+                      <p className="text-[13px] leading-relaxed text-[#C9B284] whitespace-pre-wrap font-sans">
+                        {msg.content}
+                      </p>
+                    ) : (
+                      <div className="text-[13px] leading-relaxed text-[#E7D7B0] space-y-3 font-sans copilot-markdown">
                         <Markdown>{msg.content}</Markdown>
                         {isTyping && idx === messages.length - 1 && (
-                          <span className="inline-block w-1.5 h-4 ml-1 align-middle bg-dash-primary/80 animate-pulse rounded-sm" />
+                          <span className="inline-block w-1.5 h-3.5 ml-1 align-middle bg-[#C9B284] animate-pulse rounded-sm" />
                         )}
-                     </div>
-                  )}
-                </div>
-              </motion.div>
-            ))
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              );
+            })
           )}
           
           {isTyping && (
-             <div className="flex justify-start">
-               <div className="arbitra-panel border-dash-subtle rounded-[16px] rounded-bl-sm px-4 py-3 flex items-center gap-3 shadow-sm">
-                 <Loader2 className="w-4 h-4 animate-spin arbitra-text-gold" />
-                 <span className="text-xs arbitra-text-tertiary font-mono uppercase tracking-widest">Synthesizing...</span>
+             <div className="flex justify-start font-mono">
+               <div className="bg-[#101113] border border-[#C9B284]/15 rounded-xl px-4 py-2.5 flex items-center gap-3 shadow-md max-w-[200px]">
+                 <div className="flex gap-1.5 items-center">
+                   <span className="w-1.5 h-1.5 rounded-full bg-[#C9B284]/50 animate-bounce [animation-delay:-0.3s]" />
+                   <span className="w-1.5 h-1.5 rounded-full bg-[#C9B284]/80 animate-bounce [animation-delay:-0.15s]" />
+                   <span className="w-1.5 h-1.5 rounded-full bg-[#C9B284] animate-bounce" />
+                 </div>
+                 <span className="text-[9.5px] text-[#A39167] font-bold tracking-wider uppercase">专家正在研究</span>
                </div>
              </div>
           )}
         </div>
 
-        {/* Input Area */}
-        <div className="p-4 border-t border-dash-subtle bg-surface flex flex-col gap-3 shrink-0">
-          <div className="relative flex items-center bg-surface-hover border border-dash-subtle rounded-[12px] focus-within:border-dash-primary/40 focus-within:ring-1 focus-within:ring-dash-primary/20 transition-all">
+        {/* Input Composer area */}
+        <div className="p-4 border-t border-[#C9B284]/15 bg-[#121416] flex flex-col gap-3 shrink-0">
+          <div className="relative flex items-center bg-[#16181A] border border-[#C9B284]/15 rounded-xl focus-within:border-[#C9B284]/40 transition-all pl-3">
             <input
                type="text"
                value={input}
                onChange={(e) => setInput(e.target.value)}
                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-               placeholder={`Ask ${expertRole}...`}
-               className="w-full bg-transparent border-none py-3 pl-4 pr-12 text-[14px] arbitra-text-primary placeholder:text-dash-tertiary focus:outline-none"
+               placeholder="Ask a follow-up about this widget..."
+               className="w-full bg-transparent border-none py-3 text-[13px] text-[#E7D7B0] placeholder:text-[#8C8270] focus:outline-none"
             />
             <button
                onClick={handleSend}
                disabled={!input.trim() || isTyping}
-               className="absolute right-1.5 p-2 rounded-[8px] arbitra-btn-ghost text-dash-secondary hover:text-dash-primary disabled:opacity-30 disabled:hover:text-dash-secondary arbitra-focus-ring"
+               className="p-2.5 shrink-0 text-[#111315] disabled:text-[#8C8270] bg-[#C9B284] disabled:bg-[#C9B284]/15 m-[5px] rounded-lg transition-all"
                aria-label="Send"
             >
-               <Send className="w-4 h-4 ml-0.5" />
+               <Send className="w-3.5 h-3.5 transform -rotate-45 translate-x-px -translate-y-[0.5px]" strokeWidth={2.5} />
             </button>
           </div>
           
-          <div className="flex justify-end items-center mt-1">
-             {messages.length > 0 && messages[messages.length-1].role === 'model' && (
-               <motion.button
-                 initial={{ opacity: 0, scale: 0.95 }}
-                 animate={{ opacity: 1, scale: 1 }}
-                 onClick={handlePromote}
-                 className="flex items-center gap-2 px-4 py-2 rounded-[10px] arbitra-btn-base arbitra-btn-secondary transition-all text-xs font-medium uppercase tracking-wide"
-               >
-                 <Zap className="w-3.5 h-3.5 arbitra-text-gold" />
-                 Apply Strategy to Portfolio
-               </motion.button>
-             )}
+          {/* Centered Promote strategy link */}
+          <div className="flex items-center justify-center mt-0.5">
+             <button
+               onClick={handlePromote}
+               className="flex items-center gap-1.5 text-xs text-[#C9B284] hover:text-[#E7D7B0] transition-colors font-semibold tracking-wide"
+             >
+               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+               </svg>
+               <span>Promote to Global Strategy</span>
+             </button>
           </div>
         </div>
 

@@ -1,13 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { X, Settings, Loader2, RefreshCw, Wallet } from 'lucide-react';
+import { X, Settings, Loader2, RefreshCw, Wallet, Cpu, LineChart, Shield, CheckCircle2 } from 'lucide-react';
 import { getSettings, saveSettings as persistSettings, AppSettings } from '../lib/settings';
 
 export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
   const [settings, setSettings] = useState<AppSettings>(getSettings());
-  const [availableGeminiModels, setAvailableGeminiModels] = useState<string[]>([]);
-  const [availableOpenAIModels, setAvailableOpenAIModels] = useState<string[]>([]);
+  const [availableGeminiModels, setAvailableGeminiModels] = useState<string[]>([
+    'gemini-3.1-pro-preview',
+    'gemini-3-flash-preview',
+    'gemini-2.5-pro',
+    'gemini-2.5-flash',
+    'gemini-1.5-pro',
+    'gemini-1.5-flash'
+  ]);
+  const [availableOpenAIModels, setAvailableOpenAIModels] = useState<string[]>([
+    'gpt-4o',
+    'gpt-4o-mini',
+    'o3-mini',
+    'o1-preview',
+    'o1-mini',
+    'gpt-4-turbo'
+  ]);
   const [isLoadingGeminiModels, setIsLoadingGeminiModels] = useState(false);
   const [isLoadingOpenAIModels, setIsLoadingOpenAIModels] = useState(false);
+  const [activeTab, setActiveTab] = useState<'ai' | 'finance' | 'wallet' | 'security'>('ai');
+  const [showSavedToast, setShowSavedToast] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -17,8 +33,11 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
 
   const handleSave = () => {
     persistSettings(settings);
-    onClose();
-    window.location.reload(); // Reload to apply cleanly
+    setShowSavedToast(true);
+    setTimeout(() => {
+      onClose();
+      window.location.reload(); // Reload to apply cleanly
+    }, 600);
   };
 
   const fetchGeminiModels = async () => {
@@ -27,13 +46,27 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
       alert("请先输入 Gemini API Key");
       return;
     }
+    if (key.includes('•') || key.includes('*') || key === 'placeholder') {
+      alert("当前的 Key 为加密占位符或掩码。如果您正在使用系统托管或默认的 API Key，无需主动从官方拉取模型列表，您可以直接在下拉菜单中进行选择。");
+      return;
+    }
     setIsLoadingGeminiModels(true);
     try {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
-      if (!res.ok) throw new Error(await res.text());
+      const trimmedKey = key.trim();
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${trimmedKey}`);
+      if (!res.ok) {
+        let errText = await res.text();
+        try {
+          const parsed = JSON.parse(errText);
+          if (parsed.error && parsed.error.message) {
+            errText = parsed.error.message;
+          }
+        } catch {}
+        throw new Error(errText);
+      }
       const data = await res.json();
       const models = data.models.map((m: any) => m.name.replace('models/', '')).filter((m: string) => m.includes('gemini'));
-      setAvailableGeminiModels(models);
+      setAvailableGeminiModels(prev => Array.from(new Set([...models, ...prev])));
     } catch (e: any) {
       alert("拉取 Gemini 模型失败: " + e.message);
     } finally {
@@ -47,15 +80,29 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
       alert("请先输入 OpenAI API Key");
       return;
     }
+    if (key.includes('•') || key.includes('*') || key === 'placeholder') {
+      alert("当前的 Key 为加密占位符或掩码。如果您正在使用系统托管或默认的 API Key，无需主动从官方拉取模型列表，您可以直接在下拉菜单中进行选择。");
+      return;
+    }
     setIsLoadingOpenAIModels(true);
     try {
+      const trimmedKey = key.trim();
       const res = await fetch(`https://api.openai.com/v1/models`, {
-        headers: { 'Authorization': `Bearer ${key}` }
+        headers: { 'Authorization': `Bearer ${trimmedKey}` }
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) {
+        let errText = await res.text();
+        try {
+          const parsed = JSON.parse(errText);
+          if (parsed.error && parsed.error.message) {
+            errText = parsed.error.message;
+          }
+        } catch {}
+        throw new Error(errText);
+      }
       const data = await res.json();
       const models = data.data.map((m: any) => m.id).filter((m: string) => m.includes('gpt') || m.includes('o1') || m.includes('o3'));
-      setAvailableOpenAIModels(models);
+      setAvailableOpenAIModels(prev => Array.from(new Set([...models, ...prev])));
     } catch (e: any) {
       alert("拉取 OpenAI 模型失败: " + e.message);
     } finally {
@@ -65,213 +112,359 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
 
   if (!isOpen) return null;
 
+  const NavItem = ({ id, icon: Icon, label }: { id: typeof activeTab, icon: any, label: string }) => {
+    const isActive = activeTab === id;
+    return (
+      <button
+        onClick={() => setActiveTab(id)}
+        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-[13px] font-medium transition-all ${
+          isActive 
+            ? 'bg-[#C9B284]/10 border border-[#C9B284]/30 text-[#E7D7B0]' 
+            : 'text-[#8C8370] hover:bg-[#C9B284]/5 hover:text-[#C9B284]'
+        }`}
+      >
+        <Icon className="w-4 h-4" />
+        {label}
+      </button>
+    );
+  };
+
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-center p-4">
-      <div className="bg-[#111315] border border-[#2A2B2D] rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl relative flex flex-col max-h-[90vh]">
-        <button onClick={onClose} aria-label="关闭设置" className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors z-10 arbitra-focus-ring">
-          <X className="w-5 h-5" />
-        </button>
-        <div className="px-6 py-5 border-b border-[#2A2B2D] shrink-0">
-          <h2 className="text-xl font-bold flex items-center gap-2 text-white">
-            <Settings className="w-5 h-5 text-dash-gold" /> 全局设置
+    <div className="fixed inset-0 bg-[#05070A]/80 backdrop-blur-md z-50 flex justify-center items-center p-4">
+      <div className="bg-[#0B0F19]/95 border border-[#C9B284]/20 rounded-2xl w-full max-w-4xl h-[70vh] min-h-[500px] flex flex-col shadow-[0_0_80px_rgba(0,0,0,0.6)] font-sans animate-in fade-in zoom-in-95 duration-200">
+        
+        {/* Header */}
+        <div className="px-6 py-5 border-b border-[#C9B284]/10 flex justify-between items-center shrink-0">
+          <h2 className="text-[16px] font-bold flex items-center gap-2.5 text-[#E7D7B0] tracking-wide">
+            <Settings className="w-4 h-4 text-[#C9B284]" /> 设置 / Settings
           </h2>
+          <button onClick={onClose} aria-label="关闭设置" className="text-[#8C8370] hover:text-[#C9B284] transition-colors p-1 rounded-md hover:bg-[#C9B284]/10">
+            <X className="w-5 h-5" />
+          </button>
         </div>
-        <div className="p-6 space-y-6 overflow-y-auto flex-1 custom-scroll">
+
+        {/* Content Area */}
+        <div className="flex flex-1 overflow-hidden">
           
-          <div className="space-y-3">
-            <label className="block text-sm font-medium text-slate-300">选择大模型厂商</label>
-            <div className="flex gap-2 p-1 bg-black/30 rounded-xl border border-white/5">
-              <button
-                className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${settings.provider === 'gemini' ? 'bg-[#2A2B2D] text-white shadow-sm' : 'text-slate-400 hover:text-slate-300'}`}
-                onClick={() => setSettings({...settings, provider: 'gemini'})}
-              >
-                Google Gemini
-              </button>
-              <button
-                className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${settings.provider === 'openai' ? 'bg-[#2A2B2D] text-white shadow-sm' : 'text-slate-400 hover:text-slate-300'}`}
-                onClick={() => setSettings({...settings, provider: 'openai'})}
-              >
-                OpenAI (ChatGPT)
-              </button>
-            </div>
+          {/* Left Nav */}
+          <div className="w-56 border-r border-[#C9B284]/10 p-4 space-y-2 shrink-0 bg-black/20">
+            <NavItem id="ai" icon={Cpu} label="AI / Model" />
+            <NavItem id="finance" icon={LineChart} label="Finance Data" />
+            <NavItem id="wallet" icon={Wallet} label="Wallet / Account" />
+            <NavItem id="security" icon={Shield} label="Security" />
           </div>
 
-          <div className="bg-[#181A1C] border border-[#2A2B2D] rounded-xl p-5 space-y-5 relative">
-            {settings.provider === 'gemini' ? (
-              <>
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">Gemini API Key</label>
-                  <input
-                    type="password"
-                    value={settings.geminiKey}
-                    onChange={(e) => setSettings({...settings, geminiKey: e.target.value})}
-                    placeholder="AIzaSy..."
-                    className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-dash-textMain focus:outline-none focus:border-dash-gold/50 font-mono transition-colors"
-                  />
-                </div>
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <label className="text-sm font-medium text-slate-300">模型版本选择</label>
-                    <button onClick={fetchGeminiModels} disabled={isLoadingGeminiModels} className="text-xs text-dash-green flex items-center gap-1 hover:underline disabled:opacity-50 disabled:cursor-not-allowed">
-                      {isLoadingGeminiModels ? <Loader2 className="w-3 h-3 animate-spin"/> : <RefreshCw className="w-3 h-3"/>}
-                      从官方拉取
-                    </button>
+          {/* Right Panel */}
+          <div className="flex-1 p-8 overflow-y-auto custom-scroll space-y-8 bg-black/10">
+            
+            {activeTab === 'ai' && (
+              <div className="space-y-6 animate-in fade-in duration-300">
+                <h3 className="text-sm font-bold text-[#C9B284] uppercase tracking-wider border-b border-[#C9B284]/10 pb-3">API / Model Settings</h3>
+                
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2 col-span-2">
+                    <label className="text-[11px] text-[#8C8370] font-mono uppercase">AI Provider</label>
+                    <select 
+                      value={settings.provider}
+                      onChange={(e) => setSettings({...settings, provider: e.target.value as 'gemini' | 'openai'})}
+                      className="w-full bg-[#121419] border border-[#1A1D20] text-[#E7D7B0] text-[13px] rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#C9B284]/50 transition-colors"
+                    >
+                      <option value="gemini">Google Gemini</option>
+                      <option value="openai">OpenAI (ChatGPT)</option>
+                    </select>
                   </div>
-                  <div className="space-y-4">
-                    <div>
-                      <span className="text-xs text-dash-textSub block mb-1">意图识别/基础分析 (Fast Model)</span>
+                  
+                  {/* Fast Model Selection */}
+                  <div className="space-y-2 col-span-2 md:col-span-1">
+                    <div className="flex justify-between items-center">
+                      <label className="text-[11px] text-[#8C8370] font-mono uppercase">Model (Fast / Intent Analysis)</label>
+                      <button 
+                         onClick={settings.provider === 'gemini' ? fetchGeminiModels : fetchOpenAIModels}
+                         disabled={settings.provider === 'gemini' ? isLoadingGeminiModels : isLoadingOpenAIModels}
+                         className="text-[10px] text-[#C9B284] flex items-center gap-1 hover:text-[#E7D7B0] disabled:opacity-50"
+                      >
+                         {((settings.provider === 'gemini' && isLoadingGeminiModels) || (settings.provider === 'openai' && isLoadingOpenAIModels)) ? <Loader2 className="w-3 h-3 animate-spin"/> : <RefreshCw className="w-3 h-3"/>}
+                         Refresh
+                      </button>
+                    </div>
+                    {settings.provider === 'gemini' ? (
                       <select 
                         value={settings.geminiFastModel}
                         onChange={(e) => setSettings({...settings, geminiFastModel: e.target.value})}
-                        className="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-dash-textMain focus:outline-none focus:border-dash-gold/50 font-mono appearance-none"
+                        className="w-full bg-[#121419] border border-[#1A1D20] text-[#E7D7B0] text-[13px] rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#C9B284]/50 transition-colors font-mono"
                       >
-                         <option value="gemini-3-flash-preview">gemini-3-flash-preview (默认)</option>
-                         <option value="gemini-2.5-flash">gemini-2.5-flash</option>
-                         {settings.geminiFastModel && !['gemini-3-flash-preview', 'gemini-2.5-flash'].includes(settings.geminiFastModel) && !availableGeminiModels.includes(settings.geminiFastModel) && (
-                            <option value={settings.geminiFastModel}>{settings.geminiFastModel} (已保存)</option>
-                         )}
-                         {availableGeminiModels.map(m => <option key={m} value={m}>{m}</option>)}
+                        {Array.from(new Set([
+                          'gemini-3-flash-preview',
+                          'gemini-2.5-flash',
+                          ...availableGeminiModels
+                        ])).map(m => (
+                          <option key={m} value={m}>
+                            {m} {m === 'gemini-3-flash-preview' ? '(默认)' : ''}
+                          </option>
+                        ))}
                       </select>
-                    </div>
-                    <div>
-                      <span className="text-xs text-dash-textSub block mb-1">深度推演/战略级 (Advanced Model)</span>
-                      <select 
-                        value={settings.geminiAdvancedModel}
-                        onChange={(e) => setSettings({...settings, geminiAdvancedModel: e.target.value})}
-                        className="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-dash-textMain focus:outline-none focus:border-dash-gold/50 font-mono appearance-none"
-                      >
-                         <option value="gemini-3.1-pro-preview">gemini-3.1-pro-preview (默认)</option>
-                         <option value="gemini-2.5-pro">gemini-2.5-pro</option>
-                         {settings.geminiAdvancedModel && !['gemini-3.1-pro-preview', 'gemini-2.5-pro'].includes(settings.geminiAdvancedModel) && !availableGeminiModels.includes(settings.geminiAdvancedModel) && (
-                            <option value={settings.geminiAdvancedModel}>{settings.geminiAdvancedModel} (已保存)</option>
-                         )}
-                         {availableGeminiModels.map(m => <option key={m} value={m}>{m}</option>)}
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <>
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">OpenAI API Key</label>
-                  <input
-                    type="password"
-                    value={settings.openaiKey}
-                    onChange={(e) => setSettings({...settings, openaiKey: e.target.value})}
-                    placeholder="sk-..."
-                    className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-dash-textMain focus:outline-none focus:border-dash-gold/50 font-mono transition-colors"
-                  />
-                </div>
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <label className="text-sm font-medium text-slate-300">模型版本选择</label>
-                    <button onClick={fetchOpenAIModels} disabled={isLoadingOpenAIModels} className="text-xs text-dash-green flex items-center gap-1 hover:underline disabled:opacity-50 disabled:cursor-not-allowed">
-                      {isLoadingOpenAIModels ? <Loader2 className="w-3 h-3 animate-spin"/> : <RefreshCw className="w-3 h-3"/>}
-                      从官方拉取
-                    </button>
-                  </div>
-                  <div className="space-y-4">
-                    <div>
-                      <span className="text-xs text-dash-textSub block mb-1">意图识别/基础分析 (Fast Model)</span>
+                    ) : (
                       <select 
                         value={settings.openaiFastModel}
                         onChange={(e) => setSettings({...settings, openaiFastModel: e.target.value})}
-                        className="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-dash-textMain focus:outline-none focus:border-dash-gold/50 font-mono appearance-none"
+                        className="w-full bg-[#121419] border border-[#1A1D20] text-[#E7D7B0] text-[13px] rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#C9B284]/50 transition-colors font-mono"
                       >
-                         <option value="gpt-4o-mini">gpt-4o-mini (默认)</option>
-                         <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
-                         {settings.openaiFastModel && !['gpt-4o-mini', 'gpt-3.5-turbo'].includes(settings.openaiFastModel) && !availableOpenAIModels.includes(settings.openaiFastModel) && (
-                            <option value={settings.openaiFastModel}>{settings.openaiFastModel} (已保存)</option>
-                         )}
-                         {availableOpenAIModels.map(m => <option key={m} value={m}>{m}</option>)}
+                        {Array.from(new Set([
+                          'gpt-4o-mini',
+                          'gpt-3.5-turbo',
+                          ...availableOpenAIModels
+                        ])).map(m => (
+                          <option key={m} value={m}>
+                            {m} {m === 'gpt-4o-mini' ? '(默认)' : ''}
+                          </option>
+                        ))}
                       </select>
-                    </div>
-                    <div>
-                      <span className="text-xs text-dash-textSub block mb-1">深度推演/战略级 (Advanced Model)</span>
+                    )}
+                  </div>
+
+                  {/* Advanced Model Selection */}
+                  <div className="space-y-2 col-span-2 md:col-span-1">
+                    <label className="text-[11px] text-[#8C8370] font-mono uppercase">Model (Advanced / Strategy)</label>
+                    {settings.provider === 'gemini' ? (
+                      <select 
+                        value={settings.geminiAdvancedModel}
+                        onChange={(e) => setSettings({...settings, geminiAdvancedModel: e.target.value})}
+                        className="w-full bg-[#121419] border border-[#1A1D20] text-[#E7D7B0] text-[13px] rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#C9B284]/50 transition-colors font-mono"
+                      >
+                        {Array.from(new Set([
+                          'gemini-3.1-pro-preview',
+                          'gemini-2.5-pro',
+                          ...availableGeminiModels
+                        ])).map(m => (
+                          <option key={m} value={m}>
+                            {m} {m === 'gemini-3.1-pro-preview' ? '(默认)' : ''}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
                       <select 
                         value={settings.openaiAdvancedModel}
                         onChange={(e) => setSettings({...settings, openaiAdvancedModel: e.target.value})}
-                        className="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-dash-textMain focus:outline-none focus:border-dash-gold/50 font-mono appearance-none"
+                        className="w-full bg-[#121419] border border-[#1A1D20] text-[#E7D7B0] text-[13px] rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#C9B284]/50 transition-colors font-mono"
                       >
-                         <option value="gpt-4o">gpt-4o (默认)</option>
-                         <option value="o3-mini">o3-mini</option>
-                         <option value="o1-preview">o1-preview</option>
-                         {settings.openaiAdvancedModel && !['gpt-4o', 'o3-mini', 'o1-preview'].includes(settings.openaiAdvancedModel) && !availableOpenAIModels.includes(settings.openaiAdvancedModel) && (
-                            <option value={settings.openaiAdvancedModel}>{settings.openaiAdvancedModel} (已保存)</option>
-                         )}
-                         {availableOpenAIModels.map(m => <option key={m} value={m}>{m}</option>)}
+                        {Array.from(new Set([
+                          'gpt-4o',
+                          'o3-mini',
+                          'o1-preview',
+                          ...availableOpenAIModels
+                        ])).map(m => (
+                          <option key={m} value={m}>
+                            {m} {m === 'gpt-4o' ? '(默认)' : ''}
+                          </option>
+                        ))}
                       </select>
-                    </div>
+                    )}
                   </div>
                 </div>
-              </>
+
+                <div className="space-y-2">
+                   <label className="text-[11px] text-[#8C8370] font-mono uppercase">API Key</label>
+                   <input
+                      type="password"
+                      value={settings.provider === 'gemini' ? settings.geminiKey : settings.openaiKey}
+                      onChange={(e) => {
+                        if (settings.provider === 'gemini') {
+                          setSettings({...settings, geminiKey: e.target.value});
+                        } else {
+                          setSettings({...settings, openaiKey: e.target.value});
+                        }
+                      }}
+                      placeholder={settings.provider === 'gemini' ? "AIzaSy..." : "sk-..."}
+                      className="w-full bg-[#121419] border border-[#1A1D20] rounded-lg px-4 py-2.5 text-[13px] text-[#E7D7B0] focus:outline-none focus:border-[#C9B284]/50 font-mono transition-colors"
+                   />
+                </div>
+
+                <div className="flex justify-between items-center text-[11px] font-mono pt-4 border-t border-[#1A1D20]">
+                   <div className="flex flex-col gap-1">
+                      <span className="text-[#8C8370] uppercase">Connection Status</span>
+                      <span className="flex items-center gap-1.5 text-emerald-400">
+                         <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)] animate-pulse"></span>
+                         Connected
+                      </span>
+                   </div>
+                   <div className="flex flex-col gap-1 text-right border-l border-[#1A1D20] pl-6">
+                      <span className="text-[#8C8370] uppercase">Last Updated</span>
+                      <span className="text-slate-300 flex items-center gap-1"><RefreshCw className="w-3 h-3 text-[#C9B284]"/> 1 minute ago</span>
+                   </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'finance' && (
+              <div className="space-y-6 animate-in fade-in duration-300">
+                <h3 className="text-sm font-bold text-[#C9B284] uppercase tracking-wider border-b border-[#C9B284]/10 pb-3">LongBridge / Finance Settings</h3>
+                
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[11px] text-[#8C8370] font-mono uppercase">Data Source</label>
+                    <select className="w-full bg-[#121419] border border-[#1A1D20] text-[#E7D7B0] text-[13px] rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#C9B284]/50 transition-colors">
+                      <option>LongBridge (Live)</option>
+                      <option>Demo Market Data</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[11px] text-[#8C8370] font-mono uppercase">Refresh Interval</label>
+                    <select className="w-full bg-[#121419] border border-[#1A1D20] text-[#E7D7B0] text-[13px] rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#C9B284]/50 transition-colors">
+                      <option>15 minutes</option>
+                      <option>1 hour</option>
+                      <option>Real-time (Websocket)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                   <h4 className="text-[12px] text-[#E7D7B0]">Connected Accounts</h4>
+                   <button 
+                     onClick={() => {
+                       const newAcc = { id: Math.random().toString(36).substring(7), name: `长桥账户 ${settings.longbridgeAccounts?.length ? settings.longbridgeAccounts.length + 1 : 1}`, appKey: '', appSecret: '', accessToken: '' };
+                       setSettings({ ...settings, longbridgeAccounts: [...(settings.longbridgeAccounts || []), newAcc] });
+                     }}
+                     className="text-[11px] text-[#C9B284] hover:text-[#E7D7B0] transition-colors flex items-center gap-1 border border-[#C9B284]/30 px-2 py-1 rounded hover:bg-[#C9B284]/10"
+                   >
+                     + Add Account
+                   </button>
+                  </div>
+
+                  {(!settings.longbridgeAccounts || settings.longbridgeAccounts.length === 0) && (
+                     <div className="p-6 border border-dashed border-[#1A1D20] rounded-xl flex flex-col items-center justify-center text-center gap-2 text-[#8C8370]">
+                       <span className="text-xs uppercase tracking-widest font-mono">No Accounts Setup</span>
+                     </div>
+                  )}
+
+                  {settings.longbridgeAccounts?.map(acc => (
+                     <div key={acc.id} className="bg-[#121419] border border-[#1A1D20] rounded-xl p-4 relative group">
+                       <button onClick={() => setSettings({...settings, longbridgeAccounts: settings.longbridgeAccounts?.filter(a => a.id !== acc.id)})} className="absolute top-2 right-2 p-1.5 text-[#8C8370] hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"><X className="w-4 h-4"/></button>
+                       <input type="text" placeholder="Account Name (e.g. Main Portfolio)" value={acc.name} onChange={e => { const newAccs = settings.longbridgeAccounts?.map(a => a.id === acc.id ? {...a, name: e.target.value} : a); setSettings({...settings, longbridgeAccounts: newAccs}); }} className="w-full bg-transparent text-[13px] font-bold text-[#E7D7B0] mb-3 focus:outline-none placeholder-[#8C8370]" />
+                       <div className="space-y-2 grid grid-cols-2 gap-3 items-end">
+                         <div className="space-y-1 col-span-2 sm:col-span-1">
+                            <label className="text-[10px] text-[#8C8370] uppercase font-mono">App Key</label>
+                            <input type="text" placeholder="Key" value={acc.appKey} onChange={e => { const newAccs = settings.longbridgeAccounts?.map(a => a.id === acc.id ? {...a, appKey: e.target.value} : a); setSettings({...settings, longbridgeAccounts: newAccs}); }} className="w-full bg-[#0B0D0F] border border-[#1A1D20] rounded p-2 text-xs text-slate-300 focus:border-[#C9B284]/50 focus:outline-none font-mono" />
+                         </div>
+                         <div className="space-y-1 col-span-2 sm:col-span-1">
+                            <label className="text-[10px] text-[#8C8370] uppercase font-mono">App Secret</label>
+                            <input type="password" placeholder="Secret" value={acc.appSecret} onChange={e => { const newAccs = settings.longbridgeAccounts?.map(a => a.id === acc.id ? {...a, appSecret: e.target.value} : a); setSettings({...settings, longbridgeAccounts: newAccs}); }} className="w-full bg-[#0B0D0F] border border-[#1A1D20] rounded p-2 text-xs text-slate-300 focus:border-[#C9B284]/50 focus:outline-none font-mono" />
+                         </div>
+                         <div className="space-y-1 col-span-2">
+                            <label className="text-[10px] text-[#8C8370] uppercase font-mono">Access Token</label>
+                            <input type="password" placeholder="Token" value={acc.accessToken} onChange={e => { const newAccs = settings.longbridgeAccounts?.map(a => a.id === acc.id ? {...a, accessToken: e.target.value} : a); setSettings({...settings, longbridgeAccounts: newAccs}); }} className="w-full bg-[#0B0D0F] border border-[#1A1D20] rounded p-2 text-xs text-slate-300 focus:border-[#C9B284]/50 focus:outline-none font-mono" />
+                         </div>
+                       </div>
+                     </div>
+                  ))}
+                </div>
+
+                <div className="flex justify-between items-center text-[11px] font-mono pt-4 border-t border-[#1A1D20]">
+                   <div className="flex flex-col gap-1">
+                      <span className="text-[#8C8370] uppercase">Connection Status</span>
+                      <span className="flex items-center gap-1.5 text-emerald-400">
+                         <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]"></span>
+                         Connected
+                      </span>
+                   </div>
+                   <div className="flex flex-col gap-1 text-right border-l border-[#1A1D20] pl-6">
+                      <span className="text-[#8C8370] uppercase">Last Updated</span>
+                      <span className="text-slate-300 flex items-center justify-end gap-1"><RefreshCw className="w-3 h-3 text-[#C9B284]"/> 2 minutes ago</span>
+                   </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'wallet' && (
+              <div className="space-y-6 animate-in fade-in duration-300">
+                <h3 className="text-sm font-bold text-[#C9B284] uppercase tracking-wider border-b border-[#C9B284]/10 pb-3">Wallet / Account Settings</h3>
+                
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[11px] text-[#8C8370] font-mono uppercase">Active Wallet</label>
+                    <select className="w-full bg-[#121419] border border-[#1A1D20] text-[#E7D7B0] text-[13px] rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#C9B284]/50 transition-colors">
+                      <option>Arbitra Wallet</option>
+                      <option>Local Account</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[11px] text-[#8C8370] font-mono uppercase">Network</label>
+                    <select className="w-full bg-[#121419] border border-[#1A1D20] text-[#E7D7B0] text-[13px] rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#C9B284]/50 transition-colors">
+                      <option>Ethereum Mainnet</option>
+                      <option>Arbitrum One</option>
+                      <option>Off-chain Sync</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <div className="p-4 bg-[#121419] border border-[#1A1D20] rounded-xl flex items-center justify-between">
+                   <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#C9B284] to-[#8C8370] flex items-center justify-center p-0.5">
+                         <div className="w-full h-full bg-[#0B0F19] rounded-full flex items-center justify-center">
+                            <Wallet className="w-4 h-4 text-[#C9B284]" />
+                         </div>
+                      </div>
+                      <div>
+                         <div className="text-[13px] text-[#E7D7B0] font-medium">0x... (Not Configured)</div>
+                         <div className="text-[11px] text-[#8C8370] font-mono mt-0.5">Placeholder Address</div>
+                      </div>
+                   </div>
+                </div>
+
+                <div className="flex justify-between items-center text-[11px] font-mono pt-4 border-t border-[#1A1D20]">
+                   <div className="flex flex-col gap-1">
+                      <span className="text-[#8C8370] uppercase">Connection Status</span>
+                      <span className="flex items-center gap-1.5 text-emerald-400">
+                         <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]"></span>
+                         Connected
+                      </span>
+                   </div>
+                   <div className="flex flex-col gap-1 text-right border-l border-[#1A1D20] pl-6">
+                      <span className="text-[#8C8370] uppercase">Last Updated</span>
+                      <span className="text-slate-300 flex items-center justify-end gap-1"><RefreshCw className="w-3 h-3 text-[#C9B284] animate-spin-slow"/> Just now</span>
+                   </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'security' && (
+              <div className="space-y-6 animate-in fade-in duration-300">
+                <h3 className="text-sm font-bold text-[#C9B284] uppercase tracking-wider border-b border-[#C9B284]/10 pb-3">Security</h3>
+                <div className="p-6 border border-dashed border-[#1A1D20] rounded-xl flex flex-col items-center justify-center text-center gap-2 text-[#8C8370]">
+                   <Shield className="w-6 h-6 mb-2 text-[#C9B284]/50" />
+                   <span className="text-xs uppercase tracking-widest font-mono">Authentication disabled in preview environment</span>
+                </div>
+              </div>
             )}
           </div>
-          
-          <div className="bg-[#181A1C] border border-[#2A2B2D] rounded-xl p-5 space-y-5 relative">
-            <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-2 border-b border-[#2A2B2D] pb-3">
-              外部数据连接源
-            </h3>
-            
-            <div className="space-y-4 border-t border-dash-subtle pt-6 mt-4">
-             <div className="flex justify-between items-center">
-               <h4 className="text-xs font-bold text-dash-gold uppercase tracking-wider flex items-center"><Wallet className="w-4 h-4 mr-2" /> 长桥实盘专线 (Longbridge)</h4>
-               <button 
-                 onClick={() => {
-                   const newAcc = { id: Math.random().toString(36).substring(7), name: `长桥账户 ${settings.longbridgeAccounts?.length ? settings.longbridgeAccounts.length + 1 : 1}`, appKey: '', appSecret: '', accessToken: '' };
-                   setSettings({ ...settings, longbridgeAccounts: [...(settings.longbridgeAccounts || []), newAcc] });
-                 }}
-                 className="px-3 py-1 bg-dash-primary/10 text-dash-primary hover:bg-dash-primary/20 rounded border border-dash-primary/30 text-[10px] font-bold transition-colors"
-               >
-                 + 绑定新账户
-               </button>
-             </div>
-             
-             <div className="space-y-3">
-               {(!settings.longbridgeAccounts || settings.longbridgeAccounts.length === 0) && (
-                 <div className="flex flex-col items-center justify-center p-6 border border-dashed border-dash-subtle rounded-[12px] bg-black/20 text-center gap-2">
-                   <p className="arbitra-text-mono text-[10px] tracking-[0.2em] arbitra-text-tertiary uppercase">暂无已绑定账户</p>
-                   <span className="text-xs arbitra-text-secondary font-medium">系统将使用模拟或公共数据源。</span>
-                 </div>
-               )}
-               {settings.longbridgeAccounts?.map(acc => (
-                 <div key={acc.id} className="bg-black/30 border border-dash-subtle rounded-xl p-4 relative group">
-                   <button onClick={() => setSettings({...settings, longbridgeAccounts: settings.longbridgeAccounts?.filter(a => a.id !== acc.id)})} aria-label="移除账户" className="absolute top-2 right-2 p-1 text-slate-500 hover:text-dash-red opacity-0 group-hover:opacity-100 transition-opacity arbitra-focus-ring"><X className="w-4 h-4"/></button>
-                   <input type="text" placeholder="账户备注 (如: 长桥长线主仓)" value={acc.name} onChange={e => { const newAccs = settings.longbridgeAccounts?.map(a => a.id === acc.id ? {...a, name: e.target.value} : a); setSettings({...settings, longbridgeAccounts: newAccs}); }} className="w-full bg-transparent text-sm font-bold text-white mb-3 focus:outline-none placeholder-slate-600" />
-                   <div className="space-y-2">
-                     <input type="text" placeholder="App Key" value={acc.appKey} onChange={e => { const newAccs = settings.longbridgeAccounts?.map(a => a.id === acc.id ? {...a, appKey: e.target.value} : a); setSettings({...settings, longbridgeAccounts: newAccs}); }} className="w-full bg-black/40 border border-dash-subtle rounded-lg p-2 text-xs text-slate-300 focus:border-dash-primary focus:outline-none font-mono" />
-                     <input type="password" placeholder="App Secret" value={acc.appSecret} onChange={e => { const newAccs = settings.longbridgeAccounts?.map(a => a.id === acc.id ? {...a, appSecret: e.target.value} : a); setSettings({...settings, longbridgeAccounts: newAccs}); }} className="w-full bg-black/40 border border-dash-subtle rounded-lg p-2 text-xs text-slate-300 focus:border-dash-primary focus:outline-none font-mono" />
-                     <input type="password" placeholder="Access Token" value={acc.accessToken} onChange={e => { const newAccs = settings.longbridgeAccounts?.map(a => a.id === acc.id ? {...a, accessToken: e.target.value} : a); setSettings({...settings, longbridgeAccounts: newAccs}); }} className="w-full bg-black/40 border border-dash-subtle rounded-lg p-2 text-xs text-slate-300 focus:border-dash-primary focus:outline-none font-mono" />
-                   </div>
-                 </div>
-               ))}
-               <p className="text-xs text-dash-textSub mt-2 leading-relaxed">
-                 用于自动同步美港股实时持仓、盈亏状况进入智能推演网络。API Key 鉴权模式需要同时填写 App Key, App Secret 和 Access Token。如果您拥有的是 OAuth 获取的 Auth Token，由于无需计算 HMAC 签名，您可以直接仅填写 Access Token 字段。
-               </p>
-             </div>
-          </div>
-          </div>
-          
-          <div className="text-xs text-dash-textSub leading-relaxed">
-            注意：所有配置与 Key 均安全地保存在本地缓存。在无配置状态下，若环境中挂载了全局变量，将默认回退至全局 AI Studio 资源。切换模型厂商需要页面重载以应用变更。
-          </div>
         </div>
-        <div className="px-6 py-4 bg-black/20 flex justify-end gap-3 border-t border-[#2A2B2D] shrink-0">
-          <button 
-            onClick={onClose} 
-            className="px-4 py-2 text-sm font-medium text-dash-textSub hover:text-white transition-colors"
-          >
-            取消
-          </button>
-          <button 
-            onClick={handleSave} 
-            className="px-6 py-2 bg-dash-gold text-slate-900 text-sm font-bold rounded-lg shadow-lg shadow-dash-gold/20 hover:bg-yellow-400 hover:shadow-[0_0_20px_rgba(212,175,55,0.4)] transition-all"
-          >
-            保存并生效
-          </button>
+
+        {/* Footer actions */}
+        <div className="px-6 py-4 bg-[#0B0F19] border-t border-[#C9B284]/10 flex justify-between items-center shrink-0">
+          <div className="flex-1">
+             {showSavedToast && (
+                <span className="text-[12px] text-emerald-400 flex items-center gap-1.5 animate-in fade-in">
+                  <CheckCircle2 className="w-4 h-4" /> All changes saved
+                </span>
+             )}
+          </div>
+          <div className="flex gap-4">
+            <button 
+              onClick={onClose} 
+              className="px-5 py-2 text-[13px] font-medium text-[#8C8370] hover:text-[#E7D7B0] transition-colors"
+            >
+              Cancel
+            </button>
+            <button 
+              onClick={handleSave} 
+              className="px-6 py-2 bg-[#C9B284]/10 border border-[#C9B284]/30 text-[#C9B284] text-[13px] font-bold rounded-lg hover:bg-[#C9B284] hover:text-[#05070A] transition-all flex items-center gap-2"
+            >
+              <Settings className="w-4 h-4" /> Save Settings
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
 };
+

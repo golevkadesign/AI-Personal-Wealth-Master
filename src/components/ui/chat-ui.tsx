@@ -114,39 +114,34 @@ export const ChatList = React.memo(function ChatList({ messages, isTyping, onReg
   ];
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-6 sm:space-y-10 custom-scroll pb-40 sm:pb-48" ref={containerRef} onScroll={handleScroll}>
+    <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-5 custom-scroll pb-40" ref={containerRef} onScroll={handleScroll}>
       {messages.length === 0 ? (
-        <div className="h-full flex flex-col items-center justify-center text-center opacity-70 py-10 px-4">
-          <Bot className="w-12 h-12 mb-6 text-dash-tertiary" />
-          <p className="text-xs font-mono tracking-[0.2em] mb-10 text-dash-tertiary uppercase font-semibold">Initialize Intelligence Prompt...</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-2xl">
-            {quickPrompts.map((prompt, i) => (
-              <button
-                key={i}
-                onClick={() => onQuickPrompt?.(prompt)}
-                className="text-left p-5 rounded-2xl border border-dash-subtle hover:border-dash-primary/30 hover:bg-dash-surface hover:shadow-lg transition-all text-sm flex items-start gap-3 group backdrop-blur-md"
-              >
-                <MessageSquare className="w-5 h-5 text-dash-tertiary mt-0.5 flex-shrink-0 group-hover:text-dash-gold transition-colors" />
-                <span className="text-dash-secondary group-hover:text-dash-primary transition-colors font-medium tracking-tight leading-relaxed">{prompt}</span>
-              </button>
-            ))}
-          </div>
+        <div className="h-full flex flex-col items-center justify-center text-center opacity-65 py-16 px-4">
+          <Sparkles className="w-6 h-6 mb-3 text-[#C9B284]" />
+          <p className="text-[10px] font-mono tracking-[0.2em] mb-2 text-[#A39167] uppercase font-bold">Awaiting wealth strategy parameters</p>
+          <p className="text-dash-tertiary max-w-sm tracking-tight leading-relaxed font-sans text-xs">
+            Enter a quantitative command, attach financial records, or execute a Suggested Prompt above to synthesize AI strategies.
+          </p>
         </div>
       ) : (
         messages.map((msg, i) => {
           if (msg.role === 'user') {
             return (
-              <div key={i} className="flex w-full items-start gap-4 sm:gap-5 transition-all duration-300 relative justify-end">
-                <div className="relative group bg-[#15171A] text-dash-primary rounded-[24px] rounded-tr-[4px] px-6 py-4 font-medium max-w-[85%] shadow-sm border border-white/5">
+              <div key={i} className="flex flex-col items-end gap-1 w-full max-w-[90%] ml-auto">
+                <div className="flex items-center gap-1.5 text-[10px] font-mono text-dash-tertiary uppercase tracking-wider mb-0.5 font-semibold">
+                  <span>You</span>
+                  <span>10:32 AM</span>
+                </div>
+                <div className="relative group bg-[#16181A] border border-[#C9B284]/20 text-white rounded-2xl rounded-tr-sm px-4 py-2.5 text-[13px] leading-relaxed shadow-sm font-sans w-full">
                   {msg.attachments && msg.attachments.length > 0 && (
                     <div className="flex flex-wrap gap-2 mb-3">
                         {msg.attachments.map((att: any, attIdx: number) => (
-                          <div key={attIdx} className="relative shadow-sm rounded-[16px] overflow-hidden border border-white/5 bg-dash-surface">
+                          <div key={attIdx} className="relative shadow-sm rounded-lg overflow-hidden border border-white/5 bg-dash-surface">
                               {att.mimeType?.startsWith('image/') ? (
-                                <img src={att.url || `data:${att.mimeType};base64,${att.data}`} alt="attachment" className="w-20 h-20 object-cover hover:scale-105 transition-transform" />
+                                <img src={att.url || `data:${att.mimeType};base64,${att.data}`} alt="attachment" className="w-16 h-16 object-cover hover:scale-105 transition-transform" />
                               ) : (
-                                <div className="w-20 h-20 bg-white/5 flex flex-col items-center justify-center p-2 text-[10px] text-dash-secondary font-sans text-center font-medium">
-                                    <FileText className="w-6 h-6 mb-1 text-dash-tertiary" />
+                                <div className="w-16 h-16 bg-white/5 flex flex-col items-center justify-center p-2 text-[9px] text-dash-secondary font-sans text-center font-medium">
+                                    <FileText className="w-5 h-5 mb-1 text-[#8C8270]" />
                                     <span className="truncate w-full">{att.name}</span>
                                 </div>
                               )}
@@ -155,47 +150,52 @@ export const ChatList = React.memo(function ChatList({ messages, isTyping, onReg
                     </div>
                   )}
                   {msg.content.length > 500 ? (
-                      <div className="text-[15px] sm:text-[16px] leading-[1.8] break-words text-dash-primary font-medium tracking-tight">
+                      <div className="text-[13px] leading-relaxed text-dash-primary">
                         <motion.div layout className="relative">
-                          <div className={cn("overflow-hidden transition-all duration-300", expandedUserMsg[i] ? "max-h-[5000px]" : "max-h-[150px]")}>
+                          <div className={cn("overflow-hidden transition-all duration-300", expandedUserMsg[i] ? "max-h-[5000px]" : "max-h-[120px]")}>
                             <div className="whitespace-pre-wrap">{msg.content}</div>
                           </div>
                           {!expandedUserMsg[i] && (
-                            <div className="absolute bottom-0 left-0 w-full h-12 bg-gradient-to-t from-[#15171A] to-transparent pointer-events-none" />
+                            <div className="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-[#16181A] to-transparent pointer-events-none" />
                           )}
                         </motion.div>
                         <button 
                           onClick={() => setExpandedUserMsg(prev => ({ ...prev, [i]: !prev[i] }))} 
-                          className="text-[11px] text-dash-tertiary hover:text-dash-primary mt-3 font-semibold uppercase tracking-widest w-full text-left transition-colors"
+                          className="text-[10px] text-dash-secondary hover:text-dash-primary mt-2 font-mono uppercase tracking-widest w-full text-left transition-colors font-bold"
                         >
-                            {expandedUserMsg[i] ? "收起 (Collapse)" : "展开 (Expand)"}
+                            {expandedUserMsg[i] ? "收起" : "展开"}
                         </button>
                       </div>
                   ) : (
-                      <div className="text-[15px] sm:text-[16px] leading-[1.8] whitespace-pre-wrap break-words text-dash-primary font-medium tracking-tight">{msg.content}</div>
+                      <div className="text-[13px] leading-relaxed whitespace-pre-wrap break-words text-dash-primary">{msg.content}</div>
                   )}
                 </div>
               </div>
             );
           } else {
             return (
-              <div key={i} className="flex flex-col w-full items-start gap-3 transition-all duration-300 relative justify-start max-w-[95%]">
-                {/* Thinking Section - Centered or Top-Aligned? Top-aligned to the card */}
+              <div key={i} className="flex flex-col items-start gap-1 w-full max-w-[95%]">
+                <div className="flex items-center gap-1.5 text-[10px] font-mono text-dash-tertiary uppercase tracking-wider mb-1 font-semibold">
+                  <span className="font-bold text-[#C9B284]">Arbitra AI</span>
+                  <span>10:32 AM</span>
+                </div>
+                
+                {/* Thinking Section styled as custom Telemetry telemetry panel */}
                 {msg.thinking && (
-                  <div className="ml-0 sm:ml-16 mb-1 max-w-[85%]">
-                    <div className="rounded-2xl overflow-hidden backdrop-blur-md bg-[#13151A]/80 border border-dash-subtle/50 text-xs shadow-sm">
+                  <div className="w-full mb-2 font-mono">
+                    <div className="rounded-xl overflow-hidden backdrop-blur-md bg-[#101113] border border-[#C9B284]/15 text-xs shadow-sm">
                         <button onClick={() => {
                             setExpandedThinking(prev => ({ ...prev, [i]: prev[i] === undefined ? false : !prev[i] }))
-                        }} className="w-full flex items-center justify-between py-2.5 px-4 text-dash-tertiary hover:text-dash-secondary hover:bg-white/5 transition-colors border-b border-transparent data-[expanded=true]:border-dash-subtle" data-expanded={expandedThinking[i] !== false}>
+                        }} className="w-full flex items-center justify-between py-2 px-3 text-[#A39167] hover:text-[#C9B284] hover:bg-white/5 transition-colors border-b border-transparent data-[expanded=true]:border-[#C9B284]/15" data-expanded={expandedThinking[i] !== false}>
                             <div className="flex items-center gap-2">
                               {isTyping && i === messages.length - 1 && !msg.content ? (
                                 <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2, ease: "linear" }}>
-                                  <Cpu className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+                                  <Cpu className="w-3 h-3 text-[#C9B284] animate-pulse" />
                                 </motion.div>
-                              ) : <RefreshCw className="w-3.5 h-3.5 text-dash-tertiary" />}
-                              <span className="font-mono tracking-widest uppercase font-semibold text-[10px] sm:text-[11px] text-dash-secondary">{isTyping && i === messages.length - 1 && !msg.content ? '调度中...' : '运行日志与数据'}</span>
+                              ) : <Activity className="w-3 h-3 text-[#C9B284]" />}
+                              <span className="font-mono tracking-widest uppercase font-bold text-[9px] text-[#A39167]">{isTyping && i === messages.length - 1 && !msg.content ? '调度中...' : '运行日志与数据 TELEMETRY LOG'}</span>
                             </div>
-                            <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${expandedThinking[i] !== false ? 'rotate-180' : ''}`} />
+                            <ChevronDown className={`w-3 h-3 transition-transform duration-300 ${expandedThinking[i] !== false ? 'rotate-180' : ''}`} />
                         </button>
                         <AnimatePresence>
                           {expandedThinking[i] !== false && (
@@ -203,9 +203,9 @@ export const ChatList = React.memo(function ChatList({ messages, isTyping, onReg
                                 initial={{ height: 0, opacity: 0 }}
                                 animate={{ height: "auto", opacity: 1 }}
                                 exit={{ height: 0, opacity: 0 }}
-                                className="text-dash-tertiary font-mono text-[10px] sm:text-[11px] leading-relaxed whitespace-pre-wrap bg-[#101216] border-t border-dash-subtle/50"
+                                className="text-dash-tertiary font-mono text-[10px] leading-relaxed whitespace-pre-wrap bg-[#0D0E10] border-t border-[#C9B284]/10"
                               >
-                                <div className="p-4 sm:p-5 border-l-2 border-emerald-500/20 ml-2 my-2">{msg.thinking}</div>
+                                <div className="p-3 border-l-2 border-[#C9B284]/30 ml-2 my-1.5 max-h-[160px] overflow-y-auto custom-scroll">{msg.thinking}</div>
                               </motion.div>
                           )}
                         </AnimatePresence>
@@ -213,55 +213,50 @@ export const ChatList = React.memo(function ChatList({ messages, isTyping, onReg
                   </div>
                 )}
                 
-                <div className="flex items-start w-full gap-4 sm:gap-5">
-                  <div className="w-10 h-10 rounded-xl bg-[#13151A] border border-white/5 flex flex-shrink-0 items-center justify-center shadow-lg mt-1">
-                    <Sparkles className="w-5 h-5 text-emerald-400 ml-[1px]" />
-                  </div>
-                  
-                  <div className="flex-1 max-w-[85%] bg-[#13151A] border border-white/10 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] rounded-[24px] rounded-tl-[4px] px-6 py-5">
-                    {(!msg.content && isTyping && i === messages.length - 1) ? (
-                        <div className="flex items-center gap-3 text-dash-tertiary font-sans text-sm py-1 font-semibold tracking-wide">
-                          <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2, ease: "linear" }}>
-                            <Loader2 className="w-4 h-4 text-emerald-400" />
-                          </motion.div>
-                          生成中...
-                        </div>
-                    ) : (
-                        <div className="text-[14px] leading-[22px] ai-message break-words w-full space-y-4 text-dash-primary" style={{ fontFamily: 'Roboto' }}>
-                          <Markdown components={markdownComponents}>
-                            {msg.content}
-                          </Markdown>
-                       {msg.content && (
-                           <div className="mt-8 pt-4 border-t border-white/5 flex flex-col gap-3">
-                             {/* Explainable Output Summary */}
-                             <div className="flex flex-wrap gap-2">
+                {/* Custom Private Wealth Advisor Memo Card */}
+                <div className="w-full bg-[#16181A] border border-[#C9B284]/15 rounded-2xl p-4 sm:p-5 shadow-sm font-sans">
+                  {(!msg.content && isTyping && i === messages.length - 1) ? (
+                      <div className="flex items-center gap-2.5 text-dash-tertiary font-mono text-xs py-1">
+                        <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2, ease: "linear" }}>
+                          <Loader2 className="w-3.5 h-3.5 text-[#C9B284]" />
+                        </motion.div>
+                        <span>SYNTHESIZING STRATEGY...</span>
+                      </div>
+                  ) : (
+                      <div className="text-[13px] sm:text-sm leading-relaxed text-[#E7D7B0] space-y-3 font-sans ai-message">
+                        <Markdown components={markdownComponents}>
+                          {msg.content}
+                        </Markdown>
+                        {msg.content && (
+                           <div className="mt-6 pt-4 border-t border-[#C9B284]/10 flex flex-col gap-3 font-sans">
+                             {/* Metric Badges Info */}
+                             <div className="flex flex-wrap gap-1.5">
                                {msg._liveSources?.includes('longbridge') && (
-                                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-wider font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                                   <Activity className="w-3.5 h-3.5" /> Live Data (Longbridge)
+                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-mono uppercase tracking-wider font-semibold bg-[#6B8E6B]/10 text-[#6B8E6B] border border-[#6B8E6B]/20">
+                                   Live Source Included
                                  </span>
                                )}
                                {msg.hasMemoryUpdate && (
-                                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-wider font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                                   <UserIcon className="w-3.5 h-3.5" /> Profile Memory Updated
+                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-mono uppercase tracking-wider font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20 font-sans">
+                                   Memory Updated
                                  </span>
                                )}
-                               {(isTyping && i === messages.length - 1 && msg.timeTaken === undefined) ? (
-                                 <LiveTimer />
-                               ) : msg.timeTaken !== undefined ? (
-                                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-wider font-semibold bg-white/5 text-dash-tertiary border border-white/10">
-                                   <Cpu className="w-3.5 h-3.5" /> { (msg.timeTaken / 1000).toFixed(1) }s 耗时
+                               {msg.timeTaken !== undefined && (
+                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-mono uppercase tracking-wider font-semibold bg-[#1D1F21] text-dash-tertiary border border-[#C9B284]/10">
+                                   {(msg.timeTaken / 1000).toFixed(1)}s
                                  </span>
-                               ) : null}
+                               )}
                              </div>
 
-                             <div className="flex items-center gap-2 opacity-50 hover:opacity-100 transition-opacity mt-2">
-                               <button onClick={() => handleCopy(msg.content, i)} className="flex items-center gap-1.5 text-xs text-dash-tertiary hover:text-dash-secondary transition-colors px-2 py-1 -ml-2 rounded-lg hover:bg-white/5 uppercase tracking-wide">
-                                 {copiedIndex === i ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                                 {copiedIndex === i ? <span className="text-emerald-400">已复制</span> : '复制'}
+                             {/* Memo Toolbar utilities */}
+                             <div className="flex items-center gap-3 opacity-50 hover:opacity-100 transition-opacity mt-1">
+                               <button onClick={() => handleCopy(msg.content, i)} className="flex items-center gap-1 text-[11px] font-mono text-[#8C8270] hover:text-white transition-colors uppercase tracking-wider">
+                                 {copiedIndex === i ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                                 {copiedIndex === i ? <span className="text-emerald-400 font-sans">Copied</span> : 'Copy'}
                                </button>
                                {i === messages.length - 1 && onRegenerate && (
-                                 <button onClick={onRegenerate} className="flex items-center gap-1.5 text-xs text-dash-tertiary hover:text-dash-secondary transition-colors px-2 py-1 rounded-lg hover:bg-white/5 uppercase tracking-wide">
-                                   <RefreshCw className="w-3.5 h-3.5" /> 重算 (Regenerate)
+                                 <button onClick={onRegenerate} className="flex items-center gap-1 text-[11px] font-mono text-[#8C8270] hover:text-white transition-colors uppercase tracking-wider">
+                                   <RefreshCw className="w-3 h-3" /> Re-run
                                  </button>
                                )}
                                {msg.debugData && (
@@ -273,23 +268,22 @@ export const ChatList = React.memo(function ChatList({ messages, isTyping, onReg
                                      a.download = `terminal-node-data-${Date.now()}.json`;
                                      a.click();
                                      URL.revokeObjectURL(url);
-                                 }} className="flex items-center gap-1.5 text-xs text-dash-tertiary hover:text-dash-secondary transition-colors px-2 py-1 rounded-lg hover:bg-white/5 uppercase tracking-wide">
-                                     <Download className="w-3.5 h-3.5" /> 下载节点数据 (JSON)
+                                 }} className="flex items-center gap-1 text-[11px] font-mono text-[#8C8270] hover:text-white transition-colors uppercase tracking-wider">
+                                     <Download className="w-3 h-3" /> JSON Data
                                  </button>
                                )}
                              </div>
                            </div>
-                       )}
-                    </div>
+                        )}
+                      </div>
                   )}
                 </div>
               </div>
-            </div>
-          );
-        }
-      })
-    )}
-    <div ref={chatEndRef} className="h-4" />
+            );
+          }
+        })
+      )}
+      <div ref={chatEndRef} className="h-4" />
 
       {/* Fullscreen Code Modal */}
       <AnimatePresence>

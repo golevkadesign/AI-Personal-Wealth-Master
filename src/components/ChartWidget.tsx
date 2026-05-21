@@ -1,6 +1,6 @@
 import React, { useMemo, Suspense } from 'react';
 import { motion } from 'motion/react';
-import { PieChart, RefreshCw, Sparkles } from 'lucide-react';
+import { PieChart, RefreshCw, Activity } from 'lucide-react';
 import { useInteractionStore } from '../hooks/useInteractionStore';
 
 const ReactEChartsLazy = React.lazy(() => import('./ReactECharts').then(m => ({ default: m.ReactECharts })));
@@ -15,7 +15,7 @@ const ChartSkeleton = () => (
 );
 
 interface ChartWidgetProps {
-  title: string | React.ReactNode;
+  title: React.ReactNode;
   dataLength: number;
   insight?: string | React.ReactNode;
   option?: any;
@@ -34,56 +34,46 @@ export function ChartWidget({ title, dataLength, insight, option, delay = 0, cha
   
   const chartEvents = useMemo(() => onChartClick ? { click: onChartClick } : undefined, [onChartClick]);
 
-  let cnTitle = title;
-  let enTitle = "";
-  if (typeof title === 'string') {
-    const titleParts = title.split(' ');
-    cnTitle = titleParts[0];
-    enTitle = titleParts.slice(1).join(' ');
-  }
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: "spring", stiffness: 400, damping: 25, delay: delay }}
-      className="arbitra-panel arbitra-panel-subtle shadow-sm rounded-[16px] md:rounded-[20px] p-5 md:p-6 lg:p-8 flex flex-col relative overflow-hidden h-full group"
+      className="arbitra-panel arbitra-panel-hover rounded-2xl p-6 sm:p-8 flex flex-col relative overflow-hidden h-full group"
     >
-      <div className="flex justify-between items-start z-10 shrink-0 mb-4 md:mb-6">
-        <h3 className="flex items-center gap-2 text-[14px] font-medium text-dash-primary font-sans tracking-wide">
-          <span>{cnTitle}</span>
-          {enTitle && <span className="text-[10px] sm:text-[11px] uppercase tracking-widest text-dash-secondary font-sans font-normal opacity-70 mt-0.5">{enTitle}</span>}
-        </h3>
-        
+      <h3 className="arbitra-text-secondary text-[11px] arbitra-text-mono font-semibold mb-6 flex justify-between items-start z-10 shrink-0 uppercase tracking-widest">
+        <span className="flex items-center gap-2">{title}</span>
         <div className="flex items-center gap-2">
           {badge && <div>{badge}</div>}
           <button
-             className="flex items-center gap-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity hover:text-dash-gold text-dash-tertiary"
-             onClick={() => useInteractionStore.getState().openCopilot(typeof title === 'string' ? title : '图表分析', { insight }, '数据分析专家')}
-             title="AI Insight"
-             aria-label="AI Insight"
+             className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity border border-[#C9B284]/25 hover:border-[#C9B284]/50 bg-[#16181A] hover:bg-[#C9B284]/10 text-[#C9B284] px-2.5 py-1 font-semibold text-[10px] rounded-[8px] transition-all cursor-pointer flex items-center gap-1 shadow-sm font-sans"
+             onClick={() => {
+               const roleName = title === '公开市场持仓视图' ? '首席组合策略师' : '数据分析专家';
+               useInteractionStore.getState().openCopilot(title as string, { insight }, roleName);
+             }}
+             title="专家探讨"
+             aria-label="专家探讨"
           >
-             <Sparkles className="w-3.5 h-3.5" /> 
-             <span className="text-[11px] font-sans">AI Insight</span>
+             <span>✨</span><span>专家探讨</span>
           </button>
         </div>
-      </div>
+      </h3>
       
       {currentStatus === 'loading' && (
          <div className="flex-1 flex flex-col items-center justify-center min-h-[200px] gap-4">
-             <div className="w-10 h-10 rounded-[12px] bg-dash-surface flex items-center justify-center border border-dash-subtle shadow-inner">
+             <div className="w-10 h-10 rounded-[12px] bg-surface flex items-center justify-center border border-dash-subtle shadow-inner">
                  <div className="w-4 h-4 rounded-full border border-dash-primary/30 border-t-dash-primary animate-spin" />
              </div>
-             <p className="font-mono text-[10px] tracking-[0.2em] text-dash-tertiary uppercase mb-1">SYSTEM STATUS</p>
-             <div className="text-xs text-dash-secondary">Resource Loading</div>
+             <p className="arbitra-text-mono text-[10px] tracking-[0.2em] arbitra-text-tertiary uppercase mb-1">SYSTEM STATUS</p>
+             <div className="text-xs arbitra-text-secondary">Resource Loading</div>
          </div>
       )}
 
       {currentStatus === 'empty' && (
          <div className="flex-1 flex flex-col items-center justify-center min-h-[200px] text-dash-tertiary">
-           <PieChart className="w-8 h-8 mb-3 opacity-30 text-dash-gold" />
-           <p className="font-mono text-[10px] tracking-[0.2em] text-dash-tertiary uppercase mb-1">等待上下文</p>
-           <span className="text-xs text-dash-secondary font-medium">暂无数据</span>
+           <PieChart className="w-8 h-8 mb-3 opacity-30 arbitra-text-gold" />
+           <p className="arbitra-text-mono text-[10px] tracking-[0.2em] arbitra-text-tertiary uppercase mb-1">等待上下文</p>
+           <span className="text-xs arbitra-text-secondary font-medium">暂无数据</span>
          </div>
       )}
 
@@ -92,7 +82,7 @@ export function ChartWidget({ title, dataLength, insight, option, delay = 0, cha
             <div className="w-10 h-10 rounded-[12px] bg-rose-500/10 flex items-center justify-center border border-rose-500/20 shadow-inner mb-2">
                  <RefreshCw className="w-4 h-4 text-rose-500" />
             </div>
-            <p className="font-mono text-[10px] tracking-[0.2em] text-rose-500/70 uppercase">ERROR STATE</p>
+            <p className="arbitra-text-mono text-[10px] tracking-[0.2em] text-rose-500/70 uppercase">ERROR STATE</p>
             <span className="text-xs text-rose-400 font-medium tracking-wide">Data Load Error</span>
             {onReload && (
                <button onClick={onReload} className="arbitra-btn-base arbitra-btn-ghost !text-xs !px-3 !py-1.5 arbitra-focus-ring mt-2">
@@ -103,30 +93,27 @@ export function ChartWidget({ title, dataLength, insight, option, delay = 0, cha
       )}
 
       {currentStatus === 'success' && (
-        <div className="flex-1 flex flex-col min-h-0 pl-0">
-          <div className="flex flex-col xl:flex-row h-full gap-4">
-             <div className="w-full xl:w-[65%] relative z-10 shrink-0" style={{ height: chartHeight }}>
-               {children ? children : (
-                 <Suspense fallback={<ChartSkeleton />}>
-                   <ReactEChartsLazy option={option} onEvents={chartEvents} className="w-full h-full" />
-                 </Suspense>
-               )}
-             </div>
-             
-             <div className="w-full xl:w-[35%] flex flex-col justify-center xl:pl-4 mt-2 xl:mt-0 relative z-10">
-               {insight && insight !== "暂无非公开资产数据" && insight !== "暂无公开市场持仓" && (
-                 <div>
-                   <h4 className="text-[12px] font-semibold text-dash-primary mb-2 flex items-center gap-1.5"><Sparkles className="w-3 h-3 text-dash-gold" />关键洞察</h4>
-                   {typeof insight === 'string' ? (
-                      <p className="text-[13px] text-dash-secondary leading-relaxed">{insight}</p>
-                   ) : (
-                      <div className="text-[13px] text-dash-secondary leading-relaxed">{insight}</div>
-                   )}
-                 </div>
-               )}
-               {/* Values/Legend placeholder depending on design, injected via child or echarts legend */}
-             </div>
-          </div>
+        <div className="flex-1 flex flex-col min-h-0">
+          {option || children ? (
+            <div className="w-full relative z-10 shrink-0 mb-6" style={{ height: chartHeight }}>
+              {children ? children : (
+                <Suspense fallback={<ChartSkeleton />}>
+                  <ReactEChartsLazy option={option} onEvents={chartEvents} className="w-full h-full" />
+                </Suspense>
+              )}
+            </div>
+          ) : null}
+          
+          {insight && insight !== "暂无非公开资产数据" && insight !== "暂无公开市场持仓" && (
+            <div className="mt-auto pt-6 border-t border-dash-subtle relative z-10 flex-1 overflow-y-auto custom-scroll pr-2">
+              <h4 className="text-[11px] font-semibold text-dash-tertiary mb-3 tracking-[0.1em] uppercase block w-full">Terminal Diagnostics</h4>
+              {typeof insight === 'string' ? (
+                 <p className="text-[13px] text-dash-primary leading-relaxed bg-dash-surface-hover p-4 rounded-2xl border border-dash-subtle">{insight}</p>
+              ) : (
+                 <div className="bg-dash-surface-hover p-4 rounded-2xl border border-dash-subtle text-[13px] text-dash-primary leading-relaxed">{insight}</div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </motion.div>
