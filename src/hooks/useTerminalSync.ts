@@ -115,7 +115,11 @@ export function useTerminalSync() {
         const headerValue = btoa(encodeURIComponent(JSON.stringify(settings.longbridgeAccounts)));
         const response = await axios.get('/api/v1/wealth/longbridge/positions', {
             headers: {
-                'X-Longbridge-Accounts': headerValue
+                'X-Longbridge-Accounts': headerValue,
+                'Cache-Control': 'no-cache'
+            },
+            params: {
+                _t: Date.now()
             }
         });
         

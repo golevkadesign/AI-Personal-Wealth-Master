@@ -42,7 +42,12 @@ const fetchSingleAccountPositions = async (account: LongbridgeAccount): Promise<
 
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000);
-        const res = await fetch("https://openapi.longbridgeapp.com/v1/asset/stock", { headers, method: 'GET', signal: controller.signal }).finally(() => clearTimeout(timeoutId));
+        const res = await fetch("https://openapi.longbridgeapp.com/v1/asset/stock", { 
+            headers, 
+            method: 'GET', 
+            signal: controller.signal,
+            cache: 'no-store'
+        }).finally(() => clearTimeout(timeoutId));
         const lbData = await res.json();
         
         let positions: AggregatedPosition[] = [];
