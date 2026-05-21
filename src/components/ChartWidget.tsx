@@ -60,6 +60,17 @@ export function ChartWidget({ title, type, dataLength, insight, option, delay = 
       <h3 className="arbitra-text-secondary text-[11px] arbitra-text-mono font-semibold mb-6 flex justify-between items-start z-10 shrink-0 uppercase tracking-widest">
         <span className="flex items-center gap-2">{title}</span>
         <div className="flex items-center gap-2">
+          {showRefreshButton && (
+            <button
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity border border-[#C9B284]/25 hover:border-[#C9B284]/50 bg-[#16181A] hover:bg-[#C9B284]/10 text-[#C9B284] px-2.5 py-1 font-semibold text-[10px] rounded-[8px] transition-all cursor-pointer flex items-center gap-1 shadow-sm font-sans"
+              title="实时刷新持仓"
+            >
+              <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <span>刷新实盘</span>
+            </button>
+          )}
           {badge && <div>{badge}</div>}
           <button
              className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity border border-[#C9B284]/25 hover:border-[#C9B284]/50 bg-[#16181A] hover:bg-[#C9B284]/10 text-[#C9B284] px-2.5 py-1 font-semibold text-[10px] rounded-[8px] transition-all cursor-pointer flex items-center gap-1 shadow-sm font-sans"
@@ -112,16 +123,6 @@ export function ChartWidget({ title, type, dataLength, insight, option, delay = 
         <div className="flex-1 flex flex-col min-h-0">
           {option || children ? (
             <div className="w-full relative z-10 shrink-0 mb-6" style={{ height: chartHeight }}>
-              {showRefreshButton && (
-                <button
-                  onClick={handleRefresh}
-                  disabled={isRefreshing}
-                  className="absolute top-2 right-2 z-10 p-1.5 rounded-md bg-dash-surface border border-dash-subtle text-dash-tertiary hover:text-dash-primary disabled:opacity-50 transition-colors cursor-pointer shadow-sm"
-                  title="实时刷新持仓"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-                </button>
-              )}
               {children ? children : (
                 <Suspense fallback={<ChartSkeleton />}>
                   <ReactEChartsLazy option={option} onEvents={chartEvents} className="w-full h-full" />
