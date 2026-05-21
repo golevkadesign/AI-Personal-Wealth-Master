@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { getSettings } from '../lib/settings';
 
 export type PlanStatus = 'idle' | 'thinking' | 'done';
@@ -11,11 +11,27 @@ export interface PlanState {
 
 export function useStrategyStream() {
   const [nodePlans, setNodePlans] = useState<Record<string, PlanState>>({});
+  const controllersRef = useRef<Map<string, AbortController>>(new Map());
 
-  const executePlan = async (typeStr: string, item: any, isLong: boolean, idx: number) => {
+  // Clean up all active streams on unmount
+  useEffect(() => {
+    return () => {
+      controllersRef.current.forEach(controller => controller.abort());
+      controllersRef.current.clear();
+    };
+  }, []);
+
+  const executePlan = useCallback(async (typeStr: string, item: any, isLong: boolean, idx: number) => {
     const contentStr = encodeURIComponent(item.description || item.title || '');
     const contentHash = btoa(contentStr).slice(0, 15);
     const planKey = `${isLong ? 'long' : 'short'}-${idx}-${contentHash}`;
+
+    // Abort existing if running
+    if (controllersRef.current.has(planKey)) {
+        controllersRef.current.get(planKey)?.abort();
+    }
+    const controller = new AbortController();
+    controllersRef.current.set(planKey, controller);
 
     setNodePlans(prev => ({
       ...prev,
@@ -41,7 +57,8 @@ export function useStrategyStream() {
           prompt,
           settings: getSettings(),
           customApiKey: localStorage.getItem('custom_gemini_api_key') || undefined
-        })
+        }),
+        signal: controller.signal
       });
 
       if (!response.body) throw new Error('No readable stream from /api/plan');
@@ -53,6 +70,7 @@ export function useStrategyStream() {
       let lastUpdateTime = 0; // 引入节流阀时间戳
       
       while (true) {
+        if (controller.signal.aborted) throw new Error('AbortError');
         const { done, value } = await reader.read();
         if (done) break;
         
@@ -78,7 +96,6 @@ export function useStrategyStream() {
         }
 
         // 核心修复：节流渲染 (Throttling)
-        // 将 setNodePlans 移出 for 循环，并且限制至少间隔 60 毫秒才触发一次 React 重绘
         const now = Date.now();
         if (hasUpdates && now - lastUpdateTime > 60) {
             let thinkMatch = accumulatedText.match(/<think>([\s\S]*?)(?:<\/think>|$)/);
@@ -106,7 +123,7 @@ export function useStrategyStream() {
       }
 
       // 确保流结束后，进行最后一次完整的高精度数据托底渲染
-      let finalThinkMatch = accumulatedText.match(/<think>([\s\S]*?)(?:<\/think>|$)/);
+      if (controller.signal.aborted) throw new Error('AbortError');
       const finalResText = accumulatedText.replace(/<think>[\s\S]*?(?:<\/think>|$)/, '').trim();
       setNodePlans(prev => ({
         ...prev,
@@ -114,6 +131,10 @@ export function useStrategyStream() {
       }));
 
     } catch (e: any) {
+      if (e.name === 'AbortError' || e.message === 'AbortError') {
+          // If aborted deliberately, don't show error to UI
+          return;
+      }
       let errMsg = e.message;
       if (errMsg.includes('503') || errMsg.includes('high demand') || errMsg.includes('UNAVAILABLE')) {
          errMsg = "API 当前负载较高 (503 Service Unavailable)。需求激增通常是暂时的，请稍后再试。";
@@ -131,10 +152,16 @@ export function useStrategyStream() {
         ...prev,
         [planKey]: { status: 'done', result: `⚠️ 推演中断: ${errMsg}`, thinking: 'Neural Link Disconnected' }
       }));
+    } finally {
+        controllersRef.current.delete(planKey);
     }
-  };
+  }, []);
 
-  const clearNodePlans = () => setNodePlans({});
+  const clearNodePlans = useCallback(() => {
+    controllersRef.current.forEach(c => c.abort());
+    controllersRef.current.clear();
+    setNodePlans({});
+  }, []);
 
   return { nodePlans, executePlan, clearNodePlans };
 }

@@ -145,11 +145,20 @@ export function getWaterfallOption(data: any) {
 
 export function getHoldingsOption(data: any) {
   const arr = data?.distributions?.publicHoldings || [];
+  // Calculate value safely, handling Longbridge format vs default schema
+  const calculateValue = (v: any) => {
+    if (v.value !== undefined) return Number(v.value);
+    if (v.marketValue !== undefined) return Number(v.marketValue);
+    const qty = Number(v.quantity) || 0;
+    const price = Number(v.currentPrice) || Number(v.costPrice) || 0;
+    return qty * price;
+  };
+
   // Sort array by value to make horizontal chart look better (descending)
-  const sortedArr = [...arr].sort((a: any, b: any) => (a.value ?? a.marketValue ?? 0) - (b.value ?? b.marketValue ?? 0));
+  const sortedArr = [...arr].sort((a: any, b: any) => calculateValue(a) - calculateValue(b));
   
   const symbols = sortedArr.map((v: any) => v.name || v.symbol || '未知');
-  const values = sortedArr.map((v: any) => v.value ?? v.marketValue ?? 0);
+  const values = sortedArr.map((v: any) => calculateValue(v));
   
   return {
     tooltip: { 
@@ -161,7 +170,8 @@ export function getHoldingsOption(data: any) {
       axisPointer: { type: 'shadow' }, 
       formatter: (p: any) => {
         const idx = p[0].dataIndex;
-        return p[0].name + ' : ' + getCurrencySymbol(sortedArr[idx]?.currency) + (p[0].value?.toLocaleString() || 0);
+        const val = p[0].value || 0;
+        return p[0].name + ' : ' + getCurrencySymbol(sortedArr[idx]?.currency) + val.toLocaleString('en-US', { maximumFractionDigits: 2 });
       }
     },
     grid: { left: '3%', right: '15%', bottom: '5%', top: '5%', containLabel: true },
@@ -191,7 +201,10 @@ export function getHoldingsOption(data: any) {
       label: { 
         show: true, 
         position: 'right', 
-        formatter: (p: any) => p.value >= 10000 ? (p.value / 10000).toFixed(1) + 'w' : (p.value?.toLocaleString() || '0'), 
+        formatter: (p: any) => {
+          const val = Number(p.value) || 0;
+          return val >= 10000 ? (val / 10000).toFixed(1) + 'w' : (val.toLocaleString('en-US', { maximumFractionDigits: 0 }));
+        },
         color: '#C9B284', 
         fontFamily: 'JetBrains Mono',
         fontSize: 10 

@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import axios from 'axios';
 import { subscribeToAuthChanges, db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { TerminalState } from '../types/terminal';
 import { sanitizeTerminalState } from '../lib/sanitizer';
 import { mergeWith, isArray, debounce } from 'lodash-es';
 import { DEFAULT_DASHBOARD_SCHEMA } from '../lib/default-schema';
+import { getSettings } from '../lib/settings';
 
 export const EMPTY_STATE: TerminalState = {
   userPersona: { tags: [], description: "唤起总监生成您的个人资产画像模型" },
@@ -102,7 +104,49 @@ export function useTerminalSync() {
     };
   }, []);
 
-  const commitData = (newDataOrUpdater: any) => {
+  useEffect(() => {
+    let intervalId: any;
+    const fetchLongbridge = async () => {
+      const settings = getSettings();
+      if (!settings.longbridgeAccounts || settings.longbridgeAccounts.length === 0) return;
+      if (!user) return;
+      
+      try {
+        const headerValue = btoa(encodeURIComponent(JSON.stringify(settings.longbridgeAccounts)));
+        const response = await axios.get('/api/v1/wealth/longbridge/positions', {
+            headers: {
+                'X-Longbridge-Accounts': headerValue
+            }
+        });
+        
+        if (response.data && response.data.success && response.data.data) {
+            commitData((prevData: any) => ({
+                ...prevData,
+                distributions: {
+                    ...prevData.distributions,
+                    publicHoldings: response.data.data
+                },
+                _liveSources: ['longbridge']
+            }));
+        }
+      } catch (err) {
+        console.error('[Longbridge] error fetching positions via API:', err);
+      }
+    };
+
+    if (user && !loadingAuth) {
+      // First fetch
+      fetchLongbridge();
+      // Poll every 60s
+      intervalId = setInterval(fetchLongbridge, 60 * 1000);
+    }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [user, loadingAuth]);
+
+  const commitData = useCallback((newDataOrUpdater: any) => {
     setData((prev: TerminalState) => {
       const rawNewData = typeof newDataOrUpdater === 'function' ? newDataOrUpdater(prev) : newDataOrUpdater;
       const newData = sanitizeTerminalState(rawNewData) as TerminalState;
@@ -148,7 +192,7 @@ export function useTerminalSync() {
       }
       return fullData;
     });
-  };
+  }, [user?.uid]);
 
   return { user, data, loadingAuth, commitData };
 }

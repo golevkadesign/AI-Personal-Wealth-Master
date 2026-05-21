@@ -68,8 +68,27 @@ export const WidgetCopilot: React.FC<WidgetCopilotProps> = ({
     }
   }, [messages, isTyping, isAutoScroll]);
 
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    // When closed or unmounted, abort the stream
+    if (!isOpen && abortControllerRef.current) {
+        abortControllerRef.current.abort();
+    }
+    return () => {
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+    };
+  }, [isOpen]);
+
   const executeChatMessage = async (userMsg: string, currentHistory: { role: 'user' | 'model', content: string }[]) => {
     setIsTyping(true);
+    if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+
     try {
       const res = await fetch('/api/sandbox/chat', {
         method: 'POST',
@@ -84,7 +103,8 @@ export const WidgetCopilot: React.FC<WidgetCopilotProps> = ({
           expertRole: expertRole,
           globalState: globalData,
           settings: getSettings()
-        })
+        }),
+        signal: abortControllerRef.current.signal
       });
 
       if (!res.ok) {
@@ -107,6 +127,7 @@ export const WidgetCopilot: React.FC<WidgetCopilotProps> = ({
       let buffer = ''; // 新增：粘包缓冲器
       
       while (true) {
+        if (abortControllerRef.current.signal.aborted) throw new Error('AbortError');
         const { value, done } = await reader.read();
         if (done) break;
         
@@ -144,9 +165,11 @@ export const WidgetCopilot: React.FC<WidgetCopilotProps> = ({
         }
       }
     } catch (e: any) {
+      if (e.name === 'AbortError' || e.message === 'AbortError') return;
       setMessages(prev => [...prev, { role: 'model', content: `**Error:** ${e.message}` }]);
     } finally {
       setIsTyping(false);
+      abortControllerRef.current = null;
     }
   };
 
@@ -191,19 +214,27 @@ export const WidgetCopilot: React.FC<WidgetCopilotProps> = ({
 
   // ----------------- Extract data from context for Snapshot -----------------
   const publicHoldings = globalData?.distributions?.publicHoldings || [];
-  const sortedHoldings = [...publicHoldings].sort((a: any, b: any) => (b.value ?? b.marketValue ?? 0) - (a.value ?? a.marketValue ?? 0));
+  const calculateValue = (v: any) => {
+    if (v.value !== undefined) return Number(v.value);
+    if (v.marketValue !== undefined) return Number(v.marketValue);
+    const qty = Number(v.quantity) || 0;
+    const price = Number(v.currentPrice) || Number(v.costPrice) || 0;
+    return qty * price;
+  };
+
+  const sortedHoldings = [...publicHoldings].sort((a: any, b: any) => calculateValue(b) - calculateValue(a));
   const topItem = sortedHoldings[0];
 
   // 1. Top Holding (Dynamic)
   const topHoldingSymbol = widgetData?.holdingDetail?.symbol || topItem?.symbol || topItem?.name?.split(' ')[0] || "AAPL";
-  const publicTotal = publicHoldings.reduce((sum: number, item: any) => sum + (Number(item?.value || item?.marketValue) || 0), 0);
+  const publicTotal = publicHoldings.reduce((sum: number, item: any) => sum + calculateValue(item), 0);
   const topHoldingProportion = widgetData?.holdingDetail?.proportion || (publicTotal > 0 && topItem 
-    ? (((Number(topItem.value || topItem.marketValue) || 0) / publicTotal) * 100).toFixed(2) + '%' 
+    ? ((calculateValue(topItem) / publicTotal) * 100).toFixed(2) + '%' 
     : '7.42%');
 
   // 2. Allocation (Dynamic)
   const allDistributionValues = Object.values(globalData?.distributions || {}).flat() as any[];
-  const totalAssets = allDistributionValues.reduce((sum: number, item: any) => sum + (Number(item?.value || item?.marketValue) || 0), 0);
+  const totalAssets = allDistributionValues.reduce((sum: number, item: any) => sum + calculateValue(item), 0);
   const allocationPercent = totalAssets > 0 && publicTotal > 0
     ? ((publicTotal / totalAssets) * 100).toFixed(1) + '%'
     : '38.6%';

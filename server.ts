@@ -10,6 +10,7 @@ import { profileRouter } from "./server/routes/profile";
 import { sentinelRouter } from "./server/routes/sentinel";
 import { sandboxRouter } from "./server/routes/sandbox";
 import { quantRouter } from "./server/routes/quant";
+import longbridgeRouter from "./server/routes/longbridge";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -71,6 +72,7 @@ async function startServer() {
   app.use("/api/sentinel", sentinelRouter);
   app.use("/api/sandbox", sandboxRouter);
   app.use("/api/quant", quantRouter);
+  app.use("/api/v1/wealth/longbridge", longbridgeRouter);
 
   // Health check
   app.get("/api/health", (req, res) => {
