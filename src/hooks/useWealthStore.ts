@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import axios from 'axios';
+import { getSettings } from '../lib/settings';
 import { TerminalState } from '../types/terminal';
 import { sanitizeTerminalState } from '../lib/sanitizer';
 import { mergeWith, isArray, debounce } from 'lodash-es';
@@ -46,6 +48,7 @@ interface WealthState {
   clearData: () => void;
   selectedHolding: any | null;
   setSelectedHolding: (holding: any) => void;
+  fetchLongbridge: () => Promise<void>;
 }
 
 export const useWealthStore = create<WealthState>((set, get) => ({
@@ -122,5 +125,37 @@ export const useWealthStore = create<WealthState>((set, get) => ({
 
       return { data: fullData };
     });
+  },
+  fetchLongbridge: async () => {
+    const settings = getSettings();
+    if (!settings.longbridgeAccounts || settings.longbridgeAccounts.length === 0) return;
+    const { user, commitData } = get();
+    if (!user) return;
+    
+    try {
+      const headerValue = btoa(encodeURIComponent(JSON.stringify(settings.longbridgeAccounts)));
+      const response = await axios.get('/api/v1/wealth/longbridge/positions', {
+          headers: {
+              'X-Longbridge-Accounts': headerValue,
+              'Cache-Control': 'no-cache'
+          },
+          params: {
+              _t: Date.now()
+          }
+      });
+      
+      if (response.data && response.data.success && response.data.data) {
+          commitData((prevData: any) => ({
+              ...prevData,
+              distributions: {
+                  ...prevData.distributions,
+                  publicHoldings: response.data.data
+              },
+              _liveSources: ['longbridge']
+          }));
+      }
+    } catch (err) {
+      console.error('[Longbridge] error fetching positions via API:', err);
+    }
   }
 }));

@@ -122,6 +122,7 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
       return (
         <ChartWidget
           title={title}
+          type={chartType}
           dataLength={distData.length}
           insight={globalData?.insights?.public || ""}
           delay={delay}
@@ -199,13 +200,13 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
 
     // Default chart renderer for normal widgets: liquidity, expenses, options, etc.
     let option = {};
-    const mockDataForConfig = { distributions: { [chartType]: distData } };
+    const chartContextData = { ...globalData, distributions: { ...globalData?.distributions, [chartType]: distData } };
     
-    if (chartType === 'liquidity') option = getDonutOption(mockDataForConfig);
-    else if (chartType === 'expenses') option = getExpenseOption(mockDataForConfig);
-    else if (chartType === 'privateAssets') option = getWaterfallOption(mockDataForConfig);
-    else if (chartType === 'publicHoldings') option = getHoldingsOption(mockDataForConfig);
-    else if (chartType === 'options') option = getOptionsOption(mockDataForConfig);
+    if (chartType === 'liquidity') option = getDonutOption(chartContextData);
+    else if (chartType === 'expenses') option = getExpenseOption(chartContextData);
+    else if (chartType === 'privateAssets') option = getWaterfallOption(chartContextData);
+    else if (chartType === 'publicHoldings') option = getHoldingsOption(chartContextData);
+    else if (chartType === 'options') option = getOptionsOption(chartContextData);
 
     let insightKey = 'global';
     if (chartType === 'publicHoldings' || chartType === 'options') insightKey = 'public';
@@ -214,6 +215,7 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
     return (
       <ChartWidget
         title={title}
+        type={chartType}
         option={option}
         chartHeight={chartHeight}
         delay={delay}

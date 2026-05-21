@@ -1,7 +1,8 @@
-import React, { useMemo, Suspense } from 'react';
+import React, { useMemo, Suspense, useState } from 'react';
 import { motion } from 'motion/react';
 import { PieChart, RefreshCw, Activity } from 'lucide-react';
 import { useInteractionStore } from '../hooks/useInteractionStore';
+import { useWealthStore } from '../hooks/useWealthStore';
 
 const ReactEChartsLazy = React.lazy(() => import('./ReactECharts').then(m => ({ default: m.ReactECharts })));
 
@@ -16,6 +17,7 @@ const ChartSkeleton = () => (
 
 interface ChartWidgetProps {
   title: React.ReactNode;
+  type?: string;
   dataLength: number;
   insight?: string | React.ReactNode;
   option?: any;
@@ -28,11 +30,25 @@ interface ChartWidgetProps {
   onChartClick?: (params: any) => void;
 }
 
-export function ChartWidget({ title, dataLength, insight, option, delay = 0, chartHeight = '250px', children, status, onReload, badge, onChartClick }: ChartWidgetProps) {
+export function ChartWidget({ title, type, dataLength, insight, option, delay = 0, chartHeight = '250px', children, status, onReload, badge, onChartClick }: ChartWidgetProps) {
   // If status is provided, use it, else derive from dataLength
   const currentStatus = status || (dataLength > 0 ? 'success' : 'empty');
   
   const chartEvents = useMemo(() => onChartClick ? { click: onChartClick } : undefined, [onChartClick]);
+
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const fetchLongbridge = useWealthStore(state => state.fetchLongbridge);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await fetchLongbridge();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const showRefreshButton = type === 'holdings' || type === 'donut' || type === 'publicHoldings' || type === 'liquidity';
 
   return (
     <motion.div
@@ -96,6 +112,16 @@ export function ChartWidget({ title, dataLength, insight, option, delay = 0, cha
         <div className="flex-1 flex flex-col min-h-0">
           {option || children ? (
             <div className="w-full relative z-10 shrink-0 mb-6" style={{ height: chartHeight }}>
+              {showRefreshButton && (
+                <button
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                  className="absolute top-2 right-2 z-10 p-1.5 rounded-md bg-dash-surface border border-dash-subtle text-dash-tertiary hover:text-dash-primary disabled:opacity-50 transition-colors cursor-pointer shadow-sm"
+                  title="实时刷新持仓"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                </button>
+              )}
               {children ? children : (
                 <Suspense fallback={<ChartSkeleton />}>
                   <ReactEChartsLazy option={option} onEvents={chartEvents} className="w-full h-full" />

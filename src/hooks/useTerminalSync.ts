@@ -1,10 +1,8 @@
 import { useEffect } from 'react';
-import axios from 'axios';
 import { subscribeToAuthChanges, db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { TerminalState } from '../types/terminal';
 import { sanitizeTerminalState } from '../lib/sanitizer';
-import { getSettings } from '../lib/settings';
 import { useWealthStore, EMPTY_STATE } from './useWealthStore';
 
 export { EMPTY_STATE };
@@ -74,39 +72,10 @@ export function useTerminalSync() {
     };
   }, [setUser, setData, setLoadingAuth]);
 
+  const fetchLongbridge = useWealthStore(state => state.fetchLongbridge);
+
   useEffect(() => {
     let intervalId: any;
-    const fetchLongbridge = async () => {
-      const settings = getSettings();
-      if (!settings.longbridgeAccounts || settings.longbridgeAccounts.length === 0) return;
-      if (!user) return;
-      
-      try {
-        const headerValue = btoa(encodeURIComponent(JSON.stringify(settings.longbridgeAccounts)));
-        const response = await axios.get('/api/v1/wealth/longbridge/positions', {
-            headers: {
-                'X-Longbridge-Accounts': headerValue,
-                'Cache-Control': 'no-cache'
-            },
-            params: {
-                _t: Date.now()
-            }
-        });
-        
-        if (response.data && response.data.success && response.data.data) {
-            commitData((prevData: any) => ({
-                ...prevData,
-                distributions: {
-                    ...prevData.distributions,
-                    publicHoldings: response.data.data
-                },
-                _liveSources: ['longbridge']
-            }));
-        }
-      } catch (err) {
-        console.error('[Longbridge] error fetching positions via API:', err);
-      }
-    };
 
     if (user && !loadingAuth) {
       // First fetch
@@ -118,7 +87,7 @@ export function useTerminalSync() {
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, [user, loadingAuth, commitData]);
+  }, [user, loadingAuth, fetchLongbridge]);
 
   // We return user and loadingAuth so App can block UI while starting up
   return { user, loadingAuth, data, commitData }; // kept data & commitData for backward compat but App will stop using them

@@ -26,7 +26,30 @@ export function getSDUIPieOption(data: any) {
 }
 
 export function getDonutOption(data: any) {
-  const arr = data?.distributions?.liquidity || [];
+  const originalArr = data?.distributions?.liquidity || [];
+  const arr = JSON.parse(JSON.stringify(originalArr)); // 深拷贝
+  
+  const publicHoldings = data?.distributions?.publicHoldings || [];
+  const totalMarketValue = publicHoldings.reduce((sum: number, h: any) => {
+    const price = h.currentPrice || h.costPrice || 0;
+    return sum + (h.quantity || 0) * price;
+  }, 0);
+
+  if (totalMarketValue > 0) {
+    const targetNames = ['股票', '证券', '公开市场', '投资', '美股', '港股'];
+    let found = false;
+    for (const item of arr) {
+      if (targetNames.includes(item.name)) {
+        item.value = totalMarketValue;
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      arr.push({ name: '公开市场(实盘)', value: totalMarketValue, currency: 'USD' });
+    }
+  }
+
   return {
     tooltip: { 
       trigger: 'item', 
