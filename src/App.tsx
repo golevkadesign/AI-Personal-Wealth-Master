@@ -8,7 +8,8 @@ import { loginWithGoogle, logout, db } from './lib/firebase';
 import { motion } from 'motion/react';
 import { DeveloperView } from './components/DeveloperView';
 import { Drawer } from './components/Drawer';
-import { useTerminalSync, EMPTY_STATE } from './hooks/useTerminalSync';
+import { useTerminalSync } from './hooks/useTerminalSync';
+import { useWealthStore, EMPTY_STATE } from './hooks/useWealthStore';
 import { useStrategyStream } from './hooks/useStrategyStream';
 import { useSentinel } from './hooks/useSentinel';
 import { useInteractionStore } from './hooks/useInteractionStore';
@@ -44,13 +45,14 @@ const formatMoney = (val: number | undefined | null, curr: string = '¥') =>
 
 
 export default function App() {
-  const { user, data, loadingAuth, commitData } = useTerminalSync();
+  const { user, loadingAuth } = useTerminalSync();
+  const { data, commitData, clearData } = useWealthStore();
   const globalCurrencyOption = data?.distributions?.liquidity?.[0]?.currency || 'CNY';
   const globalCurSymbol = getCurrencySymbol(globalCurrencyOption);
   const { nodePlans, executePlan, clearNodePlans } = useStrategyStream();
   const { isDrawerOpen, setDrawerOpen, copilotConfig, closeCopilot, openCopilot, openDrawerWithIntent } = useInteractionStore();
 
-  useSentinel(data, commitData);
+  useSentinel(); // Update useSentinel next.
 
   const [sduiState, setSduiState] = useState<any[]>([]);
   const [isSynthesizing, setIsSynthesizing] = useState(false);
@@ -75,21 +77,9 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastEvent, clearEvent]);
 
-  const donutOption = useMemo(() => getDonutOption(data), [data?.distributions?.liquidity]);
-
-  const expenseOption = useMemo(() => getExpenseOption(data), [data?.distributions?.expenses]);
-
-  const waterfallOption = useMemo(() => getWaterfallOption(data), [data?.distributions?.privateAssets]);
-
-  const holdingsOption = useMemo(() => getHoldingsOption(data), [data?.distributions?.publicHoldings]);
-
-  const optionsOption = useMemo(() => getOptionsOption(data), [data?.distributions?.options]);
-
   if (loadingAuth || !user) {
     return <AuthTerminalLayout loadingAuth={loadingAuth} />;
   }
-
-  const hasPublicInsights = Array.isArray(data.insights?.public) && data.insights.public.length > 0;
 
   const handleInlineNodePlan = async (typeStr: string, item: any, isLong: boolean, idx: number) => { return executePlan(typeStr, item, isLong, idx); };
 
@@ -110,10 +100,9 @@ export default function App() {
       } catch (e) {
         console.error("Failed to delete user profile:", e);
       }
-      localStorage.removeItem(`ai_terminal_data_${user.uid}`);
       localStorage.removeItem(`ai_terminal_chat_${user.uid}`);
       
-      commitData(EMPTY_STATE);
+      clearData();
       setSduiState([]);
       clearNodePlans();
       setShowClearConfirm(false);
@@ -132,7 +121,7 @@ export default function App() {
         onClose={() => setShowDeveloperView(false)} 
         user={data?.userProfile || {}}
         onClearData={handleClearDataClick}
-        onUpdateProfile={(newProfile) => {
+        onUpdateProfile={(newProfile: any) => {
           commitData((prev: any) => ({
             ...prev,
             userProfile: newProfile
@@ -248,7 +237,6 @@ export default function App() {
 
         {/* 核心数据网格视图 */}
         <DashboardGrid 
-          data={data}
           renderSDUI={renderSDUI}
         />
 
@@ -312,14 +300,13 @@ export default function App() {
       )}
 
       <SettingsModal isOpen={showSettingsModal} onClose={() => setShowSettingsModal(false)} />
-      <ProfileReportView isOpen={showProfileReport} onClose={() => setShowProfileReport(false)} data={data} commitData={commitData} />
+      <ProfileReportView isOpen={showProfileReport} onClose={() => setShowProfileReport(false)} />
       <WidgetCopilot 
         isOpen={copilotConfig.isOpen}
         onClose={closeCopilot}
         widgetTitle={copilotConfig.title}
         widgetData={copilotConfig.data}
         expertRole={copilotConfig.role}
-        globalData={data}
         onPromoteIntent={openDrawerWithIntent}
       />
 
@@ -327,10 +314,8 @@ export default function App() {
         isDrawerOpen={isDrawerOpen} 
         setIsDrawerOpen={setDrawerOpen} 
         user={user} 
-        data={data} 
         setSduiState={setSduiState} 
         setIsSynthesizing={setIsSynthesizing}
-        commitData={commitData}
       />
 
       <PositionIntelligenceDrawer 

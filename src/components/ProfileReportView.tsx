@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { X, ShieldAlert, Activity, Target, Shield, Briefcase, Globe, Clock, CheckCircle2, User, Edit3 } from 'lucide-react';
+import { useWealthStore } from '../hooks/useWealthStore';
 
-export const ProfileReportView = ({ isOpen, onClose, data, commitData }: any) => {
+export const ProfileReportView = ({ isOpen, onClose }: any) => {
+  const { data, commitData } = useWealthStore();
   const [localProfile, setLocalProfile] = useState<any>({});
   const [localPersona, setLocalPersona] = useState<any>({ tags: [], description: '' });
   const [localContext, setLocalContext] = useState('');

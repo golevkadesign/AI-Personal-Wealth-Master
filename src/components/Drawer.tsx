@@ -4,6 +4,7 @@ import { Upload, X, FileText, RefreshCw, Paperclip, Send, StopCircle, Check } fr
 import { ChatList } from './ui/chat-ui';
 import { useAiAgent } from '../hooks/useAiAgent';
 import { useInteractionStore } from '../hooks/useInteractionStore';
+import { useWealthStore } from '../hooks/useWealthStore';
 
 // Shared utility
 function fileToBase64(file: File): Promise<{ mimeType: string, data: string, name: string }> {
@@ -20,7 +21,8 @@ function fileToBase64(file: File): Promise<{ mimeType: string, data: string, nam
   });
 }
 
-export const Drawer = ({ isDrawerOpen, setIsDrawerOpen, user, data, setSduiState, setIsSynthesizing, commitData }: any) => {
+export const Drawer = ({ isDrawerOpen, setIsDrawerOpen, setSduiState, setIsSynthesizing }: any) => {
+  const { data } = useWealthStore();
   const [showDrawerClearConfirm, setShowDrawerClearConfirm] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -38,7 +40,7 @@ export const Drawer = ({ isDrawerOpen, setIsDrawerOpen, user, data, setSduiState
     handleStop,
     handleRegenerate,
     handleAiSubmit,
-  } = useAiAgent({ user, data, commitData, setSduiState, setIsSynthesizing });
+  } = useAiAgent({ setSduiState, setIsSynthesizing });
 
   const handlePaste = async (e: React.ClipboardEvent) => {
     if (e.clipboardData.files && e.clipboardData.files.length > 0) {
@@ -146,10 +148,10 @@ export const Drawer = ({ isDrawerOpen, setIsDrawerOpen, user, data, setSduiState
               msgs.push({ role: 'user', content: c.user || '', attachments: c.attachments });
            }
            if (c.ai || (i === chatHistory.length - 1 && isLoading) || c.thinking) {
-              msgs.push({ role: 'assistant', content: c.ai || '', thinking: c.thinking, hasMemoryUpdate: c.hasMemoryUpdate, _liveSources: data._liveSources, timeTaken: c.timeTaken, debugData: (c as any).debugData });
+              msgs.push({ role: 'assistant', content: c.ai || '', thinking: c.thinking, hasMemoryUpdate: c.hasMemoryUpdate, _liveSources: data?._liveSources, timeTaken: c.timeTaken, debugData: (c as any).debugData });
            }
            return msgs;
-        }), [chatHistory, isLoading, data._liveSources])} 
+        }), [chatHistory, isLoading, data?._liveSources])} 
         isTyping={isLoading} 
         onRegenerate={chatHistory.length > 0 ? handleRegenerate : undefined}
         onQuickPrompt={(prompt: string) => handleAiSubmit(prompt)}

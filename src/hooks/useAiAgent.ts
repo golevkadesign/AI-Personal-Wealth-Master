@@ -4,8 +4,10 @@ import { db } from '../lib/firebase';
 import { getSettings } from '../lib/settings';
 import { sanitizeTerminalState } from '../lib/sanitizer';
 import { Attachment } from '../App';
+import { useWealthStore } from './useWealthStore';
 
-export function useAiAgent({ user, data, commitData, setSduiState, setIsSynthesizing }: any) {
+export function useAiAgent({ setSduiState, setIsSynthesizing }: any) {
+  const { user, data, commitData } = useWealthStore();
   const [inputMsg, setInputMsg] = useState('');
   const [syncProfile, setSyncProfile] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
@@ -412,13 +414,13 @@ export function useAiAgent({ user, data, commitData, setSduiState, setIsSynthesi
             distributions: { 
                 ...prevData.distributions, 
                 ...(sanitizedUpdate.distributions || {}),
-                // Ensure AI doesn't accidentally overwrite deterministic live portfolio
-                ...(bffData.externalData?.livePortfolio ? { publicHoldings: bffData.externalData.livePortfolio } : {})
-            },
-            insights: { ...prevData.insights, ...(sanitizedUpdate.insights || {}) },
-            goal: sanitizedUpdate.goal || prevData.goal,
-            _liveSources: bffData.externalData?.livePortfolio ? ['longbridge'] : []
-         }));
+            // Ensure AI doesn't accidentally overwrite deterministic live portfolio
+            ...(bffData.externalData?.livePortfolio ? { publicHoldings: bffData.externalData.livePortfolio } : { publicHoldings: prevData.distributions?.publicHoldings })
+        },
+        insights: { ...prevData.insights, ...(sanitizedUpdate.insights || {}) },
+        goal: sanitizedUpdate.goal || prevData.goal,
+        _liveSources: bffData.externalData?.livePortfolio ? ['longbridge'] : prevData._liveSources
+     }));
       }
 
     } catch (error: any) {

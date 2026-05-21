@@ -1,8 +1,10 @@
 import { useEffect, useRef } from 'react';
 import { TerminalState } from '../types/terminal';
 import { getSettings } from '../lib/settings';
+import { useWealthStore } from './useWealthStore';
 
-export function useSentinel(data: any, commitData: any) {
+export function useSentinel() {
+  const { data, commitData } = useWealthStore();
   const hasScanned = useRef(false);
   const latestData = useRef(data);
   const isDataReady = !!(data && Object.keys(data.metrics || {}).length > 0);

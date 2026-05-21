@@ -1,13 +1,16 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { TerminalState } from '../types/terminal';
+import { useWealthStore } from '../hooks/useWealthStore';
+import { ErrorBoundary } from './ui/ErrorBoundary';
 
 interface DashboardGridProps {
-  data: TerminalState;
   renderSDUI: (schema: any, globalData: any, keyPrefix: string) => React.ReactNode;
 }
 
-export const DashboardGrid: React.FC<DashboardGridProps> = ({ data, renderSDUI }) => {
+export const DashboardGrid: React.FC<DashboardGridProps> = ({ renderSDUI }) => {
+  const { data } = useWealthStore();
+  
   return (
     <div className="relative z-10 w-full mb-6 md:mb-10">
       <div className="mx-auto flex w-full flex-col min-w-0 gap-6 md:gap-7">
@@ -23,7 +26,9 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({ data, renderSDUI }
                   exit={{ opacity: 0, scale: 0.95 }}
                   className="min-w-0"
                 >
-                  {renderSDUI(widget, data, `widget-${i}`)}
+                  <ErrorBoundary>
+                    {renderSDUI(widget, data, `widget-${i}`)}
+                  </ErrorBoundary>
                 </motion.div>
               ))}
             </div>
@@ -38,10 +43,13 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({ data, renderSDUI }
             transition={{ delay: 0.2 }}
             className="min-w-0"
           >
-            {renderSDUI(data.dashboardSchema, data, 'main-dashboard')}
+            <ErrorBoundary>
+              {renderSDUI(data.dashboardSchema, data, 'main-dashboard')}
+            </ErrorBoundary>
           </motion.div>
         )}
       </div>
     </div>
   );
 };
+
