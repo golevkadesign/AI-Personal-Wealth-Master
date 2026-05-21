@@ -44,12 +44,16 @@ interface WealthState {
   setData: (data: TerminalState) => void;
   commitData: (newDataOrUpdater: any) => void;
   clearData: () => void;
+  selectedHolding: any | null;
+  setSelectedHolding: (holding: any) => void;
 }
 
 export const useWealthStore = create<WealthState>((set, get) => ({
   data: EMPTY_STATE,
   user: null,
   loadingAuth: true,
+  selectedHolding: null,
+  setSelectedHolding: (holding) => set({ selectedHolding: holding }),
   setUser: (user) => set({ user }),
   setLoadingAuth: (loadingAuth) => set({ loadingAuth }),
   setData: (newData) => set((state) => {

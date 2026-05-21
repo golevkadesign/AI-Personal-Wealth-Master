@@ -3,13 +3,10 @@ import { motion, AnimatePresence } from 'motion/react';
 import { TerminalState } from '../types/terminal';
 import { useWealthStore } from '../hooks/useWealthStore';
 import { ErrorBoundary } from './ui/ErrorBoundary';
+import { SDUIRenderer } from '../lib/sdui-registry';
 
-interface DashboardGridProps {
-  renderSDUI: (schema: any, globalData: any, keyPrefix: string) => React.ReactNode;
-}
-
-export const DashboardGrid: React.FC<DashboardGridProps> = ({ renderSDUI }) => {
-  const { data } = useWealthStore();
+export const DashboardGrid: React.FC = () => {
+  const { data, selectedHolding, setSelectedHolding } = useWealthStore();
   
   return (
     <div className="relative z-10 w-full mb-6 md:mb-10">
@@ -27,7 +24,7 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({ renderSDUI }) => {
                   className="min-w-0"
                 >
                   <ErrorBoundary>
-                    {renderSDUI(widget, data, `widget-${i}`)}
+                    <SDUIRenderer key={`widget-${i}`} schema={Array.isArray(widget) ? widget : [widget as any]} globalData={{ ...data, selectedHolding, setSelectedHolding }} />
                   </ErrorBoundary>
                 </motion.div>
               ))}
@@ -44,7 +41,7 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({ renderSDUI }) => {
             className="min-w-0"
           >
             <ErrorBoundary>
-              {renderSDUI(data.dashboardSchema, data, 'main-dashboard')}
+              <SDUIRenderer key="main-dashboard" schema={data.dashboardSchema} globalData={{ ...data, selectedHolding, setSelectedHolding }} />
             </ErrorBoundary>
           </motion.div>
         )}

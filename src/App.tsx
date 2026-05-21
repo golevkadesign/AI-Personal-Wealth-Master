@@ -46,7 +46,7 @@ const formatMoney = (val: number | undefined | null, curr: string = '¥') =>
 
 export default function App() {
   const { user, loadingAuth } = useTerminalSync();
-  const { data, commitData, clearData } = useWealthStore();
+  const { data, commitData, clearData, selectedHolding, setSelectedHolding } = useWealthStore();
   const globalCurrencyOption = data?.distributions?.liquidity?.[0]?.currency || 'CNY';
   const globalCurSymbol = getCurrencySymbol(globalCurrencyOption);
   const { nodePlans, executePlan, clearNodePlans } = useStrategyStream();
@@ -60,7 +60,6 @@ export default function App() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showProfileReport, setShowProfileReport] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
-  const [selectedHolding, setSelectedHolding] = useState<any | null>(null);
 
   const lastEvent = useSDUIEventStore(state => state.lastEvent);
   const clearEvent = useSDUIEventStore(state => state.clearEvent);
@@ -68,14 +67,15 @@ export default function App() {
   useEffect(() => {
     if (lastEvent?.type === 'CHART_CLICK' && lastEvent.payload) {
       const params = lastEvent.payload;
-      if (data.distributions?.publicHoldings && params.name) {
-        const hit = data.distributions.publicHoldings.find((h: any) => h.name === params.name || h.symbol === params.name);
+      const holdings = useWealthStore.getState().data.distributions?.publicHoldings;
+      if (holdings && params.name) {
+        const hit = holdings.find((h: any) => h.name === params.name || h.symbol === params.name);
         if (hit) setSelectedHolding(hit);
       }
       clearEvent(); // 消费完必须清空
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lastEvent, clearEvent]);
+  }, [lastEvent, clearEvent, setSelectedHolding]);
 
   if (loadingAuth || !user) {
     return <AuthTerminalLayout loadingAuth={loadingAuth} />;
@@ -109,10 +109,6 @@ export default function App() {
       window.dispatchEvent(new Event('clear-chat-history'));
     }
   };
-
-  const renderSDUI = (schema: any, globalData: any, keyPrefix: string) => (
-    <SDUIRenderer key={keyPrefix} schema={schema} globalData={{ ...globalData, selectedHolding, setSelectedHolding }} />
-  );
 
   return (
     <div className="min-h-screen text-dash-textMain font-sans bg-dash-bg pb-20">
@@ -236,9 +232,7 @@ export default function App() {
         </div>
 
         {/* 核心数据网格视图 */}
-        <DashboardGrid 
-          renderSDUI={renderSDUI}
-        />
+        <DashboardGrid />
 
         {/* 阶段性人生策略建议 (Life Strategies Timeline) */}
         <LifeStrategyTimeline 
