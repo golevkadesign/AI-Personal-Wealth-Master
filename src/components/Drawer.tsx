@@ -5,6 +5,7 @@ import { ChatList } from './ui/chat-ui';
 import { useAiAgent } from '../hooks/useAiAgent';
 import { useInteractionStore } from '../hooks/useInteractionStore';
 import { useWealthStore } from '../hooks/useWealthStore';
+import { useTranslation } from '../hooks/useTranslation';
 
 // Shared utility
 function fileToBase64(file: File): Promise<{ mimeType: string, data: string, name: string }> {
@@ -22,6 +23,7 @@ function fileToBase64(file: File): Promise<{ mimeType: string, data: string, nam
 }
 
 export const Drawer = ({ isDrawerOpen, setIsDrawerOpen, setSduiState, setIsSynthesizing }: any) => {
+  const { t } = useTranslation();
   const { data } = useWealthStore();
   const [showDrawerClearConfirm, setShowDrawerClearConfirm] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -90,7 +92,7 @@ export const Drawer = ({ isDrawerOpen, setIsDrawerOpen, setSduiState, setIsSynth
         <div className="absolute inset-0 z-[100] bg-dash-green/10 backdrop-blur-md border-2 border-dashed border-dash-green/50 flex items-center justify-center">
            <div className="bg-dash-surface p-8 rounded-2xl shadow-2xl flex flex-col items-center pointer-events-none border border-dash-subtle scale-105 transition-transform">
               <Upload className="w-12 h-12 mb-4 text-dash-green animate-bounce" />
-              <p className="text-dash-primary font-bold text-lg tracking-tight">释放即可上传文件 (Drop to Upload)</p>
+              <p className="text-dash-primary font-bold text-lg tracking-tight">{t('drawer.dropToUpload')}</p>
            </div>
         </div>
       )}
@@ -101,8 +103,8 @@ export const Drawer = ({ isDrawerOpen, setIsDrawerOpen, setSduiState, setIsSynth
               <div className="w-4 h-4 rounded-full bg-dash-primary shadow-[0_0_12px_rgba(201,178,132,0.4)]"></div>
            </div>
            <div>
-              <p className="arbitra-text-mono text-[10px] uppercase tracking-[0.2em] arbitra-text-tertiary mb-0.5">Terminal AI</p>
-              <h2 className="text-lg font-medium arbitra-text-primary leading-tight tracking-tight">Smart Agent</h2>
+              <p className="arbitra-text-mono text-[10px] uppercase tracking-[0.2em] arbitra-text-tertiary mb-0.5">{t('drawer.terminalAiTitle')}</p>
+              <h2 className="text-lg font-medium arbitra-text-primary leading-tight tracking-tight">{t('drawer.agentName')}</h2>
            </div>
         </div>
         <div className="flex items-center gap-2 sm:gap-3">
@@ -111,20 +113,20 @@ export const Drawer = ({ isDrawerOpen, setIsDrawerOpen, setSduiState, setIsSynth
                  <button 
                    onClick={() => setShowDrawerClearConfirm(true)} 
                    className="arbitra-btn-base arbitra-btn-secondary !text-[10px] !px-2.5 !py-1.5 arbitra-focus-ring hover:!text-dash-red hover:!border-dash-red/30 hover:!bg-dash-red/10 flex items-center gap-1.5"
-                   title="清除屏显"
+                   title={t('drawer.clearScreen')}
                    aria-label="Clear Screen"
                  >
-                   <RefreshCw className="w-3.5 h-3.5" /> <span className="hidden sm:inline">清除屏显</span>
+                   <RefreshCw className="w-3.5 h-3.5" /> <span className="hidden sm:inline">{t('drawer.clearScreen')}</span>
                  </button>
                  
                  {showDrawerClearConfirm && (
                    <>
                      <div className="fixed inset-0 z-40" onClick={() => setShowDrawerClearConfirm(false)}></div>
                      <div className="absolute right-0 top-full mt-2 w-64 arbitra-panel border-dash-red/30 p-5 z-50 animate-in fade-in slide-in-from-top-2">
-                        <p className="text-xs arbitra-text-secondary mb-4 leading-relaxed font-medium">此操作仅清除屏幕显示，系统仍保有长期记忆。确认清除？</p>
+                        <p className="text-xs arbitra-text-secondary mb-4 leading-relaxed font-medium">{t('drawer.clearConfirmText')}</p>
                         <div className="flex justify-end gap-2">
-                           <button onClick={() => setShowDrawerClearConfirm(false)} className="arbitra-btn-base arbitra-btn-ghost !text-xs !px-3 !py-1.5 hover:bg-dash-surface-hover arbitra-focus-ring">取消</button>
-                           <button onClick={() => { setChatHistory([]); setShowDrawerClearConfirm(false); }} className="arbitra-btn-base arbitra-btn-primary !text-xs !px-3 !py-1.5 !bg-rose-600/20 !text-rose-500 !border-rose-500/30 hover:!bg-rose-600 hover:!text-white arbitra-focus-ring">确认清除</button>
+                           <button onClick={() => setShowDrawerClearConfirm(false)} className="arbitra-btn-base arbitra-btn-ghost !text-xs !px-3 !py-1.5 hover:bg-dash-surface-hover arbitra-focus-ring">{t('drawer.cancel')}</button>
+                           <button onClick={() => { setChatHistory([]); setShowDrawerClearConfirm(false); }} className="arbitra-btn-base arbitra-btn-primary !text-xs !px-3 !py-1.5 !bg-rose-600/20 !text-rose-500 !border-rose-500/30 hover:!bg-rose-600 hover:!text-white arbitra-focus-ring">{t('drawer.confirmClear')}</button>
                         </div>
                      </div>
                    </>
@@ -167,7 +169,7 @@ export const Drawer = ({ isDrawerOpen, setIsDrawerOpen, setSduiState, setIsSynth
                  {syncProfile && <Check className="w-2.5 h-2.5 text-background stroke-[4px]" />}
               </div>
               <input type="checkbox" className="hidden" checked={syncProfile} onChange={(e) => setSyncProfile(e.target.checked)} />
-              <span className="text-[10px] arbitra-text-secondary uppercase tracking-wider font-semibold group-hover:text-dash-primary transition-colors">写入长线记忆</span>
+              <span className="text-[10px] arbitra-text-secondary uppercase tracking-wider font-semibold group-hover:text-dash-primary transition-colors">{t('drawer.syncMemory')}</span>
             </label>
           </div>
 
@@ -237,7 +239,7 @@ export const Drawer = ({ isDrawerOpen, setIsDrawerOpen, setSduiState, setIsSynth
                       }
                     }}
                     onPaste={handlePaste}
-                    placeholder="发送消息..."
+                    placeholder={t('copilot.placeholder')}
                     rows={1}
                     className="w-full bg-transparent border-none py-3 px-2 text-[15px] sm:text-[16px] arbitra-text-primary placeholder:text-dash-tertiary focus:outline-none resize-none custom-scroll h-auto leading-relaxed"
                     style={{ minHeight: '48px', maxHeight: '150px' }}

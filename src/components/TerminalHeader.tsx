@@ -1,7 +1,8 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Database, Cpu, Sparkles, Settings, LogOut } from 'lucide-react';
+import { Database, Cpu, Sparkles, Settings, LogOut, Languages } from 'lucide-react';
 import { logout } from '../lib/firebase';
+import { useTranslation } from '../hooks/useTranslation';
 
 interface TerminalHeaderProps {
   user: any;
@@ -18,6 +19,8 @@ export function TerminalHeader({
   setDrawerOpen,
   setShowSettingsModal
 }: TerminalHeaderProps) {
+  const { t, language, setLanguage } = useTranslation();
+
   return (
     <header className="sticky top-0 z-40 bg-dash-bg/80 backdrop-blur-md border-b border-[#312B20] mb-6 md:mb-8 transition-colors">
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 h-[72px] flex justify-between items-center">
@@ -45,21 +48,21 @@ export function TerminalHeader({
           <button
             onClick={() => setShowProfileReport(true)}
             className="hidden sm:inline-flex items-center gap-2 bg-[#1A1D1F] hover:bg-[#202326] text-dash-primary border border-dash-subtle px-3 py-1.5 rounded-xl font-mono text-[11px] font-semibold tracking-wider transition-colors duration-200"
-            title="长线记忆"
-            aria-label="长线记忆"
+            title={t('nav.sync')}
+            aria-label={t('nav.sync')}
           >
             <Database className="w-3.5 h-3.5 text-[#A39167]" />
-            <span>长线记忆</span>
+            <span>{t('nav.sync')}</span>
           </button>
 
           <button
             onClick={() => setShowDeveloperView(true)}
             className="hidden sm:inline-flex items-center gap-2 bg-[#1A1D1F] hover:bg-[#202326] text-dash-primary border border-dash-subtle px-3 py-1.5 rounded-xl font-mono text-[11px] font-semibold tracking-wider transition-colors duration-200"
-            title="开发者视图"
-            aria-label="开发者"
+            title={t('nav.developer')}
+            aria-label={t('nav.developer')}
           >
             <Cpu className="w-3.5 h-3.5 text-[#A39167]" />
-            <span>核心节点</span>
+            <span>{t('nav.developer')}</span>
           </button>
 
           {/* Sparkly Premium AI Button */}
@@ -78,10 +81,21 @@ export function TerminalHeader({
           <div className="h-6 w-px bg-dash-subtle/80 mx-1"></div>
 
           <button
+            onClick={() => setLanguage(language === 'zh-CN' ? 'en-US' : 'zh-CN')}
+            className="text-dash-tertiary hover:text-[#C9B284] w-10 h-10 flex items-center justify-center rounded-xl hover:bg-[#1A1D1F]/60 transition-colors relative"
+            title={language === 'zh-CN' ? 'Switch to English' : '切换到中文'}
+            aria-label="Toggle Language"
+          >
+            <div className="absolute inset-0 m-auto w-6 h-6 border border-dash-subtle rounded flex items-center justify-center text-[10px] font-bold font-mono">
+              {language === 'zh-CN' ? '中' : 'EN'}
+            </div>
+          </button>
+
+          <button
             onClick={() => setShowSettingsModal(true)}
             className="text-dash-tertiary hover:text-[#C9B284] w-10 h-10 flex items-center justify-center rounded-xl hover:bg-[#1A1D1F]/60 transition-colors"
-            title="设置"
-            aria-label="设置"
+            title={t('nav.settings')}
+            aria-label={t('nav.settings')}
           >
             <Settings className="w-4.5 h-4.5 text-current" />
           </button>

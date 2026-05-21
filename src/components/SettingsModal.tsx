@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { X, Settings, Loader2, RefreshCw, Wallet, Cpu, LineChart, Shield, CheckCircle2 } from 'lucide-react';
 import { getSettings, saveSettings as persistSettings, AppSettings } from '../lib/settings';
+import { useTranslation } from '../hooks/useTranslation';
 
 export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
+  const { t } = useTranslation();
   const [settings, setSettings] = useState<AppSettings>(getSettings());
   const [availableGeminiModels, setAvailableGeminiModels] = useState<string[]>([
     'gemini-3.1-pro-preview',
@@ -148,10 +150,10 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
           
           {/* Left Nav */}
           <div className="w-56 border-r border-[#C9B284]/10 p-4 space-y-2 shrink-0 bg-black/20">
-            <NavItem id="ai" icon={Cpu} label="AI / Model" />
-            <NavItem id="finance" icon={LineChart} label="Finance Data" />
-            <NavItem id="wallet" icon={Wallet} label="Wallet / Account" />
-            <NavItem id="security" icon={Shield} label="Security" />
+            <NavItem id="ai" icon={Cpu} label={t('settings.aiModel')} />
+            <NavItem id="finance" icon={LineChart} label={t('settings.financeData')} />
+            <NavItem id="wallet" icon={Wallet} label={t('settings.walletAccount')} />
+            <NavItem id="security" icon={Shield} label={t('settings.security')} />
           </div>
 
           {/* Right Panel */}
@@ -159,11 +161,11 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
             
             {activeTab === 'ai' && (
               <div className="space-y-6 animate-in fade-in duration-300">
-                <h3 className="text-sm font-bold text-[#C9B284] uppercase tracking-wider border-b border-[#C9B284]/10 pb-3">API / Model Settings</h3>
+                <h3 className="text-sm font-bold text-[#C9B284] uppercase tracking-wider border-b border-[#C9B284]/10 pb-3">{t('settings.apiModelSettings')}</h3>
                 
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2 col-span-2">
-                    <label className="text-[11px] text-[#8C8370] font-mono uppercase">AI Provider</label>
+                    <label className="text-[11px] text-[#8C8370] font-mono uppercase">{t('settings.aiProvider')}</label>
                     <select 
                       value={settings.provider}
                       onChange={(e) => setSettings({...settings, provider: e.target.value as 'gemini' | 'openai'})}
@@ -177,14 +179,14 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
                   {/* Fast Model Selection */}
                   <div className="space-y-2 col-span-2 md:col-span-1">
                     <div className="flex justify-between items-center">
-                      <label className="text-[11px] text-[#8C8370] font-mono uppercase">Model (Fast / Intent Analysis)</label>
+                      <label className="text-[11px] text-[#8C8370] font-mono uppercase">{t('settings.modelFast')}</label>
                       <button 
                          onClick={settings.provider === 'gemini' ? fetchGeminiModels : fetchOpenAIModels}
                          disabled={settings.provider === 'gemini' ? isLoadingGeminiModels : isLoadingOpenAIModels}
                          className="text-[10px] text-[#C9B284] flex items-center gap-1 hover:text-[#E7D7B0] disabled:opacity-50"
                       >
                          {((settings.provider === 'gemini' && isLoadingGeminiModels) || (settings.provider === 'openai' && isLoadingOpenAIModels)) ? <Loader2 className="w-3 h-3 animate-spin"/> : <RefreshCw className="w-3 h-3"/>}
-                         Refresh
+                         {t('settings.refresh')}
                       </button>
                     </div>
                     {settings.provider === 'gemini' ? (
@@ -224,7 +226,7 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
 
                   {/* Advanced Model Selection */}
                   <div className="space-y-2 col-span-2 md:col-span-1">
-                    <label className="text-[11px] text-[#8C8370] font-mono uppercase">Model (Advanced / Strategy)</label>
+                    <label className="text-[11px] text-[#8C8370] font-mono uppercase">{t('settings.modelAdvanced')}</label>
                     {settings.provider === 'gemini' ? (
                       <select 
                         value={settings.geminiAdvancedModel}
@@ -263,7 +265,12 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
                 </div>
 
                 <div className="space-y-2">
-                   <label className="text-[11px] text-[#8C8370] font-mono uppercase">API Key</label>
+                   <div className="flex items-center justify-between">
+                     <label className="text-[11px] text-[#8C8370] font-mono uppercase">{t('settings.apiKey')}</label>
+                     <span className="text-[9px] text-[#C9B284]/70 font-sans px-2 border border-[#C9B284]/20 rounded-md">
+                       {t('settings.apiCredentialWarning')}
+                     </span>
+                   </div>
                    <input
                       type="password"
                       value={settings.provider === 'gemini' ? settings.geminiKey : settings.openaiKey}
@@ -281,14 +288,14 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
 
                 <div className="flex justify-between items-center text-[11px] font-mono pt-4 border-t border-[#1A1D20]">
                    <div className="flex flex-col gap-1">
-                      <span className="text-[#8C8370] uppercase">Connection Status</span>
+                      <span className="text-[#8C8370] uppercase">{t('settings.connectionStatus')}</span>
                       <span className="flex items-center gap-1.5 text-emerald-400">
                          <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)] animate-pulse"></span>
-                         Connected
+                         {t('settings.connected')}
                       </span>
                    </div>
                    <div className="flex flex-col gap-1 text-right border-l border-[#1A1D20] pl-6">
-                      <span className="text-[#8C8370] uppercase">Last Updated</span>
+                      <span className="text-[#8C8370] uppercase">{t('settings.lastUpdated')}</span>
                       <span className="text-slate-300 flex items-center gap-1"><RefreshCw className="w-3 h-3 text-[#C9B284]"/> 1 minute ago</span>
                    </div>
                 </div>
@@ -297,18 +304,18 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
 
             {activeTab === 'finance' && (
               <div className="space-y-6 animate-in fade-in duration-300">
-                <h3 className="text-sm font-bold text-[#C9B284] uppercase tracking-wider border-b border-[#C9B284]/10 pb-3">LongBridge / Finance Settings</h3>
+                <h3 className="text-sm font-bold text-[#C9B284] uppercase tracking-wider border-b border-[#C9B284]/10 pb-3">{t('settings.longbridgeSettings')}</h3>
                 
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-[11px] text-[#8C8370] font-mono uppercase">Data Source</label>
+                    <label className="text-[11px] text-[#8C8370] font-mono uppercase">{t('settings.dataSource')}</label>
                     <select className="w-full bg-[#121419] border border-[#1A1D20] text-[#E7D7B0] text-[13px] rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#C9B284]/50 transition-colors">
                       <option>LongBridge (Live)</option>
                       <option>Demo Market Data</option>
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[11px] text-[#8C8370] font-mono uppercase">Refresh Interval</label>
+                    <label className="text-[11px] text-[#8C8370] font-mono uppercase">{t('settings.refreshInterval')}</label>
                     <select className="w-full bg-[#121419] border border-[#1A1D20] text-[#E7D7B0] text-[13px] rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#C9B284]/50 transition-colors">
                       <option>15 minutes</option>
                       <option>1 hour</option>
@@ -319,7 +326,7 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
 
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
-                   <h4 className="text-[12px] text-[#E7D7B0]">Connected Accounts</h4>
+                   <h4 className="text-[12px] text-[#E7D7B0]">{t('settings.connectedAccounts')}</h4>
                    <button 
                      onClick={() => {
                        const newAcc = { id: Math.random().toString(36).substring(7), name: `长桥账户 ${settings.longbridgeAccounts?.length ? settings.longbridgeAccounts.length + 1 : 1}`, appKey: '', appSecret: '', accessToken: '' };
@@ -327,13 +334,13 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
                      }}
                      className="text-[11px] text-[#C9B284] hover:text-[#E7D7B0] transition-colors flex items-center gap-1 border border-[#C9B284]/30 px-2 py-1 rounded hover:bg-[#C9B284]/10"
                    >
-                     + Add Account
+                     {t('settings.addAccount')}
                    </button>
                   </div>
-
+                  
                   {(!settings.longbridgeAccounts || settings.longbridgeAccounts.length === 0) && (
                      <div className="p-6 border border-dashed border-[#1A1D20] rounded-xl flex flex-col items-center justify-center text-center gap-2 text-[#8C8370]">
-                       <span className="text-xs uppercase tracking-widest font-mono">No Accounts Setup</span>
+                       <span className="text-xs uppercase tracking-widest font-mono">{t('settings.noAccounts')}</span>
                      </div>
                   )}
 
@@ -361,14 +368,14 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
 
                 <div className="flex justify-between items-center text-[11px] font-mono pt-4 border-t border-[#1A1D20]">
                    <div className="flex flex-col gap-1">
-                      <span className="text-[#8C8370] uppercase">Connection Status</span>
+                      <span className="text-[#8C8370] uppercase">{t('settings.connectionStatus')}</span>
                       <span className="flex items-center gap-1.5 text-emerald-400">
                          <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]"></span>
-                         Connected
+                         {t('settings.connected')}
                       </span>
                    </div>
                    <div className="flex flex-col gap-1 text-right border-l border-[#1A1D20] pl-6">
-                      <span className="text-[#8C8370] uppercase">Last Updated</span>
+                      <span className="text-[#8C8370] uppercase">{t('settings.lastUpdated')}</span>
                       <span className="text-slate-300 flex items-center justify-end gap-1"><RefreshCw className="w-3 h-3 text-[#C9B284]"/> 2 minutes ago</span>
                    </div>
                 </div>
@@ -377,18 +384,18 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
 
             {activeTab === 'wallet' && (
               <div className="space-y-6 animate-in fade-in duration-300">
-                <h3 className="text-sm font-bold text-[#C9B284] uppercase tracking-wider border-b border-[#C9B284]/10 pb-3">Wallet / Account Settings</h3>
+                <h3 className="text-sm font-bold text-[#C9B284] uppercase tracking-wider border-b border-[#C9B284]/10 pb-3">{t('settings.walletSettings')}</h3>
                 
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-[11px] text-[#8C8370] font-mono uppercase">Active Wallet</label>
+                    <label className="text-[11px] text-[#8C8370] font-mono uppercase">{t('settings.activeWallet')}</label>
                     <select className="w-full bg-[#121419] border border-[#1A1D20] text-[#E7D7B0] text-[13px] rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#C9B284]/50 transition-colors">
                       <option>Arbitra Wallet</option>
                       <option>Local Account</option>
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[11px] text-[#8C8370] font-mono uppercase">Network</label>
+                    <label className="text-[11px] text-[#8C8370] font-mono uppercase">{t('settings.network')}</label>
                     <select className="w-full bg-[#121419] border border-[#1A1D20] text-[#E7D7B0] text-[13px] rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#C9B284]/50 transition-colors">
                       <option>Ethereum Mainnet</option>
                       <option>Arbitrum One</option>
@@ -413,14 +420,14 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
 
                 <div className="flex justify-between items-center text-[11px] font-mono pt-4 border-t border-[#1A1D20]">
                    <div className="flex flex-col gap-1">
-                      <span className="text-[#8C8370] uppercase">Connection Status</span>
+                      <span className="text-[#8C8370] uppercase">{t('settings.connectionStatus')}</span>
                       <span className="flex items-center gap-1.5 text-emerald-400">
                          <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]"></span>
-                         Connected
+                         {t('settings.connected')}
                       </span>
                    </div>
                    <div className="flex flex-col gap-1 text-right border-l border-[#1A1D20] pl-6">
-                      <span className="text-[#8C8370] uppercase">Last Updated</span>
+                      <span className="text-[#8C8370] uppercase">{t('settings.lastUpdated')}</span>
                       <span className="text-slate-300 flex items-center justify-end gap-1"><RefreshCw className="w-3 h-3 text-[#C9B284] animate-spin-slow"/> Just now</span>
                    </div>
                 </div>
@@ -429,10 +436,10 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
 
             {activeTab === 'security' && (
               <div className="space-y-6 animate-in fade-in duration-300">
-                <h3 className="text-sm font-bold text-[#C9B284] uppercase tracking-wider border-b border-[#C9B284]/10 pb-3">Security</h3>
+                <h3 className="text-sm font-bold text-[#C9B284] uppercase tracking-wider border-b border-[#C9B284]/10 pb-3">{t('settings.security')}</h3>
                 <div className="p-6 border border-dashed border-[#1A1D20] rounded-xl flex flex-col items-center justify-center text-center gap-2 text-[#8C8370]">
                    <Shield className="w-6 h-6 mb-2 text-[#C9B284]/50" />
-                   <span className="text-xs uppercase tracking-widest font-mono">Authentication disabled in preview environment</span>
+                   <span className="text-xs uppercase tracking-widest font-mono">{t('settings.authDisabled')}</span>
                 </div>
               </div>
             )}
@@ -444,7 +451,7 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
           <div className="flex-1">
              {showSavedToast && (
                 <span className="text-[12px] text-emerald-400 flex items-center gap-1.5 animate-in fade-in">
-                  <CheckCircle2 className="w-4 h-4" /> All changes saved
+                  <CheckCircle2 className="w-4 h-4" /> {t('settings.saveSuccess')}
                 </span>
              )}
           </div>
@@ -453,13 +460,13 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
               onClick={onClose} 
               className="px-5 py-2 text-[13px] font-medium text-[#8C8370] hover:text-[#E7D7B0] transition-colors"
             >
-              Cancel
+              {t('settings.cancel')}
             </button>
             <button 
               onClick={handleSave} 
               className="px-6 py-2 bg-[#C9B284]/10 border border-[#C9B284]/30 text-[#C9B284] text-[13px] font-bold rounded-lg hover:bg-[#C9B284] hover:text-[#05070A] transition-all flex items-center gap-2"
             >
-              <Settings className="w-4 h-4" /> Save Settings
+              <Settings className="w-4 h-4" /> {t('settings.save')}
             </button>
           </div>
         </div>

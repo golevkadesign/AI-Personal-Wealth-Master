@@ -49,12 +49,16 @@ interface WealthState {
   selectedHolding: any | null;
   setSelectedHolding: (holding: any) => void;
   fetchLongbridge: () => Promise<void>;
+  language: 'zh-CN' | 'en-US';
+  setLanguage: (lang: 'zh-CN' | 'en-US') => void;
 }
 
 export const useWealthStore = create<WealthState>((set, get) => ({
   data: EMPTY_STATE,
   user: null,
   loadingAuth: true,
+  language: 'zh-CN',
+  setLanguage: (lang) => set({ language: lang }),
   selectedHolding: null,
   setSelectedHolding: (holding) => set({ selectedHolding: holding }),
   setUser: (user) => set({ user }),

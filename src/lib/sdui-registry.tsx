@@ -7,6 +7,7 @@ import { ChartWidget } from '../components/ChartWidget';
 import { SDUIComponent } from '../types/terminal';
 import { useInteractionStore } from '../hooks/useInteractionStore';
 import { useSDUIEventStore } from '../hooks/useSDUIEventStore';
+import { useTranslation } from '../hooks/useTranslation';
 
 const bgMap: Record<string, string> = {
   'surface-base': 'bg-dash-surface',
@@ -71,6 +72,7 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
   },
   DynamicChart: ({ title, chartType, chartHeight, delay, globalData }) => {
     const dispatchEvent = useSDUIEventStore.getState().dispatch;
+    const { t } = useTranslation();
     const { selectedHolding, setSelectedHolding } = globalData || {};
     const distData = globalData?.distributions?.[chartType] || [];
 
@@ -127,7 +129,7 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
           insight={globalData?.insights?.public || ""}
           delay={delay}
           chartHeight={chartHeight}
-          badge={<span className="text-[10px] text-[#A39167] font-mono font-semibold tracking-wider">占比分析 · Top 8</span>}
+          badge={<span className="text-[10px] text-[#A39167] font-mono font-semibold tracking-wider">{t('dashboard.allocationAnalysis')}</span>}
           status="success"
         >
           <div className="flex flex-col lg:flex-row items-center gap-6 h-full min-h-[260px] relative z-10">
@@ -137,7 +139,7 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
                 <ReactECharts option={pieOption} onEvents={chartEvents} className="w-full h-full" />
                 {/* Centered Total Assets Overlay */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <span className="text-[10px] font-mono text-[#8C8370] uppercase tracking-widest leading-none mb-1">Total Limit</span>
+                  <span className="text-[10px] font-mono text-[#8C8370] uppercase tracking-widest leading-none mb-1">{t('dashboard.totalLimit')}</span>
                   <span className="text-[13px] font-extrabold text-[#E7D7B0] font-mono leading-none tracking-tight">{formattedTotal}</span>
                 </div>
               </div>
@@ -146,9 +148,9 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
             {/* Right: Interactive Holdings List (Col 7) */}
             <div className="w-full lg:w-[58%] flex flex-col justify-start custom-scroll pr-1 pb-1">
               <div className="grid grid-cols-12 text-[9px] font-mono font-bold tracking-widest text-[#8C8370] uppercase pb-2 border-b border-[#C9B284]/12 mb-2 px-3">
-                <div className="col-span-6">持仓 Instrument</div>
-                <div className="col-span-4 text-right">估算市值</div>
-                <div className="col-span-2 text-right">比例</div>
+                <div className="col-span-6">{t('dashboard.instrument')}</div>
+                <div className="col-span-4 text-right">{t('dashboard.estValue')}</div>
+                <div className="col-span-2 text-right">{t('dashboard.ratio')}</div>
               </div>
 
               <div className="space-y-1.5 max-h-[220px] overflow-y-auto custom-scroll pr-1">
@@ -202,11 +204,11 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
     let option = {};
     const chartContextData = { ...globalData, distributions: { ...globalData?.distributions, [chartType]: distData } };
     
-    if (chartType === 'liquidity') option = getDonutOption(chartContextData);
-    else if (chartType === 'expenses') option = getExpenseOption(chartContextData);
-    else if (chartType === 'privateAssets') option = getWaterfallOption(chartContextData);
-    else if (chartType === 'publicHoldings') option = getHoldingsOption(chartContextData);
-    else if (chartType === 'options') option = getOptionsOption(chartContextData);
+    if (chartType === 'liquidity') option = getDonutOption(chartContextData, t);
+    else if (chartType === 'expenses') option = getExpenseOption(chartContextData, t);
+    else if (chartType === 'privateAssets') option = getWaterfallOption(chartContextData, t);
+    else if (chartType === 'publicHoldings') option = getHoldingsOption(chartContextData, t);
+    else if (chartType === 'options') option = getOptionsOption(chartContextData, t);
 
     let insightKey = 'global';
     if (chartType === 'publicHoldings' || chartType === 'options') insightKey = 'public';
@@ -304,7 +306,8 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
     return <Card title={title} value={ typeof value === 'number' ? `${sym}${value.toLocaleString()}` : value } />
   },
   EChartsPie: ({ data }) => {
-    const option = useMemo(() => getSDUIPieOption(data), [data]);
+    const { t } = useTranslation();
+    const option = useMemo(() => getSDUIPieOption(data, t), [data, t]);
 
     if (!data || data.length === 0) {
       return (

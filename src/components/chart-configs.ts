@@ -7,7 +7,7 @@ export function getCurrencySymbol(currency?: string) {
   return c + ' ';
 }
 
-export function getSDUIPieOption(data: any) {
+export function getSDUIPieOption(data: any, t: (key: string) => string) {
   return { 
     tooltip: { 
       trigger: 'item',
@@ -25,7 +25,7 @@ export function getSDUIPieOption(data: any) {
   };
 }
 
-export function getDonutOption(data: any) {
+export function getDonutOption(data: any, t: (key: string) => string) {
   const originalArr = data?.distributions?.liquidity || [];
   const arr = JSON.parse(JSON.stringify(originalArr)); // 深拷贝
   
@@ -46,7 +46,7 @@ export function getDonutOption(data: any) {
       }
     }
     if (!found) {
-      arr.push({ name: '公开市场(实盘)', value: totalMarketValue, currency: 'USD' });
+      arr.push({ name: t('charts.publicMarketsLive'), value: totalMarketValue, currency: 'USD' });
     }
   }
 
@@ -73,12 +73,12 @@ export function getDonutOption(data: any) {
       center: ['70%', '50%'],
       itemStyle: { borderRadius: 6, borderColor: '#121415', borderWidth: 2 },
       label: { show: false }, 
-      data: arr.length ? arr : [{ name: '无数据', value: 0 }]
+      data: arr.length ? arr : [{ name: t('charts.noData'), value: 0 }]
     }]
   };
 }
 
-export function getExpenseOption(data: any) {
+export function getExpenseOption(data: any, t: (key: string) => string) {
   const arr = data?.distributions?.expenses || [];
   return {
     tooltip: { 
@@ -103,14 +103,14 @@ export function getExpenseOption(data: any) {
       center: ['70%', '50%'],
       itemStyle: { borderRadius: 6, borderColor: '#121415', borderWidth: 2 },
       label: { show: false }, 
-      data: arr.length ? arr : [{ name: '无数据', value: 0 }]
+      data: arr.length ? arr : [{ name: t('charts.noData'), value: 0 }]
     }]
   };
 }
 
-export function getWaterfallOption(data: any) {
+export function getWaterfallOption(data: any, t: (key: string) => string) {
   const arr = data?.distributions?.privateAssets || [];
-  const names = arr.map((v: any) => v.name).concat(['总净现值']);
+  const names = arr.map((v: any) => v.name).concat([t('charts.totalNetPresentValue')]);
   const total = arr.reduce((sum: number, v: any) => sum + v.value, 0);
 
   let currentSum = 0;
@@ -135,7 +135,7 @@ export function getWaterfallOption(data: any) {
     xAxis: { 
       type: 'category', 
       splitLine: { show: false }, 
-      data: names.length > 1 ? names : ['无数据'], 
+      data: names.length > 1 ? names : [t('charts.noData')], 
       axisLabel: { color: '#A39167', fontFamily: 'Inter', interval: 0, formatter: (val: string) => val.length > 4 ? val.slice(0, 4) + '...' : val } 
     },
     yAxis: { 
@@ -166,7 +166,7 @@ export function getWaterfallOption(data: any) {
   };
 }
 
-export function getHoldingsOption(data: any) {
+export function getHoldingsOption(data: any, t: (key: string) => string) {
   const arr = data?.distributions?.publicHoldings || [];
   // Calculate value safely, handling Longbridge format vs default schema
   const calculateValue = (v: any) => {
@@ -180,7 +180,7 @@ export function getHoldingsOption(data: any) {
   // Sort array by value to make horizontal chart look better (descending)
   const sortedArr = [...arr].sort((a: any, b: any) => calculateValue(a) - calculateValue(b));
   
-  const symbols = sortedArr.map((v: any) => v.name || v.symbol || '未知');
+  const symbols = sortedArr.map((v: any) => v.name || v.symbol || t('charts.unknown'));
   const values = sortedArr.map((v: any) => calculateValue(v));
   
   return {
@@ -218,7 +218,7 @@ export function getHoldingsOption(data: any) {
       }
     ],
     xAxis: [{ type: 'value', splitLine: { lineStyle: { color: 'rgba(201, 178, 132, 0.08)', type: 'dashed' } }, axisLabel: { show: false } }],
-    yAxis: [{ type: 'category', data: symbols.length ? symbols : ['无数据'], axisLabel: { color: '#A39167', fontFamily: 'Inter', interval: 0, width: 80, overflow: 'truncate' } }],
+    yAxis: [{ type: 'category', data: symbols.length ? symbols : [t('charts.noData')], axisLabel: { color: '#A39167', fontFamily: 'Inter', interval: 0, width: 80, overflow: 'truncate' } }],
     series: [{ 
       type: 'bar', 
       label: { 
@@ -239,9 +239,9 @@ export function getHoldingsOption(data: any) {
   };
 }
 
-export function getOptionsOption(data: any) {
+export function getOptionsOption(data: any, t: (key: string) => string) {
   const arr = data?.distributions?.options || [];
-  const symbols = arr.map((v: any) => v.name || v.symbol || '未知');
+  const symbols = arr.map((v: any) => v.name || v.symbol || t('charts.unknown'));
   const values = arr.map((v: any) => v.value ?? v.marketValue ?? 0);
   return {
     tooltip: { 
@@ -274,7 +274,7 @@ export function getOptionsOption(data: any) {
         handleSize: '100%',
       }
     ],
-    xAxis: [{ type: 'category', data: symbols.length ? symbols : ['无数据'], axisLabel: { color: '#A39167', fontFamily: 'Inter', interval: 0, rotate: symbols.length > 4 ? 30 : 0 } }],
+    xAxis: [{ type: 'category', data: symbols.length ? symbols : [t('charts.noData')], axisLabel: { color: '#A39167', fontFamily: 'Inter', interval: 0, rotate: symbols.length > 4 ? 30 : 0 } }],
     yAxis: [{ type: 'value', splitLine: { lineStyle: { color: 'rgba(201, 178, 132, 0.08)', type: 'dashed' } }, axisLabel: { show: false } }],
     series: [{ 
       type: 'bar', 

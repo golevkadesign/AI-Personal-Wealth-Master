@@ -3,6 +3,7 @@ import { X, Send, Bot, User, Compass } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { getSettings } from '../lib/settings';
 import { motion, AnimatePresence } from 'motion/react';
+import { useTranslation } from '../hooks/useTranslation';
 
 export interface WidgetCopilotProps {
   isOpen: boolean;
@@ -41,6 +42,7 @@ export const WidgetCopilot: React.FC<WidgetCopilotProps> = ({
   inline = false,
   initialMessage
 }) => {
+  const { t } = useTranslation();
   const [messages, setMessages] = useState<{ role: 'user' | 'model', content: string }[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -361,7 +363,7 @@ export const WidgetCopilot: React.FC<WidgetCopilotProps> = ({
             <div className="h-full flex flex-col items-center justify-center text-center px-4 py-12 opacity-80">
                <Compass className="w-8 h-8 text-[#C9B284] mb-4 opacity-40 animate-pulse" />
                <p className="text-xs text-[#8C8270] leading-relaxed max-w-[280px]">
-                 Local sandbox workspace active. Freely explore specific scenarios and metrics regarding <span className="text-[#E7D7B0] font-medium">{widgetTitle}</span>.
+                 {t('copilot.sandboxActive')} <span className="text-[#E7D7B0] font-medium">{widgetTitle}</span>{t('copilot.sandboxActive2')}
                </p>
             </div>
           ) : (
@@ -420,7 +422,7 @@ export const WidgetCopilot: React.FC<WidgetCopilotProps> = ({
                    <span className="w-1.5 h-1.5 rounded-full bg-[#C9B284]/80 animate-bounce [animation-delay:-0.15s]" />
                    <span className="w-1.5 h-1.5 rounded-full bg-[#C9B284] animate-bounce" />
                  </div>
-                 <span className="text-[9.5px] text-[#A39167] font-bold tracking-wider uppercase">专家正在研究</span>
+                 <span className="text-[9.5px] text-[#A39167] font-bold tracking-wider uppercase">{t('copilot.expertResearching')}</span>
                </div>
              </div>
           )}
@@ -434,7 +436,7 @@ export const WidgetCopilot: React.FC<WidgetCopilotProps> = ({
                value={input}
                onChange={(e) => setInput(e.target.value)}
                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-               placeholder="Ask a follow-up about this widget..."
+               placeholder={t('copilot.placeholder')}
                className="w-full bg-transparent border-none py-3 text-[13px] text-[#E7D7B0] placeholder:text-[#8C8270] focus:outline-none"
             />
             <button
@@ -456,7 +458,7 @@ export const WidgetCopilot: React.FC<WidgetCopilotProps> = ({
                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                </svg>
-               <span>Promote to Global Strategy</span>
+               <span>{t('copilot.promoteToGlobal')}</span>
              </button>
           </div>
         </div>

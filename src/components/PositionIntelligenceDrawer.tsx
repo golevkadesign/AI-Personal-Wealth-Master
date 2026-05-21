@@ -4,6 +4,7 @@ import { X, Activity, Target, BrainCircuit, TrendingUp, TrendingDown, ArrowRight
 import { useInteractionStore } from '../hooks/useInteractionStore';
 import { WidgetCopilot } from './WidgetCopilot';
 import { getCurrencySymbol } from './chart-configs';
+import { useTranslation } from '../hooks/useTranslation';
 
 const ReactEChartsLazy = React.lazy(() => import('./ReactECharts').then(m => ({ default: m.ReactECharts })));
 
@@ -23,6 +24,7 @@ interface PositionIntelligenceDrawerProps {
 }
 
 export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: PositionIntelligenceDrawerProps) {
+  const { t } = useTranslation();
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const openCopilot = useInteractionStore(state => state.openDrawerWithIntent);
@@ -224,8 +226,8 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
                   <div className="flex justify-between items-start px-6 pt-6 pb-4 border-b border-[#C9B284]/10 shrink-0">
                     <div>
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="text-[9px] text-[#A39167] font-mono font-bold tracking-[0.2em] uppercase">POSITION INTELLIGENCE</span>
-                        <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[8px] font-mono font-bold uppercase bg-[#C1A875]/10 text-[#C1A875] border border-[#C1A875]/20">A.I.</span>
+                        <span className="text-[9px] text-[#A39167] font-mono font-bold tracking-[0.2em] uppercase">{t('drawer.positionIntel')}</span>
+                        <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[8px] font-mono font-bold uppercase bg-[#C1A875]/10 text-[#C1A875] border border-[#C1A875]/20">{t('drawer.ai')}</span>
                       </div>
                       <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2.5">
                         {holding.name || holding.symbol}
@@ -262,7 +264,7 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
                           <span className="text-[11px] text-[#8C8270] font-medium truncate">{instrumentType}</span>
                         </div>
                         <div className="text-[11px] text-[#8D9096] flex items-center gap-1">
-                          <span>Jurisdiction:</span>
+                          <span>{t('drawer.jurisdiction')}</span>
                           <span className="text-slate-300 font-medium">{domicile}</span>
                         </div>
                       </div>
@@ -282,23 +284,23 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
                     <div className="grid grid-cols-2 gap-3.5">
                       {/* Value Item (Primary) */}
                       <div className="bg-[#121416] p-4 rounded-xl border border-[#C9B284]/10">
-                        <span className="text-[10px] font-mono text-[#8C8370] uppercase tracking-wider block mb-1">Total Valuation</span>
+                        <span className="text-[10px] font-mono text-[#8C8370] uppercase tracking-wider block mb-1">{t('drawer.totalValuation')}</span>
                         <div className="text-base font-extrabold text-[#E7D7B0] font-mono leading-none">
                           {currSym}{val.toLocaleString('en-US', { maximumFractionDigits: 0 })}
                         </div>
                         <span className="text-[10px] text-slate-500 font-mono mt-1.5 block">
-                          {conversionSym} {conversionVal.toLocaleString('en-US', { maximumFractionDigits: 0 })} Approx.
+                          {conversionSym} {conversionVal.toLocaleString('en-US', { maximumFractionDigits: 0 })} {t('drawer.approx')}
                         </span>
                       </div>
 
                       {/* Allocation Item */}
                       <div className="bg-[#121416] p-4 rounded-xl border border-[#C9B284]/10">
-                        <span className="text-[10px] font-mono text-[#8C8370] uppercase tracking-wider block mb-1">Portfolio Allocation</span>
+                        <span className="text-[10px] font-mono text-[#8C8370] uppercase tracking-wider block mb-1">{t('drawer.portfolioAllocation')}</span>
                         <div className="text-base font-extrabold text-[#E7D7B0] font-mono leading-none">
                           {holding.allocation || '28.3%'}
                         </div>
                         <span className="text-[10px] text-[#8C8270] mt-1.5 block font-medium truncate">
-                          of Public Markets Assets
+                          {t('drawer.ofPublicMarkets')}
                         </span>
                       </div>
                     </div>
@@ -307,10 +309,10 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
                     <div className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-[#16181A]/60 border border-[#C9B284]/8 text-[10px] font-mono text-[#8C8270]">
                       <div className="flex items-center gap-1.5">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/80 animate-pulse" />
-                        <span>Last synchronized: 2026-05-20 10:30 UTC</span>
+                        <span>{t('drawer.lastSynchronized')} 2026-05-20 10:30 UTC</span>
                       </div>
                       <span className="text-[#C9B284]/95 hover:underline cursor-pointer flex items-center gap-0.5 font-sans font-semibold">
-                        <span>Context: Q2 2025</span>
+                        <span>{t('drawer.context')} Q2 2025</span>
                         <span>&gt;</span>
                       </span>
                     </div>
@@ -320,12 +322,12 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
                       <div className="flex justify-between items-center pb-2 border-b border-white/5">
                         <span className="text-[11px] font-semibold text-[#8C8270] tracking-wider uppercase font-mono flex items-center gap-1.5">
                           <Activity className="w-3.5 h-3.5 text-[#C9B284]" />
-                          1Y Trend ({holding.currency || 'USD'})
+                          {t('drawer.trend1Y')} ({holding.currency || 'USD'})
                         </span>
                         
                         <div className="flex items-center gap-3">
-                          <span className="text-[10px] text-slate-400 font-medium">Day: <span className="text-emerald-400 font-mono font-semibold">+0.65%</span></span>
-                          <span className="text-[10px] text-slate-400 font-medium font-mono border-l border-white/10 pl-2.5">YTD: <span className="text-emerald-400 font-semibold">+8.72%</span></span>
+                          <span className="text-[10px] text-slate-400 font-medium">{t('drawer.day')} <span className="text-emerald-400 font-mono font-semibold">+0.65%</span></span>
+                          <span className="text-[10px] text-slate-400 font-medium font-mono border-l border-white/10 pl-2.5">{t('drawer.ytd')} <span className="text-emerald-400 font-semibold">+8.72%</span></span>
                         </div>
                       </div>
 
@@ -344,7 +346,7 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
                     <div className="bg-[#121416]/30 p-4 rounded-xl border border-[#C9B284]/10 space-y-3">
                       <span className="text-[11px] font-semibold text-[#8C8270] tracking-wider uppercase font-mono flex items-center gap-1.5 pb-2 border-b border-white/5">
                         <Target className="w-3.5 h-3.5 text-[#C9B284]" />
-                        Technical Quant Indicators
+                        {t('drawer.technicalIndicators')}
                       </span>
                       <div className="grid grid-cols-4 gap-2">
                         <div className="bg-black/25 rounded-lg p-2.5 border border-white/5 text-center">
@@ -372,7 +374,7 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
                     <div className="space-y-3 pt-1">
                       <span className="text-[11px] font-semibold text-[#8C8270] tracking-wider uppercase font-mono flex items-center gap-1.5 pb-1 block">
                         <BrainCircuit className="w-3.5 h-3.5 text-[#C9B284]" />
-                        AI Wealth Strategy Diagnostics
+                        {t('drawer.aiDiagnostics')}
                       </span>
 
                       {/* Stacked Layout for extremely detailed Advisory diagnosis */}
@@ -448,7 +450,7 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
                     <form onSubmit={handleMainAskSubmit} className="relative flex items-center">
                       <input 
                         type="text"
-                        placeholder={`Ask Arbitra about ${holding.symbol || holding.name}...`}
+                        placeholder={`${t('drawer.askArbitra')} ${holding.symbol || holding.name}...`}
                         value={mainAskInput}
                         onChange={(e) => setMainAskInput(e.target.value)}
                         className="w-full bg-[#16181A] border border-[#C9B284]/20 hover:border-[#C9B284]/35 focus:border-[#C9B284]/65 px-4 py-2.5 pr-12 rounded-xl text-[12.5px] text-white placeholder-slate-500 focus:outline-none transition-all placeholder:font-sans font-sans"
@@ -461,7 +463,7 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
                       </button>
                     </form>
                     <p className="text-[9px] font-mono text-slate-500 text-center mt-2.5 tracking-wide leading-none select-none">
-                      Arbitra provides strategic wealth insights, not direct investment advice.
+                      {t('drawer.disclaimer')}
                     </p>
                   </div>
                 </motion.div>
@@ -477,7 +479,7 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
                   <div className="flex justify-between items-center px-6 py-5 border-b border-[#C9B284]/15 shrink-0 bg-transparent">
                     <h3 className="text-sm font-bold text-white flex items-center gap-2">
                       <Sparkles className="w-4 h-4 text-[#C9B284]" />
-                      <span>{holding.symbol || holding.name} Analytics Studio</span>
+                      <span>{holding.symbol || holding.name} {t('drawer.analyticsStudio')}</span>
                     </h3>
                     
                     {/* Retro back trigger */}
@@ -485,7 +487,7 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
                       onClick={() => { setIsCopilotOpen(false); setCopilotPrompt(''); }} 
                       className="border border-[#C9B284]/20 hover:border-[#C9B284]/40 bg-[#16181A] hover:bg-[#C9B284]/10 text-[#C9B284] px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer"
                     >
-                      <span>←</span><span>Back to Metrics</span>
+                      <span>←</span><span>{t('drawer.backToMetrics')}</span>
                     </button>
                   </div>
 
