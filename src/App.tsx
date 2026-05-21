@@ -46,9 +46,12 @@ const formatMoney = (val: number | undefined | null, curr: string = '¥') =>
 
 export default function App() {
   const { user, loadingAuth } = useTerminalSync();
-  const { data, commitData, clearData, selectedHolding, setSelectedHolding } = useWealthStore();
-  const globalCurrencyOption = data?.distributions?.liquidity?.[0]?.currency || 'CNY';
+  const globalCurrencyOption = useWealthStore(state => state.data.distributions?.liquidity?.[0]?.currency || 'CNY');
   const globalCurSymbol = getCurrencySymbol(globalCurrencyOption);
+  const insights = useWealthStore(state => state.data.insights);
+  const userPersona = useWealthStore(state => state.data.userPersona);
+  const selectedHolding = useWealthStore(state => state.selectedHolding);
+  const setSelectedHolding = useWealthStore(state => state.setSelectedHolding);
   const { nodePlans, executePlan, clearNodePlans } = useStrategyStream();
   const { isDrawerOpen, setDrawerOpen, copilotConfig, closeCopilot, openCopilot, openDrawerWithIntent } = useInteractionStore();
 
@@ -70,12 +73,11 @@ export default function App() {
       const holdings = useWealthStore.getState().data.distributions?.publicHoldings;
       if (holdings && params.name) {
         const hit = holdings.find((h: any) => h.name === params.name || h.symbol === params.name);
-        if (hit) setSelectedHolding(hit);
+        if (hit) useWealthStore.getState().setSelectedHolding(hit);
       }
       clearEvent(); // 消费完必须清空
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lastEvent, clearEvent, setSelectedHolding]);
+  }, [lastEvent, clearEvent]);
 
   if (loadingAuth || !user) {
     return <AuthTerminalLayout loadingAuth={loadingAuth} />;
@@ -102,7 +104,7 @@ export default function App() {
       }
       localStorage.removeItem(`ai_terminal_chat_${user.uid}`);
       
-      clearData();
+      useWealthStore.getState().clearData();
       setSduiState([]);
       clearNodePlans();
       setShowClearConfirm(false);
@@ -115,15 +117,7 @@ export default function App() {
       <DeveloperView 
         isOpen={showDeveloperView} 
         onClose={() => setShowDeveloperView(false)} 
-        user={data?.userProfile || {}}
         onClearData={handleClearDataClick}
-        onUpdateProfile={(newProfile: any) => {
-          commitData((prev: any) => ({
-            ...prev,
-            userProfile: newProfile
-          }));
-        }}
-        state={data}
       />
 
       {/* Top Header */}
@@ -161,15 +155,15 @@ export default function App() {
               
               <button
                  className="bg-[#202326] hover:bg-[#2B2F33] text-[#C9B284] border border-[#3A3324] rounded-xl px-4 py-1.5 text-xs font-semibold z-20 cursor-pointer flex items-center gap-1.5 transition-colors duration-200"
-                 onClick={() => openCopilot('战略简报', data.insights?.global, '首席宏观策略师')}
+                 onClick={() => openCopilot('战略简报', insights?.global, '首席宏观策略师')}
               >
                  <Bot className="w-3.5 h-3.5" /> 专家探讨
               </button>
             </div>
             
             <div className="relative z-10 text-[13px] sm:text-sm leading-relaxed text-dash-secondary max-w-none">
-               {data.insights?.global ? (
-                 <p className="whitespace-pre-wrap leading-relaxed">{data.insights?.global}</p>
+               {insights?.global ? (
+                 <p className="whitespace-pre-wrap leading-relaxed">{insights?.global}</p>
                ) : (
                  <p className="text-dash-tertiary italic">Arbitra 智能引擎正在动态沉淀高净值画像、多维持有期倾斜以及家庭家族信托长期资产备忘录...</p>
                )}
@@ -205,8 +199,8 @@ export default function App() {
               </div>
 
               <div className="relative z-10 text-[13px] leading-relaxed text-dash-secondary mb-5 max-h-[140px] overflow-y-auto custom-scroll">
-                {data.userPersona?.description && !data.userPersona.description.includes("当前信息不足以") ? (
-                  <p>{data.userPersona.description}</p>
+                {userPersona?.description && !userPersona.description.includes("当前信息不足以") ? (
+                  <p>{userPersona.description}</p>
                 ) : (
                   <p className="text-dash-tertiary italic">正在动态量化对标持有持平期、资产变现阻尼、杠杆比例以及家族基金长期信托倾角...</p>
                 )}
@@ -214,8 +208,8 @@ export default function App() {
             </div>
 
             <div className="relative z-10 flex flex-wrap gap-1.5 mt-auto">
-              {data.userPersona?.tags && data.userPersona.tags.length > 0 ? (
-                data.userPersona.tags.map((tag: string, idx: number) => (
+              {userPersona?.tags && userPersona.tags.length > 0 ? (
+                userPersona.tags.map((tag: string, idx: number) => (
                    <span key={idx} className="bg-[#121415] border border-dash-subtle/50 text-[10px] font-mono font-semibold text-dash-primary px-2.5 py-1 rounded">
                      {tag}
                    </span>
@@ -236,16 +230,12 @@ export default function App() {
 
         {/* 阶段性人生策略建议 (Life Strategies Timeline) */}
         <LifeStrategyTimeline 
-           lifeStrategiesShort={data.lifeStrategiesShort}
-           lifeStrategiesLong={data.lifeStrategiesLong}
            nodePlans={nodePlans}
            handleInlineNodePlan={handleInlineNodePlan}
         />
 
         {/* 底部目标追踪卡片 (Goal Tracker) */}
-        {data.goal?.name && data.goal.name !== '等待设定目标' && (
-           <GoalTracker goal={data.goal} globalCurSymbol={globalCurSymbol} />
-        )}
+        <GoalTracker globalCurSymbol={globalCurSymbol} />
       </main>
 
       {/* Footer Version */}

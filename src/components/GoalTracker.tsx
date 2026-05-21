@@ -1,13 +1,18 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { Target, Trophy, Clock, ChevronRight } from 'lucide-react';
+import { useWealthStore } from '../hooks/useWealthStore';
 
 interface GoalTrackerProps {
-  goal: any;
   globalCurSymbol: string;
 }
 
-export function GoalTracker({ goal, globalCurSymbol }: GoalTrackerProps) {
+export function GoalTracker({ globalCurSymbol }: GoalTrackerProps) {
+  const goal = useWealthStore(state => state.data.goal);
+
+  if (!goal?.name || goal.name === '等待设定目标') {
+    return null;
+  }
   const current = goal?.current || 0;
   const target = goal?.target || 0;
   const goalPercent = Math.min(Math.max((goal?.index || (target > 0 ? current / target : 0)) * 100, 0), 100);

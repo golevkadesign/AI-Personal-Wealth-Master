@@ -5,24 +5,22 @@ import {
   Database, RefreshCw, Edit3, Trash2, Check, Copy, AlertTriangle, ShieldCheck
 } from 'lucide-react';
 import { auth } from '../lib/firebase';
+import { useWealthStore } from '../hooks/useWealthStore';
 
 interface DeveloperViewProps {
   isOpen: boolean;
   onClose: () => void;
-  user?: any;
   onClearData?: () => void;
-  onUpdateProfile?: (newProfile: any) => void;
-  state?: any;
 }
 
 export const DeveloperView: React.FC<DeveloperViewProps> = ({ 
   isOpen, 
   onClose, 
-  user, 
-  onClearData, 
-  onUpdateProfile,
-  state 
+  onClearData
 }) => {
+  const user = useWealthStore(s => s.user);
+  const state = useWealthStore(s => s.data);
+  const commitData = useWealthStore(s => s.commitData);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editProfileData, setEditProfileData] = useState<any>({});
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
@@ -64,12 +62,13 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({
   };
 
   const handleSaveProfile = () => {
-    if (onUpdateProfile) {
-      onUpdateProfile(editProfileData);
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
-      setIsEditingProfile(false);
-    }
+    commitData((prev: any) => ({
+      ...prev,
+      userProfile: editProfileData
+    }));
+    setSaveSuccess(true);
+    setTimeout(() => setSaveSuccess(false), 3000);
+    setIsEditingProfile(false);
   };
 
   // Live element counts for the state inspector rows

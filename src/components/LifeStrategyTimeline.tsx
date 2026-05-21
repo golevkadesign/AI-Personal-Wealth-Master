@@ -2,20 +2,20 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { Loader2, RefreshCw, Activity, Cpu } from 'lucide-react';
 import Markdown from 'react-markdown';
+import { useWealthStore } from '../hooks/useWealthStore';
 
 interface LifeStrategyTimelineProps {
-  lifeStrategiesShort?: any[];
-  lifeStrategiesLong?: any[];
   nodePlans: Record<string, any>;
   handleInlineNodePlan: (typeStr: string, item: any, isLong: boolean, idx: number) => void;
 }
 
 export function LifeStrategyTimeline({
-  lifeStrategiesShort,
-  lifeStrategiesLong,
   nodePlans,
   handleInlineNodePlan
 } : LifeStrategyTimelineProps) {
+  
+  const lifeStrategiesShort = useWealthStore(state => state.data.lifeStrategiesShort);
+  const lifeStrategiesLong = useWealthStore(state => state.data.lifeStrategiesLong);
   
   const renderTrack = (items: any[] | undefined, isLong: boolean) => {
     if (!items || items.length === 0) {
