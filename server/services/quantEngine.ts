@@ -122,7 +122,12 @@ export const analyzeHistory = (historyArr: any[], holdingSnapshot?: any) => {
             opportunities,
             suggestedActions
         },
-        historySummary: history.length
+        historySummary: {
+            sampleCount: history.length,
+            startDate: history[0]?.date,
+            endDate: history[history.length - 1]?.date,
+            interval: '1d'
+        }
     };
 };
 
@@ -195,13 +200,19 @@ export const fetchStockHistory = async (rawSymbol: string, useLongbridge: boolea
         if (useLongbridge) {
             try {
                 const lbHistory = await fetchFromLongbridge(symbol, lbConfig);
-                if (lbHistory && lbHistory.length > 0) return lbHistory;
+                if (lbHistory && lbHistory.length > 0) {
+                    return { history: lbHistory, source: 'longbridge', fallbackUsed: false };
+                }
             } catch (e) {
                 console.warn(`[QuantEngine] 长桥获取 ${symbol} 失败，准备降级兜底...`, e);
             }
         }
         // 如果未绑定长桥，或长桥拉取失败，安全降级到 Yahoo
-        return await fetchFromYahooFallback(symbol);
+        const fallbackHistory = await fetchFromYahooFallback(symbol);
+        if (fallbackHistory && fallbackHistory.length > 0) {
+            return { history: fallbackHistory, source: 'yahoo', fallbackUsed: useLongbridge };
+        }
+        return null;
     } catch (e) {
         console.error(`[QuantEngine] ${symbol} 所有历史数据源拉取均失败:`, e);
         return null;

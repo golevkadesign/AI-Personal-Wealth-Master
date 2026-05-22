@@ -12,13 +12,13 @@ quantRouter.get('/history', async (req, res) => {
     const lbConfig = null; 
 
     // 传入参数激活混合引擎
-    const history = await fetchStockHistory(symbol, useLb, lbConfig);
+    const result = await fetchStockHistory(symbol, useLb, lbConfig);
     
-    if (!history) {
+    if (!result || !result.history) {
         console.error(`Failed to fetch history for symbol: ${symbol}`);
         return res.status(500).json({ error: 'Failed to fetch history from all sources' });
     }
-    res.json({ symbol, history, source: useLb ? 'longbridge' : 'yahoo' });
+    res.json({ symbol, history: result.history, source: result.source, fallbackUsed: result.fallbackUsed });
 });
 
 quantRouter.get('/analysis', async (req, res) => {
@@ -30,14 +30,14 @@ quantRouter.get('/analysis', async (req, res) => {
     if (!symbol) return res.status(400).json({ error: 'Symbol required' });
     
     const lbConfig = null;
-    const history = await fetchStockHistory(symbol, useLb, lbConfig);
+    const result = await fetchStockHistory(symbol, useLb, lbConfig);
     
-    if (!history) {
+    if (!result || !result.history) {
         return res.status(500).json({ error: 'Failed to fetch history from all sources' });
     }
     
     const holdingSnapshot = { quantity, currentPrice };
-    const analysisInfo = analyzeHistory(history, holdingSnapshot);
+    const analysisInfo = analyzeHistory(result.history, holdingSnapshot);
     
     if (!analysisInfo) {
         return res.status(500).json({ error: 'Failed to perform analysis' });
@@ -45,8 +45,10 @@ quantRouter.get('/analysis', async (req, res) => {
     
     res.json({
         symbol,
-        source: useLb ? 'longbridge' : 'yahoo',
-        history,
+        source: result.source,
+        fallbackUsed: result.fallbackUsed,
+        history: result.history,
+        historySummary: analysisInfo.historySummary,
         quantSignals: analysisInfo.quantSignals,
         deterministicAdvice: analysisInfo.deterministicAdvice
     });

@@ -27,7 +27,7 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
   const { t } = useTranslation();
   const [history, setHistory] = useState<any[]>([]);
   const [analysis, setAnalysis] = useState<any>(null);
-  const [analysisError, setAnalysisError] = useState(false);
+  const [analysisStatus, setAnalysisStatus] = useState<'idle' | 'loading' | 'success' | 'partial' | 'error'>('idle');
   const [loading, setLoading] = useState(false);
   const openCopilot = useInteractionStore(state => state.openDrawerWithIntent);
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
@@ -40,7 +40,7 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
       setCopilotPrompt('');
       setMainAskInput('');
       setAnalysis(null);
-      setAnalysisError(false);
+      setAnalysisStatus('idle');
       setHistory([]);
     }
   }, [isOpen]);
@@ -49,7 +49,7 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
   useEffect(() => {
     if (isOpen && holding?.symbol) {
       setLoading(true);
-      setAnalysisError(false);
+      setAnalysisStatus('loading');
       const isLbBound = true;
       const qty = holding.quantity || 0;
       const cp = holding.currentPrice || holding.costPrice || 0;
@@ -69,13 +69,16 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
           }
           if (data.quantSignals && data.deterministicAdvice) {
              setAnalysis(data);
+             // check if signals have nulls due to lack of samples
+             const lacksSamples = data.quantSignals.rsi === null || data.quantSignals.macdHist === null;
+             setAnalysisStatus(lacksSamples ? 'partial' : 'success');
           } else {
-             setAnalysisError(true);
+             setAnalysisStatus('error');
           }
         })
         .catch((err) => {
           console.error("QuantEngine Load Failed:", err);
-          setAnalysisError(true);
+          setAnalysisStatus('error');
         })
         .finally(() => {
           setLoading(false);
@@ -104,8 +107,9 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
   const dynamicOpportunities = analysis?.deterministicAdvice?.opportunities || [];
   const structuralSuggestedActions = analysis?.deterministicAdvice?.suggestedActions || [];
 
+  const KLINE_CLOSE_INDEX = 2; // [date, open, close, low, high]
   const hasHistory = history && history.length > 0;
-  const scaledTrendData = hasHistory ? history.map(item => Number(item[4]) || 0) : [];
+  const scaledTrendData = hasHistory ? history.map(item => Number(item[KLINE_CLOSE_INDEX]) || 0) : [];
 
   const sparklineOption = hasHistory ? {
     backgroundColor: 'transparent',
@@ -328,11 +332,11 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
                         {t('drawer.technicalIndicators')}
                       </span>
                       
-                      {loading ? (
+                      {analysisStatus === 'loading' || loading ? (
                         <div className="p-4 flex items-center justify-center">
                            <span className="text-[10px] text-[#8C8270] font-mono tracking-widest uppercase">正在计算技术指标...</span>
                         </div>
-                      ) : analysisError ? (
+                      ) : analysisStatus === 'error' ? (
                         <div className="p-4 flex items-center justify-center border border-dashed border-white/10 rounded-lg">
                            <span className="text-[10px] text-rose-500/70 font-mono tracking-widest uppercase">分析数据暂不可用</span>
                         </div>
@@ -346,36 +350,50 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
                             <span className="text-[8px] font-mono text-slate-500 uppercase block leading-none mb-1">BB High</span>
                             <span className="text-xs font-bold text-rose-400 font-mono">{quant.sellPrice ? `$${parseFloat(quant.sellPrice).toFixed(1)}` : '---'}</span>
                           </div>
-                          <div className="bg-black/25 rounded-lg p-2.5 border border-white/5 text-center">
+                          <div className="bg-black/25 rounded-lg p-2.5 border border-white/5 text-center relative overflow-hidden">
                             <span className="text-[8px] font-mono text-slate-500 uppercase block leading-none mb-1">RSI</span>
-                            <span className={`text-xs font-extrabold font-mono ${quant.rsi > 70 ? 'text-rose-400' : quant.rsi < 30 ? 'text-emerald-400' : 'text-slate-200'}`}>
-                              {quant.rsi ? parseFloat(quant.rsi).toFixed(1) : '---'}
-                            </span>
+                            {quant.rsi != null ? (
+                              <span className={`text-xs font-extrabold font-mono ${quant.rsi > 70 ? 'text-rose-400' : quant.rsi < 30 ? 'text-emerald-400' : 'text-slate-200'}`}>
+                                {parseFloat(quant.rsi).toFixed(1)}
+                              </span>
+                            ) : (
+                              <span className="text-[9px] font-mono text-[#8C8270] opacity-70">样本不足</span>
+                            )}
                           </div>
-                          <div className="bg-black/25 rounded-lg p-2.5 border border-white/5 text-center">
+                          <div className="bg-black/25 rounded-lg p-2.5 border border-white/5 text-center relative overflow-hidden">
                             <span className="text-[8px] font-mono text-slate-500 uppercase block leading-none mb-1">ADX</span>
-                            <span className="text-xs font-bold text-[#C9B284] font-mono">{quant.adx ? parseFloat(quant.adx).toFixed(1) : '---'}</span>
+                            {quant.adx != null ? (
+                              <span className="text-xs font-bold text-[#C9B284] font-mono">{parseFloat(quant.adx).toFixed(1)}</span>
+                            ) : (
+                              <span className="text-[9px] font-mono text-[#8C8270] opacity-70">样本不足</span>
+                            )}
                           </div>
                         </div>
                       )}
                     </div>
 
                     {/* Advisory AI Intelligence Area (Risk, Opportunity, Suggested Actions) */}
-                    {loading ? (
+                    {analysisStatus === 'loading' || loading ? (
                        <div className="p-6 flex flex-col items-center justify-center gap-2 border border-dashed border-[#C9B284]/20 rounded-xl bg-[#121416]/50">
                          <div className="w-4 h-4 rounded-full border border-[#C9B284]/50 border-t-[#C9B284] animate-spin" />
                          <span className="text-[10px] text-[#8C8270] font-mono tracking-widest uppercase mt-2">正在计算策略区间...</span>
                        </div>
-                    ) : analysisError ? (
+                    ) : analysisStatus === 'error' ? (
                        <div className="p-6 flex items-center justify-center border border-dashed border-rose-500/20 rounded-xl bg-[#121416]/50">
                           <span className="text-[10px] text-rose-500/70 font-mono tracking-widest uppercase">由于缺少足够的历史行情，技术分析无法完成</span>
                        </div>
-                    ) : dynamicRisks.length > 0 ? (
+                    ) : analysisStatus === 'partial' || dynamicRisks.length > 0 ? (
                     <div className="space-y-3 pt-1">
                       <span className="text-[11px] font-semibold text-[#8C8270] tracking-wider uppercase font-mono flex items-center gap-1.5 pb-1 block">
                         <BrainCircuit className="w-3.5 h-3.5 text-[#C9B284]" />
                         {t('drawer.aiDiagnostics')}
                       </span>
+
+                      {analysisStatus === 'partial' && (
+                        <div className="text-[10px] text-[#C9B284]/80 bg-[#C9B284]/10 p-2 rounded border border-[#C9B284]/20">
+                          由于历史行情样本不足，部分技术指标（如 RSI, ADX）暂不可用，本次分析主要基于 MA 和布林带计算。
+                        </div>
+                      )}
 
                       {/* Stacked Layout for extremely detailed Advisory diagnosis */}
                       <div className="grid grid-cols-1 gap-3">
@@ -495,8 +513,11 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
                         holdingDetail: holding,
                         quantSignals: quant,
                         deterministicAdvice: analysis?.deterministicAdvice || {},
-                        historySummary: analysis?.historySummary || 0,
-                        systemInstruction: hasQuantSignals ? `你现在处于针对单只资产【${holding.symbol || holding.name}】的财富战略分析与推演模式。请密切配合相关的 quantSignals (BB Low: ${quant.buyPrice}, BB High: ${quant.sellPrice}, RSI: ${quant.rsi}, ADX: ${quant.adx}) 与持仓市值比例，结合系统提供的 deterministicAdvice 制定策略，为用户提供极其精准的对冲、结构微调与再平衡专业策略评估。` : `你现在处于针对单只资产【${holding.symbol || holding.name}】的分析模式，注意：由于历史行情数据不足，当前无法计算完整技术指标，请仅根据持有市值和基础信息答复。`
+                        historySummary: analysis?.historySummary || null,
+                        marketDataSource: analysis?.source || 'unknown',
+                        fallbackUsed: analysis?.fallbackUsed || false,
+                        analysisStatus,
+                        systemInstruction: hasQuantSignals ? `你现在处于针对单只资产【${holding.symbol || holding.name}】的财富战略分析与推演模式。请注意，行情数据源为 ${analysis?.source} ${analysis?.fallbackUsed ? '(存在降级)' : ''}。密切配合相关的 quantSignals (BB Low: ${quant.buyPrice}, BB High: ${quant.sellPrice}, RSI: ${quant.rsi != null ? quant.rsi : '缺失'}, ADX: ${quant.adx != null ? quant.adx : '缺失'}) 与持仓市值比例，结合系统提供的 deterministicAdvice 制定策略。如果是 partial 状态不允许伪造缺失的技术指标，为用户提供极其精准的对冲、结构微调与再平衡专业策略评估。` : `你现在处于针对单只资产【${holding.symbol || holding.name}】的分析模式，注意：由于历史行情数据不足，当前无法计算技术指标，请仅根据持有市值和基础信息答复。`
                       }} 
                       onPromoteIntent={(prompt) => {
                         setIsCopilotOpen(false);
