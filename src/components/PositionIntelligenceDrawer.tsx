@@ -2,9 +2,12 @@ import React, { useEffect, useState, Suspense, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Activity, Target, BrainCircuit, TrendingUp, TrendingDown, ArrowRight, ShieldAlert, Sparkles } from 'lucide-react';
 import { useInteractionStore } from '../hooks/useInteractionStore';
+import { useWealthStore } from '../hooks/useWealthStore';
 import { WidgetCopilot } from './WidgetCopilot';
 import { getCurrencySymbol, getHoldingMarketValue } from './chart-configs';
 import { useTranslation } from '../hooks/useTranslation';
+import { PositionAnalysisResult, HoldingSnapshot, AgentAnalysisSnapshot } from '../types/portfolio';
+import { saveAgentAnalysisSnapshot, getAgentAnalysisSnapshots, getLatestAgentAnalysisSnapshot, buildAnalysisDiff } from '../lib/agentMemorySnapshots';
 
 const ReactEChartsLazy = React.lazy(() => import('./ReactECharts').then(m => ({ default: m.ReactECharts })));
 
@@ -19,14 +22,15 @@ const ChartSkeleton = () => (
 
 interface PositionIntelligenceDrawerProps {
   isOpen: boolean;
-  holding: any | null; // Selected PublicHolding object
+  holding: HoldingSnapshot | any | null; // Selected PublicHolding object
   onClose: () => void;
 }
 
 export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: PositionIntelligenceDrawerProps) {
   const { t } = useTranslation();
+  const uid = useWealthStore(state => state.user?.uid);
   const [history, setHistory] = useState<any[]>([]);
-  const [analysis, setAnalysis] = useState<any>(null);
+  const [analysis, setAnalysis] = useState<PositionAnalysisResult | null>(null);
   const [analysisStatus, setAnalysisStatus] = useState<'idle' | 'loading' | 'success' | 'partial' | 'error'>('idle');
   const [loading, setLoading] = useState(false);
   const openCopilot = useInteractionStore(state => state.openDrawerWithIntent);
@@ -71,7 +75,31 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
              setAnalysis(data);
              // check if signals have nulls due to lack of samples
              const lacksSamples = data.quantSignals.missingIndicators && data.quantSignals.missingIndicators.length > 0;
-             setAnalysisStatus(lacksSamples ? 'partial' : 'success');
+             const finalStatus = lacksSamples ? 'partial' : 'success';
+             setAnalysisStatus(finalStatus);
+             
+             if (uid && holding) {
+                const snapshot: AgentAnalysisSnapshot = {
+                   id: `${holding.symbol}-${Date.now()}`,
+                   timestamp: Date.now(),
+                   holdingSnapshot: {
+                      symbol: holding.symbol,
+                      name: holding.name,
+                      quantity: holding.quantity || 0,
+                      marketValue: (holding.quantity || 0) * (holding.currentPrice || holding.costPrice || 0),
+                      currency: holding.currency || 'USD',
+                      currentPrice: holding.currentPrice || holding.costPrice || 0,
+                      costPrice: holding.costPrice,
+                   },
+                   quantSignals: data.quantSignals,
+                   deterministicAdvice: data.deterministicAdvice,
+                   historySummary: data.historySummary,
+                   marketDataSource: data.source,
+                   fallbackUsed: data.fallbackUsed,
+                   analysisStatus: finalStatus,
+                };
+                saveAgentAnalysisSnapshot(uid, snapshot);
+             }
           } else {
              setAnalysisStatus('error');
           }
@@ -503,28 +531,73 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
                   </div>
 
                   <div className="flex-1 overflow-hidden relative min-h-0 bg-[#0E1012]">
-                    <WidgetCopilot 
-                      isOpen={isCopilotOpen}
-                      inline={true}
-                      onClose={() => { setIsCopilotOpen(false); setCopilotPrompt(''); }}
-                      widgetTitle={`持仓分析: ${holding.symbol || holding.name}`} 
-                      initialMessage={copilotPrompt}
-                      widgetData={{
-                        holdingDetail: holding,
-                        quantSignals: quant,
-                        deterministicAdvice: analysis?.deterministicAdvice || {},
-                        historySummary: analysis?.historySummary || null,
-                        marketDataSource: analysis?.source || 'unknown',
-                        fallbackUsed: analysis?.fallbackUsed || false,
-                        analysisStatus,
-                        systemInstruction: hasQuantSignals ? `你现在处于针对单只资产【${holding.symbol || holding.name}】的财富战略分析与推演模式。请注意，行情数据源为 ${analysis?.source} ${analysis?.fallbackUsed ? '(存在降级)' : ''}。当前分析状态为: ${analysisStatus}。如果状态为 partial，说明部分技术指标（如 ${quant.missingIndicators?.join(', ') || 'RSI, ADX 等'}）因为样本不足无法计算。请密切配合相关的 quantSignals 与持仓市值比例，结合系统提供的 deterministicAdvice 制定策略，绝对不要凭空伪造缺失的指标数值，为用户提供极其精准的对冲、结构微调与再平衡专业策略评估。` : `你现在处于针对单只资产【${holding.symbol || holding.name}】的分析模式，注意：由于历史行情数据不足，当前无法计算技术指标，请仅根据持有市值和基础信息答复。`
-                      }} 
-                      onPromoteIntent={(prompt) => {
-                        setIsCopilotOpen(false);
-                        onClose();
-                        openCopilot(prompt);
-                      }}
-                    />
+                    {(() => {
+                      const allSnapshots = uid ? getAgentAnalysisSnapshots(uid) : [];
+                      const symbolSnapshots = allSnapshots.filter(s => s.holdingSnapshot.symbol === holding.symbol);
+                      
+                      // Using the current analysis data to form a 'virtual' current snapshot
+                      // Even if not yet fully saved to local storage, we can mock it based on state
+                      const currentAnalysisSnapshot = {
+                         id: 'current',
+                         timestamp: Date.now(),
+                         holdingSnapshot: {
+                            symbol: holding.symbol,
+                            name: holding.name,
+                            quantity: holding.quantity || 0,
+                            marketValue: (holding.quantity || 0) * (holding.currentPrice || holding.costPrice || 0),
+                            currency: holding.currency || 'USD',
+                            currentPrice: holding.currentPrice || holding.costPrice || 0,
+                         },
+                         quantSignals: quant,
+                         deterministicAdvice: analysis?.deterministicAdvice || { risks: [], opportunities: [], suggestedActions: [] },
+                         historySummary: analysis?.historySummary || { sampleCount: 0, startDate: '', endDate: '', interval: '' },
+                         marketDataSource: analysis?.source || 'unknown',
+                         fallbackUsed: analysis?.fallbackUsed || false,
+                         analysisStatus: analysisStatus
+                      };
+                      
+                      let previousSnapshots = [...symbolSnapshots];
+                      // If the top one is very very recent (like just saved), it might be the current one.
+                      // Let's just treat everything in the storage as previous for simplicity, or we can use the top one as the last previous if their time diff is > a few seconds.
+                      let latestPreviousSnapshot = previousSnapshots.length > 0 ? previousSnapshots[0] : null;
+
+                      // Prevent comparing to the exact same snapshot we just saved
+                      if (latestPreviousSnapshot && (Date.now() - latestPreviousSnapshot.timestamp < 5000)) {
+                         previousSnapshots = previousSnapshots.slice(1);
+                         latestPreviousSnapshot = previousSnapshots.length > 0 ? previousSnapshots[0] : null;
+                      }
+
+                      const diffFromLastSnapshot = latestPreviousSnapshot ? buildAnalysisDiff(currentAnalysisSnapshot, latestPreviousSnapshot) : null;
+
+                      return (
+                        <WidgetCopilot 
+                          isOpen={isCopilotOpen}
+                          inline={true}
+                          onClose={() => { setIsCopilotOpen(false); setCopilotPrompt(''); }}
+                          widgetTitle={`持仓分析: ${holding.symbol || holding.name}`} 
+                          initialMessage={copilotPrompt}
+                          widgetData={{
+                            holdingDetail: holding,
+                            quantSignals: quant,
+                            deterministicAdvice: analysis?.deterministicAdvice || {},
+                            historySummary: analysis?.historySummary || null,
+                            marketDataSource: analysis?.source || 'unknown',
+                            fallbackUsed: analysis?.fallbackUsed || false,
+                            analysisStatus,
+                            currentAnalysisSnapshot,
+                            previousAnalysisSnapshots: previousSnapshots,
+                            latestPreviousSnapshot,
+                            diffFromLastSnapshot,
+                            systemInstruction: hasQuantSignals ? `你现在处于针对单只资产【${holding.symbol || holding.name}】的财富战略分析与推演模式。请注意，行情数据源为 ${analysis?.source} ${analysis?.fallbackUsed ? '(存在降级)' : ''}。当前分析状态为: ${analysisStatus}。如果状态为 partial，说明部分技术指标（如 ${quant.missingIndicators?.join(', ') || 'RSI, ADX 等'}）因为样本不足无法计算。请密切配合相关的 quantSignals 与持仓市值比例，结合系统提供的 deterministicAdvice 制定策略，绝对不要凭空伪造缺失的指标数值，为用户提供极其精准的对冲、结构微调与再平衡专业策略评估。此外，系统还提供了本地的 previousAnalysisSnapshots 和 latestPreviousSnapshot 以供参考对比，如果暂无上次分析记录请如实告知。` : `你现在处于针对单只资产【${holding.symbol || holding.name}】的分析模式，注意：由于历史行情数据不足，当前无法计算技术指标，请仅根据持有市值和基础信息答复。`
+                          }} 
+                          onPromoteIntent={(prompt) => {
+                            setIsCopilotOpen(false);
+                            onClose();
+                            openCopilot(prompt);
+                          }}
+                        />
+                      );
+                    })()}
                   </div>
                 </motion.div>
               )}

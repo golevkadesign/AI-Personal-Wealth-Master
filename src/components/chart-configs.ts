@@ -16,17 +16,25 @@ export function getHoldingMarketValue(v: any): number {
   const totalMarketValueNum = Number(v.totalMarketValue);
   const currentValueNum = Number(v.currentValue);
 
-  if (!isNaN(valueNum) && valueNum !== 0) return valueNum;
-  if (!isNaN(marketValueNum) && marketValueNum !== 0) return marketValueNum;
-  if (!isNaN(market_valueNum) && market_valueNum !== 0) return market_valueNum;
-  if (!isNaN(totalMarketValueNum) && totalMarketValueNum !== 0) return totalMarketValueNum;
-  if (!isNaN(currentValueNum) && currentValueNum !== 0) return currentValueNum;
+  if (!isNaN(valueNum) && valueNum > 0) return valueNum;
+  if (!isNaN(marketValueNum) && marketValueNum > 0) return marketValueNum;
+  if (!isNaN(market_valueNum) && market_valueNum > 0) return market_valueNum;
+  if (!isNaN(totalMarketValueNum) && totalMarketValueNum > 0) return totalMarketValueNum;
+  if (!isNaN(currentValueNum) && currentValueNum > 0) return currentValueNum;
   
   const qty = Number(v.quantity) || 0;
-  const price = Number(v.currentPrice) || Number(v.current_price) || Number(v.lastPrice) || Number(v.costPrice) || 0;
+  const currentPrice = Number(v.currentPrice) || Number(v.current_price) || Number(v.lastPrice);
   
-  // fallback compute
-  return qty * price;
+  if (qty > 0 && currentPrice > 0) {
+      return qty * currentPrice;
+  }
+  
+  const cost = Number(v.costPrice) || 0;
+  if (qty > 0 && cost > 0) {
+      return qty * cost;
+  }
+  
+  return 0;
 }
 
 export function getSDUIPieOption(data: any, t: (key: string) => string) {

@@ -60,6 +60,8 @@ export const PublicHoldingsView: React.FC<PublicHoldingsViewProps> = ({
 
   const colors = ['#C9B284', '#6B8E6B', '#4A7FB0', '#A87BB0', '#D39C5E', '#A1A658', '#428C8C', '#8C8C8C'];
 
+  const validPieData = sortedArr.filter((v: any) => getHoldingMarketValue(v) > 0).map((v: any) => ({ name: v.name || v.symbol, value: getHoldingMarketValue(v) }));
+
   const pieOption = {
     backgroundColor: 'transparent',
     tooltip: {
@@ -83,7 +85,7 @@ export const PublicHoldingsView: React.FC<PublicHoldingsViewProps> = ({
         scaleSize: 6,
         label: { show: false } 
       },
-      data: sortedArr.map((v: any) => ({ name: v.name || v.symbol, value: getHoldingMarketValue(v) }))
+      data: validPieData.length > 0 ? validPieData : [{ name: t('charts.noData'), value: 0 }]
     }]
   };
 

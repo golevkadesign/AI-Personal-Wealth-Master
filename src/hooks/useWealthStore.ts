@@ -106,11 +106,15 @@ export const useWealthStore = create<WealthState>((set, get) => ({
     return { data: newData };
   }),
   clearData: () => {
-    set({ data: EMPTY_STATE, agentMemorySnapshots: [] });
+    set({ data: JSON.parse(JSON.stringify(EMPTY_STATE)), agentMemorySnapshots: [], publicHoldingsSyncStatus: 'empty', publicHoldingsError: undefined, publicHoldingsLastSyncAt: undefined });
     const { user, persistenceMode } = get();
     if (user?.uid) {
         localStorage.removeItem(`ai_terminal_data_${user.uid}`);
         localStorage.removeItem(`ai_terminal_snapshots_${user.uid}`);
+        localStorage.removeItem(`ai_terminal_position_snapshots_${user.uid}`);
+        localStorage.removeItem(`ai_terminal_chat_${user.uid}`);
+        localStorage.removeItem('arbitra_app_settings');
+        localStorage.removeItem('custom_gemini_api_key');
         if (persistenceMode !== 'disabled') {
             debouncedSyncToCloud(user.uid, { appData: EMPTY_STATE, userProfile: EMPTY_STATE.userProfile });
         }
@@ -187,7 +191,8 @@ export const useWealthStore = create<WealthState>((set, get) => ({
                       ...prevData.distributions,
                       publicHoldings: newData
                   },
-                  _liveSources: ['longbridge']
+                  _liveSources: ['longbridge'],
+                  _liveValuationVersion: 2
               };
               
               const totalMktVal = newData.reduce((sum: number, p: any) => sum + (Number(p.marketValue) || Number(p.value) || ((Number(p.quantity) || 0) * (Number(p.currentPrice) || Number(p.costPrice) || 0))), 0);

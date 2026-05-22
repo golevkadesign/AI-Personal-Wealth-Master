@@ -52,6 +52,12 @@ export function useTerminalSync() {
                        if (fsData.appData && Object.keys(fsData.appData).length > 0) {
                           localState = { ...EMPTY_STATE, ...fsData.appData };
                        }
+                       if (localState?.distributions?.publicHoldings) {
+                           const hasNegative = localState.distributions.publicHoldings.some((p: any) => Number(p.marketValue) < 0 || Number(p.value) < 0);
+                           if (hasNegative || localState._liveValuationVersion !== 2) {
+                               localState.distributions.publicHoldings = [];
+                           }
+                       }
                        if (fsData.userProfile) {
                           localState = { ...localState, userProfile: fsData.userProfile };
                        } else if (!fsData.appData && !fsData.chatHistory) {
@@ -73,6 +79,12 @@ export function useTerminalSync() {
                  // Disabled or Manual mode: load from localStorage if present
                  if (localDataStr) {
                      let localState = JSON.parse(localDataStr);
+                     if (localState?.distributions?.publicHoldings) {
+                         const hasNegative = localState.distributions.publicHoldings.some((p: any) => Number(p.marketValue) < 0 || Number(p.value) < 0);
+                         if (hasNegative || localState._liveValuationVersion !== 2) {
+                             localState.distributions.publicHoldings = [];
+                         }
+                     }
                      setData(sanitizeTerminalState(localState) as TerminalState);
                      setLoadingAuth(false);
                  } else if (persistenceMode === 'manual') {
@@ -83,6 +95,12 @@ export function useTerminalSync() {
                          let localState: TerminalState = EMPTY_STATE;
                          if (fsData.appData && Object.keys(fsData.appData).length > 0) {
                             localState = { ...EMPTY_STATE, ...fsData.appData };
+                         }
+                         if (localState?.distributions?.publicHoldings) {
+                             const hasNegative = localState.distributions.publicHoldings.some((p: any) => Number(p.marketValue) < 0 || Number(p.value) < 0);
+                             if (hasNegative || localState._liveValuationVersion !== 2) {
+                                 localState.distributions.publicHoldings = [];
+                             }
                          }
                          if (fsData.userProfile) {
                             localState = { ...localState, userProfile: fsData.userProfile };

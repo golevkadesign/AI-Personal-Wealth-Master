@@ -63,6 +63,7 @@ export default function App() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showProfileReport, setShowProfileReport] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
 
   const lastEvent = useSDUIEventStore(state => state.lastEvent);
   const clearEvent = useSDUIEventStore(state => state.clearEvent);
@@ -91,24 +92,33 @@ export default function App() {
 
   const confirmClearData = async () => {
     if (user?.uid) {
+      setIsClearing(true);
+      
       try {
+        // Await background deletion to ensure it's removed from Firebase before reload
         const { deleteDoc, doc } = await import('firebase/firestore');
         const { db, handleFirestoreError, OperationType } = await import('./lib/firebase');
         try {
-          await deleteDoc(doc(db, "userProfiles", user.uid));
-        } catch (e) {
+          // Add a 3 second timeout in case of offline/network issues
+          const deletePromise = deleteDoc(doc(db, "userProfiles", user.uid));
+          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000));
+          await Promise.race([deletePromise, timeoutPromise]);
+        } catch (e: any) {
+          if (e.message !== 'timeout') {
             handleFirestoreError(e, OperationType.DELETE, `userProfiles/${user.uid}`);
+          }
         }
       } catch (e) {
-        console.error("Failed to delete user profile:", e);
+         console.error("Failed to delete user profile:", e);
       }
+
+      // Synchronous local state wipe
       localStorage.removeItem(`ai_terminal_chat_${user.uid}`);
       
       useWealthStore.getState().clearData();
-      setSduiState([]);
-      clearNodePlans();
-      setShowClearConfirm(false);
-      window.dispatchEvent(new Event('clear-chat-history'));
+      
+      // Give full feedback and a completely initialized state by reloading the app
+      window.location.reload();
     }
   };
 
@@ -266,15 +276,17 @@ export default function App() {
                 <div className="flex justify-end gap-3">
                   <button 
                     onClick={() => setShowClearConfirm(false)}
-                    className="px-4 py-2 text-[12px] font-medium text-[#8C8370] hover:text-white transition-colors rounded-lg hover:bg-white/5"
+                    disabled={isClearing}
+                    className="px-4 py-2 text-[12px] font-medium text-[#8C8370] hover:text-white transition-colors rounded-lg hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     取消
                   </button>
                   <button 
                     onClick={confirmClearData}
-                    className="px-4 py-2 bg-rose-500/10 border border-rose-500/30 text-rose-400 hover:text-rose-300 hover:bg-rose-500/20 text-[12px] font-bold rounded-lg transition-all flex items-center gap-1.5"
+                    disabled={isClearing}
+                    className="px-4 py-2 bg-rose-500/10 border border-rose-500/30 text-rose-400 hover:text-rose-300 hover:bg-rose-500/20 text-[12px] font-bold rounded-lg transition-all flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    确认重置
+                    {isClearing ? '正在重置...' : '确认重置'}
                   </button>
                 </div>
               </div>
