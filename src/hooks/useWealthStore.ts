@@ -5,7 +5,7 @@ import { TerminalState } from '../types/terminal';
 import { sanitizeTerminalState } from '../lib/sanitizer';
 import { mergeWith, isArray, debounce } from 'lodash-es';
 import { setDoc, doc } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { db, handleFirestoreError, OperationType, isFirestoreQuotaExceeded } from '../lib/firebase';
 import { DEFAULT_DASHBOARD_SCHEMA } from '../lib/default-schema';
 
 export const EMPTY_STATE: TerminalState = {
@@ -30,6 +30,8 @@ export const EMPTY_STATE: TerminalState = {
 };
 
 const debouncedSyncToCloud = debounce((uid: string, payload: any) => {
+  if (isFirestoreQuotaExceeded) return;
+  
   setDoc(doc(db, "userProfiles", uid), payload, { merge: true })
     .catch(e => {
         console.error("Failed to commit appData to firestore:", e);
@@ -51,12 +53,18 @@ interface WealthState {
   fetchLongbridge: () => Promise<void>;
   language: 'zh-CN' | 'en-US';
   setLanguage: (lang: 'zh-CN' | 'en-US') => void;
+  publicHoldingsSyncStatus: 'idle' | 'loading' | 'success' | 'empty' | 'error';
+  publicHoldingsError?: string;
+  publicHoldingsLastSyncAt?: number;
 }
 
 export const useWealthStore = create<WealthState>((set, get) => ({
   data: EMPTY_STATE,
   user: null,
   loadingAuth: true,
+  publicHoldingsSyncStatus: 'idle',
+  publicHoldingsError: undefined,
+  publicHoldingsLastSyncAt: undefined,
   language: 'zh-CN',
   setLanguage: (lang) => set({ language: lang }),
   selectedHolding: null,
@@ -136,6 +144,8 @@ export const useWealthStore = create<WealthState>((set, get) => ({
     const { user, commitData } = get();
     if (!user) return;
     
+    set({ publicHoldingsSyncStatus: 'loading', publicHoldingsError: undefined });
+
     try {
       const headerValue = btoa(encodeURIComponent(JSON.stringify(settings.longbridgeAccounts)));
       const response = await axios.get('/api/v1/wealth/longbridge/positions', {
@@ -149,17 +159,32 @@ export const useWealthStore = create<WealthState>((set, get) => ({
       });
       
       if (response.data && response.data.success && response.data.data) {
+          const newData = response.data.data;
           commitData((prevData: any) => ({
               ...prevData,
               distributions: {
                   ...prevData.distributions,
-                  publicHoldings: response.data.data
+                  publicHoldings: newData
               },
               _liveSources: ['longbridge']
           }));
+          set({
+              publicHoldingsSyncStatus: newData.length === 0 ? 'empty' : 'success',
+              publicHoldingsLastSyncAt: Date.now(),
+              publicHoldingsError: undefined
+          });
+      } else {
+         set({
+             publicHoldingsSyncStatus: 'error',
+             publicHoldingsError: response.data?.error || response.data?.message || "Unknown error fetching positions"
+         });
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('[Longbridge] error fetching positions via API:', err);
+      set({
+        publicHoldingsSyncStatus: 'error',
+        publicHoldingsError: err?.message || String(err)
+      });
     }
   }
 }));

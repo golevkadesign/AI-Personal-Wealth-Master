@@ -108,5 +108,8 @@ export interface TerminalState {
   dynamicWidgets?: SDUIComponent[];
   dashboardSchema?: SDUIComponent[];
   historicalSnapshots?: Snapshot[];
+  publicHoldingsSyncStatus?: 'idle' | 'loading' | 'success' | 'empty' | 'error';
+  publicHoldingsError?: string;
+  publicHoldingsLastSyncAt?: number;
   [key: string]: any;
 }

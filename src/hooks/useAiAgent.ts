@@ -119,7 +119,8 @@ export function useAiAgent({ setSduiState, setIsSynthesizing }: any) {
              
              try {
                 const { doc, setDoc } = await import('firebase/firestore');
-                const { db, handleFirestoreError, OperationType } = await import('../lib/firebase');
+                const { db, handleFirestoreError, OperationType, isFirestoreQuotaExceeded } = await import('../lib/firebase');
+                if (isFirestoreQuotaExceeded) return;
                 try {
                     await setDoc(doc(db, "userProfiles", user.uid), { chatHistory: chatToSync }, { merge: true });
                 } catch (e) {
@@ -329,7 +330,10 @@ export function useAiAgent({ setSduiState, setIsSynthesizing }: any) {
           try {
               if (user?.uid) {
                   try {
-                      await setDoc(doc(db, "userProfiles", user.uid), { userProfile: bffData.updatedProfile }, { merge: true });
+                      const { handleFirestoreError, OperationType, isFirestoreQuotaExceeded } = await import('../lib/firebase');
+                      if (!isFirestoreQuotaExceeded) {
+                          await setDoc(doc(db, "userProfiles", user.uid), { userProfile: bffData.updatedProfile }, { merge: true });
+                      }
                   } catch (e) {
                       const { handleFirestoreError, OperationType } = await import('../lib/firebase');
                       handleFirestoreError(e, OperationType.WRITE, `userProfiles/${user.uid}`);

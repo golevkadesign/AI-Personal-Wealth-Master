@@ -18,11 +18,12 @@ try {
   console.log("== 运行测试: 空数组/极端数据/缺字段时的防御 ==");
 
   // 1. holdings array test (testing the value fallbacks we patched)
-  const holdingsOption = getHoldingsOption(mockExtremeDataProps);
+  const mockT = (key: string) => key;
+  const holdingsOption = getHoldingsOption(mockExtremeDataProps, mockT);
   console.log('✅ getHoldingsOption 解析成功:', JSON.stringify(holdingsOption.series[0].data));
 
   // 2. Donuts Option test (testing empty liquidity data)
-  const donutOption = getDonutOption(mockExtremeDataProps);
+  const donutOption = getDonutOption(mockExtremeDataProps, mockT);
   console.log('✅ getDonutOption 空数组防御成功:', JSON.stringify(donutOption.series[0].data));
 
 } catch (err: any) {

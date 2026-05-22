@@ -6,8 +6,17 @@ import { ErrorBoundary } from './ui/ErrorBoundary';
 import { SDUIRenderer } from '../lib/sdui-registry';
 
 export const DashboardGrid: React.FC = () => {
-  const { data, selectedHolding, setSelectedHolding } = useWealthStore();
+  const { data, selectedHolding, setSelectedHolding, publicHoldingsSyncStatus, publicHoldingsError, publicHoldingsLastSyncAt } = useWealthStore();
   
+  const enhancedGlobalData = { 
+    ...data, 
+    selectedHolding, 
+    setSelectedHolding, 
+    publicHoldingsSyncStatus, 
+    publicHoldingsError, 
+    publicHoldingsLastSyncAt 
+  };
+
   return (
     <div className="relative z-10 w-full mb-6 md:mb-10">
       <div className="mx-auto flex w-full flex-col min-w-0 gap-6 md:gap-7">
@@ -24,7 +33,7 @@ export const DashboardGrid: React.FC = () => {
                   className="min-w-0"
                 >
                   <ErrorBoundary>
-                    <SDUIRenderer key={`widget-${i}`} schema={Array.isArray(widget) ? widget : [widget as any]} globalData={{ ...data, selectedHolding, setSelectedHolding }} />
+                    <SDUIRenderer key={`widget-${i}`} schema={Array.isArray(widget) ? widget : [widget as any]} globalData={enhancedGlobalData} />
                   </ErrorBoundary>
                 </motion.div>
               ))}
@@ -41,7 +50,7 @@ export const DashboardGrid: React.FC = () => {
             className="min-w-0"
           >
             <ErrorBoundary>
-              <SDUIRenderer key="main-dashboard" schema={data.dashboardSchema} globalData={{ ...data, selectedHolding, setSelectedHolding }} />
+              <SDUIRenderer key="main-dashboard" schema={data.dashboardSchema} globalData={enhancedGlobalData} />
             </ErrorBoundary>
           </motion.div>
         )}

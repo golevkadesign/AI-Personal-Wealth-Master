@@ -111,9 +111,9 @@ export function ChartWidget({ title, type, dataLength, insight, option, delay = 
             </div>
             <p className="arbitra-text-mono text-[10px] tracking-[0.2em] text-rose-500/70 uppercase">ERROR STATE</p>
             <span className="text-xs text-rose-400 font-medium tracking-wide">Data Load Error</span>
-            {onReload && (
-               <button onClick={onReload} className="arbitra-btn-base arbitra-btn-ghost !text-xs !px-3 !py-1.5 arbitra-focus-ring mt-2">
-                  <RefreshCw className="w-3.5 h-3.5" /> Retry
+            {(onReload || showRefreshButton) && (
+               <button onClick={onReload || handleRefresh} disabled={isRefreshing} className="opacity-80 hover:opacity-100 transition-opacity border border-rose-500/25 hover:border-rose-500/50 bg-rose-500/10 text-rose-400 px-3 py-1.5 font-semibold text-[11px] rounded-[6px] tracking-wide cursor-pointer flex items-center gap-1 shadow-sm font-mono mt-2">
+                  <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} /> RETRY
                </button>
             )}
          </div>

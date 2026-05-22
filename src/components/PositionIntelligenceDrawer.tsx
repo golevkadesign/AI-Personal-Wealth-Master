@@ -78,63 +78,53 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
   const currSym = getCurrencySymbol(holding.currency);
 
   // Approximate secondary currency conversion for premium visual feedback
-  const conversionVal = isCny ? val / 7.15 : val * 7.15;
+  const exchangeRate = quant?.exchangeRate;
+  const conversionVal = exchangeRate ? val * exchangeRate : null;
   const conversionSym = isCny ? '$' : '¥';
 
   // Fallback metadata for holding parameters
-  const instrumentType = holding.type || holding.category || 'ETF Portfolio';
-  const domicile = holding.domicile || 'International Asset';
-  const expenseRatio = holding.expenseRatio || '0.35%';
-  const inceptionDate = holding.inceptionDate || '2018-05-10';
+  const instrumentType = holding.type || holding.category || t('drawer.notProvided');
+  const domicile = holding.domicile || t('drawer.notProvided');
+  // expenseRatio and inceptionDate removed to avoid unused variables
 
-  // Dynaimc advice cards generator combining visual requirements and raw quant metrics (RSI, ADX, etc.)
-  const dynamicRisks = [
+  // Dynamic advice conditions (Only show if quant signals exist)
+  const hasQuantSignals = !!holding.quantSignals && Object.keys(holding.quantSignals).length > 0;
+  
+  const dynamicRisks = hasQuantSignals && quant.rsi ? [
     `High equity exposure drives local asset and index volatility.`,
     quant.rsi > 70 
       ? `Momentum Warning: RSI is currently ${quant.rsi?.toFixed(1)}, signal overextended risks (Overbought).`
       : `Portfolio concentration matches base allocations limits correctly.`,
     `Moderate tracking error matching underlying indices parameters.`
-  ];
+  ] : [];
 
-  const dynamicOpportunities = [
+  const dynamicOpportunities = hasQuantSignals && quant.rsi ? [
     `Asset allocation optimization: Rebalancing can improve risk-adjusted capital returns.`,
     quant.rsi < 40
       ? `Oversold Bullish Setup: RSI at ${quant.rsi?.toFixed(1)} indicates a high-probability technical entry point.`
       : `High liquid support creates opportunities for proactive target compounding.`,
     `Tax-aware dynamic transition of position structures across asset classes.`
-  ];
+  ] : [];
 
-  const structuralSuggestedActions = [
+  const structuralSuggestedActions = hasQuantSignals && quant.rsi ? [
     `Review long-term allocation limits and schedule systematic rebalancing targets.`,
     quant.rsi > 65 
       ? `Consider technical trimming of current positions to secure accumulated gains.` 
       : `Accumulate systematically surrounding Bollinger Low supports (BB: ${currSym}${quant.buyPrice?.toFixed(1) || '---'}).`,
     `Optimize multi-currency exposures and analyze hedge ratios against EUR/USD movements.`
-  ];
+  ] : [];
 
   // Dynamic area sparkline chart
-  const baseScale = val / 420000 || 1.0;
-  const scaledTrendData = history.length > 0 
-    ? history.map(item => Number(item[4]) || 0)
-    : [
-        310000 * baseScale, 
-        320000 * baseScale, 
-        315000 * baseScale, 
-        360000 * baseScale, 
-        342000 * baseScale, 
-        395000 * baseScale, 
-        val || 420000 * baseScale
-      ];
+  const hasHistory = history && history.length > 0;
+  const scaledTrendData = hasHistory ? history.map(item => Number(item[4]) || 0) : [];
 
-  const sparklineOption = {
+  const sparklineOption = hasHistory ? {
     backgroundColor: 'transparent',
     grid: { left: '4%', right: '14%', bottom: '18%', top: '8%', containLabel: false },
     xAxis: {
       type: 'category',
       boundaryGap: false,
-      data: history.length > 0 
-        ? history.map(item => item[0])
-        : ["May '24", "Jul '24", "Sep '24", "Nov '24", "Jan '25", "Mar '25", "May '25"],
+      data: history.map(item => item[0]),
       axisLine: { show: false },
       axisTick: { show: false },
       axisLabel: { 
@@ -182,7 +172,7 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
         data: scaledTrendData
       }
     ]
-  };
+  } : null;
 
   const handleMainAskSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -274,8 +264,8 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
                         <div className="text-sm font-bold text-slate-100 font-mono">
                           {quant.currentPrice ? `$${quant.currentPrice.toFixed(2)}` : '---'}
                         </div>
-                        <div className={`text-[10px] font-bold font-mono mt-0.5 flex items-center justify-end ${isUp ? 'text-emerald-400' : 'text-rose-400'}`}>
-                          {isUp ? '+' : ''}{quant.changePercent?.toFixed(2) || '0.00'}%
+                        <div className={`text-[10px] font-bold font-mono mt-0.5 flex items-center justify-end ${quant.changePercent != null ? (isUp ? 'text-emerald-400' : 'text-rose-400') : 'text-slate-500'}`}>
+                          {quant.changePercent != null ? `${isUp ? '+' : ''}${quant.changePercent.toFixed(2)}%` : '---'}
                         </div>
                       </div>
                     </div>
@@ -288,8 +278,8 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
                         <div className="text-base font-extrabold text-[#E7D7B0] font-mono leading-none">
                           {currSym}{val.toLocaleString('en-US', { maximumFractionDigits: 0 })}
                         </div>
-                        <span className="text-[10px] text-slate-500 font-mono mt-1.5 block">
-                          {conversionSym} {conversionVal.toLocaleString('en-US', { maximumFractionDigits: 0 })} {t('drawer.approx')}
+                        <span className="text-[10px] text-slate-500 font-mono mt-1.5 block min-h-[15px]">
+                          {exchangeRate != null ? `${conversionSym} ${conversionVal?.toLocaleString('en-US', { maximumFractionDigits: 0 })} ${t('drawer.approx')}` : ''}
                         </span>
                       </div>
 
@@ -297,10 +287,10 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
                       <div className="bg-[#121416] p-4 rounded-xl border border-[#C9B284]/10">
                         <span className="text-[10px] font-mono text-[#8C8370] uppercase tracking-wider block mb-1">{t('drawer.portfolioAllocation')}</span>
                         <div className="text-base font-extrabold text-[#E7D7B0] font-mono leading-none">
-                          {holding.allocation || '28.3%'}
+                          {holding.allocation || t('drawer.na')}
                         </div>
-                        <span className="text-[10px] text-[#8C8270] mt-1.5 block font-medium truncate">
-                          {t('drawer.ofPublicMarkets')}
+                        <span className="text-[10px] text-[#8C8270] mt-1.5 block font-medium truncate min-h-[15px]">
+                          {holding.allocation ? t('drawer.ofPublicMarkets') : ''}
                         </span>
                       </div>
                     </div>
@@ -308,13 +298,9 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
                     {/* Context / Synchronize timestamp bar */}
                     <div className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-[#16181A]/60 border border-[#C9B284]/8 text-[10px] font-mono text-[#8C8270]">
                       <div className="flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/80 animate-pulse" />
-                        <span>{t('drawer.lastSynchronized')} 2026-05-20 10:30 UTC</span>
+                        <span className={`w-1.5 h-1.5 rounded-full ${holding.lastSyncTime ? 'bg-emerald-500/80 animate-pulse' : 'bg-slate-500/80'}`} />
+                        <span>{holding.lastSyncTime ? `${t('drawer.lastSynchronized')} ${new Date(holding.lastSyncTime).toISOString().slice(0, 16).replace('T', ' ')} UTC` : t('drawer.noSync')}</span>
                       </div>
-                      <span className="text-[#C9B284]/95 hover:underline cursor-pointer flex items-center gap-0.5 font-sans font-semibold">
-                        <span>{t('drawer.context')} Q2 2025</span>
-                        <span>&gt;</span>
-                      </span>
                     </div>
 
                     {/* Sparkline historical trendline chart section */}
@@ -326,18 +312,22 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
                         </span>
                         
                         <div className="flex items-center gap-3">
-                          <span className="text-[10px] text-slate-400 font-medium">{t('drawer.day')} <span className="text-emerald-400 font-mono font-semibold">+0.65%</span></span>
-                          <span className="text-[10px] text-slate-400 font-medium font-mono border-l border-white/10 pl-2.5">{t('drawer.ytd')} <span className="text-emerald-400 font-semibold">+8.72%</span></span>
+                          <span className="text-[10px] text-slate-400 font-medium">{t('drawer.day')} <span className={`font-mono font-semibold ${quant.changePercent != null ? (isUp ? 'text-emerald-400' : 'text-rose-400') : 'text-slate-500'}`}>{quant.changePercent != null ? `${isUp ? '+' : ''}${quant.changePercent}%` : '---'}</span></span>
+                          <span className="text-[10px] text-slate-400 font-medium font-mono border-l border-white/10 pl-2.5">{t('drawer.ytd')} <span className={`font-semibold ${quant.ytdPercent != null ? (quant.ytdPercent >= 0 ? 'text-emerald-400' : 'text-rose-400') : 'text-slate-500'}`}>{quant.ytdPercent != null ? `${quant.ytdPercent >= 0 ? '+' : ''}${quant.ytdPercent}%` : '---'}</span></span>
                         </div>
                       </div>
 
                       <div className="h-[140px] relative w-full">
                         {loading ? (
                           <ChartSkeleton />
-                        ) : (
+                        ) : hasHistory && sparklineOption ? (
                           <Suspense fallback={<ChartSkeleton />}>
                             <ReactEChartsLazy option={sparklineOption} className="w-full h-full" />
                           </Suspense>
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center border border-dashed border-white/10 rounded-lg">
+                             <span className="text-[10px] text-[#8C8270] font-mono tracking-widest uppercase">{t('drawer.noTrendData')}</span>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -371,6 +361,7 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
                     </div>
 
                     {/* Advisory AI Intelligence Area (Risk, Opportunity, Suggested Actions) */}
+                    {dynamicRisks.length > 0 && (
                     <div className="space-y-3 pt-1">
                       <span className="text-[11px] font-semibold text-[#8C8270] tracking-wider uppercase font-mono flex items-center gap-1.5 pb-1 block">
                         <BrainCircuit className="w-3.5 h-3.5 text-[#C9B284]" />
@@ -395,10 +386,6 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
                               ))}
                             </ul>
                           </div>
-                          <div className="mt-3.5 pt-2 border-t border-red-500/5 flex items-center justify-between text-[9px] font-mono text-red-400/85">
-                            <span>Diagnostic Zone</span>
-                            <span className="uppercase font-bold pt-0.5">Risk Level: Medium-High</span>
-                          </div>
                         </div>
 
                         {/* Opportunity Diagnosis */}
@@ -416,10 +403,6 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
                                 </li>
                               ))}
                             </ul>
-                          </div>
-                          <div className="mt-3.5 pt-2 border-t border-emerald-500/5 flex items-center justify-between text-[9px] font-mono text-emerald-400/85">
-                            <span>Arbitrage Signals</span>
-                            <span className="uppercase font-bold pt-0.5">Opportunity Score: High</span>
                           </div>
                         </div>
 
@@ -442,6 +425,7 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
                         </div>
                       </div>
                     </div>
+                    )}
 
                   </div>
 

@@ -66,7 +66,12 @@ export const translations = {
       askArbitra: '向 Arbitra 提问关于',
       disclaimer: 'Arbitra 提供战略财富洞察，不构成直接投资建议。',
       analyticsStudio: '分析终端 (Analytics Studio)',
-      backToMetrics: '返回数据板'
+      backToMetrics: '返回数据板',
+      notProvided: '未提供',
+      noTrendData: '走势数据暂不可用',
+      noSync: '暂无同步记录',
+      syncFailed: '同步失败，正在展示最后已知状态',
+      na: 'N/A'
     },
     copilot: {
       placeholder: '唤醒 Arbitra 智能助手...',
@@ -156,7 +161,12 @@ export const translations = {
       askArbitra: 'Ask Arbitra about',
       disclaimer: 'Arbitra provides strategic wealth insights, not direct investment advice.',
       analyticsStudio: 'Analytics Studio',
-      backToMetrics: 'Back to Metrics'
+      backToMetrics: 'Back to Metrics',
+      notProvided: 'Not Provided',
+      noTrendData: 'Trend Data Not Available',
+      noSync: 'No sync record',
+      syncFailed: 'SYNC FAILED - SHOWING LAST KNOWN STATE',
+      na: 'N/A'
     },
     copilot: {
       placeholder: 'Ask Arbitra Copilot...',
