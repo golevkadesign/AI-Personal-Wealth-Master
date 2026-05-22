@@ -1,7 +1,7 @@
 import React from 'react';
 import { ChartWidget } from './ChartWidget';
 import { ReactECharts } from './ReactECharts';
-import { getCurrencySymbol } from './chart-configs';
+import { getCurrencySymbol, getHoldingMarketValue } from './chart-configs';
 import { useWealthStore } from '../hooks/useWealthStore';
 
 interface PublicHoldingsViewProps {
@@ -28,6 +28,16 @@ export const PublicHoldingsView: React.FC<PublicHoldingsViewProps> = ({
   t
 }) => {
   const [isRefreshing, setIsRefreshing] = React.useState(false);
+  const fetchLongbridge = useWealthStore(state => state.fetchLongbridge);
+
+  const handleReload = async () => {
+    setIsRefreshing(true);
+    try {
+      await fetchLongbridge();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   // High-fidelity Dual Column Layout for Public Holdings Redesign
   const hasData = distData && distData.length > 0;
@@ -43,8 +53,8 @@ export const PublicHoldingsView: React.FC<PublicHoldingsViewProps> = ({
   else if (rawStatus === 'error' && !hasData) widgetStatus = 'error';
   else if (!hasData) widgetStatus = 'empty'; // fallback
 
-  const sortedArr = [...distData].sort((a: any, b: any) => (Number(b.value || b.marketValue) || 0) - (Number(a.value || a.marketValue) || 0));
-  const totalHoldingsVal = sortedArr.reduce((sum, h) => sum + (Number(h.value || h.marketValue) || 0), 0);
+  const sortedArr = [...distData].sort((a: any, b: any) => getHoldingMarketValue(b) - getHoldingMarketValue(a));
+  const totalHoldingsVal = sortedArr.reduce((sum, h) => sum + getHoldingMarketValue(h), 0);
   const currSym = getCurrencySymbol(sortedArr[0]?.currency || 'CNY');
   const formattedTotal = currSym + ' ' + totalHoldingsVal.toLocaleString('en-US', { maximumFractionDigits: 0 });
 
@@ -73,7 +83,7 @@ export const PublicHoldingsView: React.FC<PublicHoldingsViewProps> = ({
         scaleSize: 6,
         label: { show: false } 
       },
-      data: sortedArr.map((v: any) => ({ name: v.name || v.symbol, value: Number(v.value || v.marketValue) || 0 }))
+      data: sortedArr.map((v: any) => ({ name: v.name || v.symbol, value: getHoldingMarketValue(v) }))
     }]
   };
 
@@ -96,6 +106,9 @@ export const PublicHoldingsView: React.FC<PublicHoldingsViewProps> = ({
       chartHeight={chartHeight}
       badge={<span className="text-[10px] text-[#A39167] font-mono font-semibold tracking-wider">{t('dashboard.allocationAnalysis')}</span>}
       status={widgetStatus}
+      onReload={handleReload}
+      showReload={true}
+      isReloading={isRefreshing}
     >
       {/* If we have old data but status is loading/error, we show a lightweight banner at top */}
       {hasData && rawStatus === 'error' && (
@@ -135,7 +148,7 @@ export const PublicHoldingsView: React.FC<PublicHoldingsViewProps> = ({
           <div className="space-y-1.5 max-h-[220px] overflow-y-auto custom-scroll pr-1">
             {sortedArr.map((item: any, idx: number) => {
               const isSelected = selectedHolding && (selectedHolding.symbol === item.symbol || selectedHolding.name === item.name);
-              const val = Number(item.value || item.marketValue) || 0;
+              const val = getHoldingMarketValue(item);
               const pct = totalHoldingsVal > 0 ? ((val / totalHoldingsVal) * 100).toFixed(1) + '%' : '0.0%';
               const itemColor = colors[idx % colors.length];
 

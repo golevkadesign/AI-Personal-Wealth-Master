@@ -2,7 +2,6 @@ import React, { useMemo, Suspense, useState } from 'react';
 import { motion } from 'motion/react';
 import { PieChart, RefreshCw, Activity } from 'lucide-react';
 import { useInteractionStore } from '../hooks/useInteractionStore';
-import { useWealthStore } from '../hooks/useWealthStore';
 
 const ReactEChartsLazy = React.lazy(() => import('./ReactECharts').then(m => ({ default: m.ReactECharts })));
 
@@ -25,30 +24,19 @@ interface ChartWidgetProps {
   chartHeight?: string;
   children?: React.ReactNode;
   status?: 'loading' | 'empty' | 'error' | 'success'; 
-  onReload?: () => void;
+  onReload?: () => Promise<void> | void;
+  showReload?: boolean;
+  reloadLabel?: string;
+  isReloading?: boolean;
   badge?: React.ReactNode;
   onChartClick?: (params: any) => void;
 }
 
-export function ChartWidget({ title, type, dataLength, insight, option, delay = 0, chartHeight = '250px', children, status, onReload, badge, onChartClick }: ChartWidgetProps) {
+export function ChartWidget({ title, type, dataLength, insight, option, delay = 0, chartHeight = '250px', children, status, onReload, showReload, reloadLabel = '刷新实盘', isReloading, badge, onChartClick }: ChartWidgetProps) {
   // If status is provided, use it, else derive from dataLength
   const currentStatus = status || (dataLength > 0 ? 'success' : 'empty');
   
   const chartEvents = useMemo(() => onChartClick ? { click: onChartClick } : undefined, [onChartClick]);
-
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const fetchLongbridge = useWealthStore(state => state.fetchLongbridge);
-
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    try {
-      await fetchLongbridge();
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
-
-  const showRefreshButton = type === 'holdings' || type === 'donut' || type === 'publicHoldings' || type === 'liquidity';
 
   return (
     <motion.div
@@ -60,15 +48,15 @@ export function ChartWidget({ title, type, dataLength, insight, option, delay = 
       <h3 className="arbitra-text-secondary text-[11px] arbitra-text-mono font-semibold mb-6 flex justify-between items-start z-10 shrink-0 uppercase tracking-widest">
         <span className="flex items-center gap-2">{title}</span>
         <div className="flex items-center gap-2">
-          {showRefreshButton && (
+          {showReload && onReload && (
             <button
-              onClick={handleRefresh}
-              disabled={isRefreshing}
+              onClick={() => onReload()}
+              disabled={isReloading}
               className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity border border-[#C9B284]/25 hover:border-[#C9B284]/50 bg-[#16181A] hover:bg-[#C9B284]/10 text-[#C9B284] px-2.5 py-1 font-semibold text-[10px] rounded-[8px] transition-all cursor-pointer flex items-center gap-1 shadow-sm font-sans"
-              title="实时刷新持仓"
+              title={reloadLabel}
             >
-              <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
-              <span>刷新实盘</span>
+              <RefreshCw className={`w-3 h-3 ${isReloading ? 'animate-spin' : ''}`} />
+              <span>{reloadLabel}</span>
             </button>
           )}
           {badge && <div>{badge}</div>}
@@ -111,9 +99,9 @@ export function ChartWidget({ title, type, dataLength, insight, option, delay = 
             </div>
             <p className="arbitra-text-mono text-[10px] tracking-[0.2em] text-rose-500/70 uppercase">ERROR STATE</p>
             <span className="text-xs text-rose-400 font-medium tracking-wide">Data Load Error</span>
-            {(onReload || showRefreshButton) && (
-               <button onClick={onReload || handleRefresh} disabled={isRefreshing} className="opacity-80 hover:opacity-100 transition-opacity border border-rose-500/25 hover:border-rose-500/50 bg-rose-500/10 text-rose-400 px-3 py-1.5 font-semibold text-[11px] rounded-[6px] tracking-wide cursor-pointer flex items-center gap-1 shadow-sm font-mono mt-2">
-                  <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} /> RETRY
+            {(onReload || showReload) && (
+               <button onClick={() => onReload && onReload()} disabled={isReloading} className="opacity-80 hover:opacity-100 transition-opacity border border-rose-500/25 hover:border-rose-500/50 bg-rose-500/10 text-rose-400 px-3 py-1.5 font-semibold text-[11px] rounded-[6px] tracking-wide cursor-pointer flex items-center gap-1 shadow-sm font-mono mt-2">
+                  <RefreshCw className={`w-3.5 h-3.5 ${isReloading ? 'animate-spin' : ''}`} /> RETRY
                </button>
             )}
          </div>

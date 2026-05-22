@@ -141,7 +141,7 @@ export const useWealthStore = create<WealthState>((set, get) => ({
   fetchLongbridge: async () => {
     const settings = getSettings();
     if (!settings.longbridgeAccounts || settings.longbridgeAccounts.length === 0) return;
-    const { user, commitData } = get();
+    const { user } = get();
     if (!user) return;
     
     set({ publicHoldingsSyncStatus: 'loading', publicHoldingsError: undefined });
@@ -160,18 +160,27 @@ export const useWealthStore = create<WealthState>((set, get) => ({
       
       if (response.data && response.data.success && response.data.data) {
           const newData = response.data.data;
-          commitData((prevData: any) => ({
-              ...prevData,
-              distributions: {
-                  ...prevData.distributions,
-                  publicHoldings: newData
-              },
-              _liveSources: ['longbridge']
-          }));
-          set({
-              publicHoldingsSyncStatus: newData.length === 0 ? 'empty' : 'success',
-              publicHoldingsLastSyncAt: Date.now(),
-              publicHoldingsError: undefined
+          set((state) => {
+              const prevData = state.data;
+              const nextData = {
+                  ...prevData,
+                  distributions: {
+                      ...prevData.distributions,
+                      publicHoldings: newData
+                  },
+                  _liveSources: ['longbridge']
+              };
+              
+              if (state.user?.uid) {
+                  localStorage.setItem(`ai_terminal_data_${state.user.uid}`, JSON.stringify(nextData));
+              }
+
+              return {
+                  data: nextData,
+                  publicHoldingsSyncStatus: newData.length === 0 ? 'empty' : 'success',
+                  publicHoldingsLastSyncAt: Date.now(),
+                  publicHoldingsError: undefined
+              };
           });
       } else {
          set({

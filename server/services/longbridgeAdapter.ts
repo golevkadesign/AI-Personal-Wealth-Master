@@ -11,6 +11,9 @@ export interface AggregatedPosition {
     quantity: number;
     costPrice: number;
     currentPrice?: number;
+    marketValue?: number;
+    value?: number;
+    currency?: string;
 }
 
 const fetchSingleAccountPositions = async (account: LongbridgeAccount): Promise<AggregatedPosition[]> => {
@@ -59,12 +62,17 @@ const fetchSingleAccountPositions = async (account: LongbridgeAccount): Promise<
                 const qty = Number(p.quantity || 0);
                 const costPrice = Number(p.costPrice || p.cost_price || 0);
                 const mktVal = Number(p.marketValue || p.market_value || 0);
+                const currency = p.currency || p.stock_info?.currency || 'USD';
+                
                 positions.push({
                     symbol: p.symbol || p.stock_info?.symbol,
                     name: p.symbolName || p.name || p.stock_info?.name || p.symbol || p.stock_info?.symbol,
                     quantity: qty,
                     costPrice: costPrice,
-                    currentPrice: qty > 0 ? mktVal / qty : costPrice
+                    currentPrice: qty > 0 ? mktVal / qty : costPrice,
+                    marketValue: mktVal,
+                    value: mktVal,
+                    currency: currency
                 });
             };
 
@@ -99,10 +107,15 @@ export const aggregateLongbridgePortfolios = async (accounts: LongbridgeAccount[
                     const totalQty = existing.quantity + pos.quantity;
                     const newCostPrice = totalQty > 0 ? ((existing.quantity * existing.costPrice) + (pos.quantity * pos.costPrice)) / totalQty : 0;
                     
+                    const newMarketValue = (existing.marketValue || 0) + (pos.marketValue || 0);
+                    const newValue = (existing.value || 0) + (pos.value || 0);
+                    
                     positionMap.set(pos.symbol, {
                         ...existing,
                         quantity: totalQty,
-                        costPrice: newCostPrice
+                        costPrice: newCostPrice,
+                        marketValue: newMarketValue,
+                        value: newValue
                     });
                 } else {
                     positionMap.set(pos.symbol, { ...pos });

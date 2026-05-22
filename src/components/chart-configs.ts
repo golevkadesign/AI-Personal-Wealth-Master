@@ -7,6 +7,17 @@ export function getCurrencySymbol(currency?: string) {
   return c + ' ';
 }
 
+export function getHoldingMarketValue(v: any): number {
+  if (!v) return 0;
+  if (v.value !== undefined) return Number(v.value);
+  if (v.marketValue !== undefined) return Number(v.marketValue);
+  if (v.market_value !== undefined) return Number(v.market_value);
+  
+  const qty = Number(v.quantity) || 0;
+  const price = Number(v.currentPrice) || Number(v.current_price) || Number(v.lastPrice) || Number(v.costPrice) || 0;
+  return qty * price;
+}
+
 export function getSDUIPieOption(data: any, t: (key: string) => string) {
   return { 
     tooltip: { 
@@ -31,8 +42,7 @@ export function getDonutOption(data: any, t: (key: string) => string) {
   
   const publicHoldings = data?.distributions?.publicHoldings || [];
   const totalMarketValue = publicHoldings.reduce((sum: number, h: any) => {
-    const price = h.currentPrice || h.costPrice || 0;
-    return sum + (h.quantity || 0) * price;
+    return sum + getHoldingMarketValue(h);
   }, 0);
 
   if (totalMarketValue > 0) {
@@ -168,20 +178,12 @@ export function getWaterfallOption(data: any, t: (key: string) => string) {
 
 export function getHoldingsOption(data: any, t: (key: string) => string) {
   const arr = data?.distributions?.publicHoldings || [];
-  // Calculate value safely, handling Longbridge format vs default schema
-  const calculateValue = (v: any) => {
-    if (v.value !== undefined) return Number(v.value);
-    if (v.marketValue !== undefined) return Number(v.marketValue);
-    const qty = Number(v.quantity) || 0;
-    const price = Number(v.currentPrice) || Number(v.costPrice) || 0;
-    return qty * price;
-  };
 
   // Sort array by value to make horizontal chart look better (descending)
-  const sortedArr = [...arr].sort((a: any, b: any) => calculateValue(a) - calculateValue(b));
+  const sortedArr = [...arr].sort((a: any, b: any) => getHoldingMarketValue(a) - getHoldingMarketValue(b));
   
   const symbols = sortedArr.map((v: any) => v.name || v.symbol || t('charts.unknown'));
-  const values = sortedArr.map((v: any) => calculateValue(v));
+  const values = sortedArr.map((v: any) => getHoldingMarketValue(v));
   
   return {
     tooltip: { 

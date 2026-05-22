@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, Activity, Target, BrainCircuit, TrendingUp, TrendingDown, ArrowRight, ShieldAlert, Sparkles } from 'lucide-react';
 import { useInteractionStore } from '../hooks/useInteractionStore';
 import { WidgetCopilot } from './WidgetCopilot';
-import { getCurrencySymbol } from './chart-configs';
+import { getCurrencySymbol, getHoldingMarketValue } from './chart-configs';
 import { useTranslation } from '../hooks/useTranslation';
 
 const ReactEChartsLazy = React.lazy(() => import('./ReactECharts').then(m => ({ default: m.ReactECharts })));
@@ -73,7 +73,7 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
 
   const quant = holding.quantSignals || {};
   const isUp = (quant.changePercent || 0) >= 0;
-  const val = Number(holding.value || holding.marketValue) || 0;
+  const val = getHoldingMarketValue(holding);
   const isCny = (holding.currency || 'CNY').toUpperCase() === 'CNY';
   const currSym = getCurrencySymbol(holding.currency);
 
