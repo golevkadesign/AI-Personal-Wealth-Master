@@ -61,26 +61,40 @@ export const analyzeHistory = (historyArr: any[], holdingSnapshot?: any) => {
     const currentPrice = holdingSnapshot?.currentPrice || last.close;
     const changePercent = prev?.close ? ((currentPrice - prev.close) / prev.close) * 100 : 0;
     
+    const missingIndicators: string[] = [];
+    if (last[`MA${config.maFast}`] == null) missingIndicators.push(`MA${config.maFast}`);
+    if (last[`MA${config.maSlow}`] == null) missingIndicators.push(`MA${config.maSlow}`);
+    if (last.RSI == null) missingIndicators.push('RSI');
+    if (last.MACD_Histogram == null) missingIndicators.push('MACD');
+    if (last.ADX == null) missingIndicators.push('ADX');
+    if (last.BB_Upper == null || last.BB_Lower == null) missingIndicators.push('Bollinger Bands');
+
+    let trend = 'unknown';
+    if (last[`MA${config.maFast}`] != null && last[`MA${config.maSlow}`] != null) {
+        trend = last[`MA${config.maFast}`] > last[`MA${config.maSlow}`] ? 'up' : 'down';
+    }
+
     const bbW = (last.BB_Upper - last.BB_Lower) || (currentPrice * 0.05);
 
     const quantSignals = {
         currentPrice,
         changePercent,
-        trend: last[`MA${config.maFast}`] > last[`MA${config.maSlow}`] ? 'up' : 'down',
-        ma5: last[`MA${config.maFast}`],
-        ma20: last[`MA${config.maSlow}`],
-        rsi: last.RSI || 0,
-        macdHist: last.MACD_Histogram || 0,
-        adx: last.ADX || 0,
+        trend,
+        ma5: last[`MA${config.maFast}`] ?? null,
+        ma20: last[`MA${config.maSlow}`] ?? null,
+        rsi: last.RSI ?? null,
+        macdHist: last.MACD_Histogram ?? null,
+        adx: last.ADX ?? null,
         signal: last.signal || 'hold',
-        bbUpper: last.BB_Upper,
-        bbLower: last.BB_Lower,
+        bbUpper: last.BB_Upper ?? null,
+        bbLower: last.BB_Lower ?? null,
         buyPrice: last.BB_Lower || (currentPrice * 0.95),
         sellPrice: last.BB_Upper || (currentPrice * 1.05),
         support: last.BB_Lower || (currentPrice * 0.95),
         resistance: last.BB_Upper || (currentPrice * 1.05),
         stopLoss: last.BB_Lower ? last.BB_Lower * 0.98 : currentPrice * 0.90,
-        takeProfit: last.BB_Upper ? last.BB_Upper * 1.02 : currentPrice * 1.10
+        takeProfit: last.BB_Upper ? last.BB_Upper * 1.02 : currentPrice * 1.10,
+        missingIndicators
     };
 
     const risks: string[] = [];
@@ -88,14 +102,14 @@ export const analyzeHistory = (historyArr: any[], holdingSnapshot?: any) => {
     const suggestedActions: string[] = [];
 
     // Risks
-    if (quantSignals.rsi > config.rsiOverbought) risks.push(`RSI (${quantSignals.rsi.toFixed(1)}) 处于超买区间，需警惕回调风险。`);
-    if (quantSignals.macdHist < 0 && quantSignals.trend === 'down') risks.push(`MACD 动能向下且 MA5 低于 MA20，处于弱势下降趋势。`);
-    if (currentPrice < quantSignals.ma20) risks.push(`当前价格已跌破 MA20 (${quantSignals.ma20?.toFixed(2)}) 趋势支撑。`);
+    if (quantSignals.rsi != null && quantSignals.rsi > config.rsiOverbought) risks.push(`RSI (${quantSignals.rsi.toFixed(1)}) 处于超买区间，需警惕回调风险。`);
+    if (quantSignals.macdHist != null && quantSignals.macdHist < 0 && quantSignals.trend === 'down') risks.push(`MACD 动能向下且 MA5 低于 MA20，处于弱势下降趋势。`);
+    if (quantSignals.ma20 != null && currentPrice < quantSignals.ma20) risks.push(`当前价格已跌破 MA20 (${quantSignals.ma20.toFixed(2)}) 趋势支撑。`);
 
     // Opportunities
-    if (quantSignals.rsi < config.rsiOversold) opportunities.push(`RSI (${quantSignals.rsi.toFixed(1)}) 位于超卖区间，可能出现技术性反弹。`);
-    if (quantSignals.macdHist > 0 && quantSignals.trend === 'up') opportunities.push(`MACD 动能向上且短期均线呈多头排列。`);
-    if (currentPrice > quantSignals.bbUpper) opportunities.push(`价格强势突破布林带上轨，动能强劲。`);
+    if (quantSignals.rsi != null && quantSignals.rsi < config.rsiOversold) opportunities.push(`RSI (${quantSignals.rsi.toFixed(1)}) 位于超卖区间，可能出现技术性反弹。`);
+    if (quantSignals.macdHist != null && quantSignals.macdHist > 0 && quantSignals.trend === 'up') opportunities.push(`MACD 动能向上且短期均线呈多头排列。`);
+    if (quantSignals.bbUpper != null && currentPrice > quantSignals.bbUpper) opportunities.push(`价格强势突破布林带上轨，动能强劲。`);
 
     // Advice
     if (quantSignals.signal === 'buy') {

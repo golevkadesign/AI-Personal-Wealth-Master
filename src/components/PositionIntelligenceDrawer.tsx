@@ -70,7 +70,7 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
           if (data.quantSignals && data.deterministicAdvice) {
              setAnalysis(data);
              // check if signals have nulls due to lack of samples
-             const lacksSamples = data.quantSignals.rsi === null || data.quantSignals.macdHist === null;
+             const lacksSamples = data.quantSignals.missingIndicators && data.quantSignals.missingIndicators.length > 0;
              setAnalysisStatus(lacksSamples ? 'partial' : 'success');
           } else {
              setAnalysisStatus('error');
@@ -391,7 +391,7 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
 
                       {analysisStatus === 'partial' && (
                         <div className="text-[10px] text-[#C9B284]/80 bg-[#C9B284]/10 p-2 rounded border border-[#C9B284]/20">
-                          由于历史行情样本不足，部分技术指标（如 RSI, ADX）暂不可用，本次分析主要基于 MA 和布林带计算。
+                          由于历史行情样本不足，部分技术指标（{quant.missingIndicators?.join(', ')}）暂不可用，本次分析主要基于可用数据和估算值计算。
                         </div>
                       )}
 
@@ -517,7 +517,7 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
                         marketDataSource: analysis?.source || 'unknown',
                         fallbackUsed: analysis?.fallbackUsed || false,
                         analysisStatus,
-                        systemInstruction: hasQuantSignals ? `你现在处于针对单只资产【${holding.symbol || holding.name}】的财富战略分析与推演模式。请注意，行情数据源为 ${analysis?.source} ${analysis?.fallbackUsed ? '(存在降级)' : ''}。密切配合相关的 quantSignals (BB Low: ${quant.buyPrice}, BB High: ${quant.sellPrice}, RSI: ${quant.rsi != null ? quant.rsi : '缺失'}, ADX: ${quant.adx != null ? quant.adx : '缺失'}) 与持仓市值比例，结合系统提供的 deterministicAdvice 制定策略。如果是 partial 状态不允许伪造缺失的技术指标，为用户提供极其精准的对冲、结构微调与再平衡专业策略评估。` : `你现在处于针对单只资产【${holding.symbol || holding.name}】的分析模式，注意：由于历史行情数据不足，当前无法计算技术指标，请仅根据持有市值和基础信息答复。`
+                        systemInstruction: hasQuantSignals ? `你现在处于针对单只资产【${holding.symbol || holding.name}】的财富战略分析与推演模式。请注意，行情数据源为 ${analysis?.source} ${analysis?.fallbackUsed ? '(存在降级)' : ''}。当前分析状态为: ${analysisStatus}。如果状态为 partial，说明部分技术指标（如 ${quant.missingIndicators?.join(', ') || 'RSI, ADX 等'}）因为样本不足无法计算。请密切配合相关的 quantSignals 与持仓市值比例，结合系统提供的 deterministicAdvice 制定策略，绝对不要凭空伪造缺失的指标数值，为用户提供极其精准的对冲、结构微调与再平衡专业策略评估。` : `你现在处于针对单只资产【${holding.symbol || holding.name}】的分析模式，注意：由于历史行情数据不足，当前无法计算技术指标，请仅根据持有市值和基础信息答复。`
                       }} 
                       onPromoteIntent={(prompt) => {
                         setIsCopilotOpen(false);
