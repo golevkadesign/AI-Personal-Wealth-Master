@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { subscribeToAuthChanges, db, handleFirestoreError, OperationType } from '../lib/firebase';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, getDoc } from 'firebase/firestore';
 import { TerminalState } from '../types/terminal';
 import { sanitizeTerminalState } from '../lib/sanitizer';
 import { useWealthStore, EMPTY_STATE } from './useWealthStore';
@@ -8,7 +8,7 @@ import { useWealthStore, EMPTY_STATE } from './useWealthStore';
 export { EMPTY_STATE };
 
 export function useTerminalSync() {
-  const { user, loadingAuth, data, setUser, setLoadingAuth, setData, commitData } = useWealthStore();
+  const { user, loadingAuth, data, setUser, setLoadingAuth, setData, commitData, persistenceMode } = useWealthStore();
 
   useEffect(() => {
     const isTestMode = new URLSearchParams(window.location.search).get('test') === '1';
@@ -23,7 +23,7 @@ export function useTerminalSync() {
 
     let unsubscribeSnapshot: (() => void) | undefined;
 
-    const unsubscribeAuth = subscribeToAuthChanges((u) => {
+    const unsubscribeAuth = subscribeToAuthChanges(async (u) => {
       setUser(u);
       
       if (unsubscribeSnapshot) {
@@ -32,32 +32,78 @@ export function useTerminalSync() {
       }
 
       if (u) {
-         unsubscribeSnapshot = onSnapshot(doc(db, "userProfiles", u.uid), (snapshot) => {
-            if (snapshot.exists()) {
-               const fsData = snapshot.data();
-               let localState: TerminalState = EMPTY_STATE;
-               
-               if (fsData.appData && Object.keys(fsData.appData).length > 0) {
-                  localState = { ...EMPTY_STATE, ...fsData.appData };
-               }
-               if (fsData.userProfile) {
-                  localState = { ...localState, userProfile: fsData.userProfile };
-               } else if (!fsData.appData && !fsData.chatHistory) {
-                  localState = { ...localState, userProfile: fsData };
-               }
-               
-               setData(sanitizeTerminalState(localState) as TerminalState);
-            } else {
-               // 💥 修复清空残留：如果远程文档被删除了，本地立刻归零
-               console.log("Terminal: Remote document deleted, resetting local state.");
-               setData(EMPTY_STATE);
-            }
-            setLoadingAuth(false);
-         }, (error) => {
-            console.error("Firestore sync error:", error);
-            setLoadingAuth(false);
-            handleFirestoreError(error, OperationType.GET, `userProfiles/${u.uid}`);
-         });
+          try {
+              const localDataStr = localStorage.getItem(`ai_terminal_data_${u.uid}`);
+              const localSnapshotsStr = localStorage.getItem(`ai_terminal_snapshots_${u.uid}`);
+              
+              if (localSnapshotsStr) {
+                  try {
+                      useWealthStore.setState({ agentMemorySnapshots: JSON.parse(localSnapshotsStr) });
+                  } catch(e) {}
+              }
+              
+              if (persistenceMode === 'auto') {
+                 // Auto mode: keep the original behavior with onSnapshot
+                 unsubscribeSnapshot = onSnapshot(doc(db, "userProfiles", u.uid), (snapshot) => {
+                    if (snapshot.exists()) {
+                       const fsData = snapshot.data();
+                       let localState: TerminalState = EMPTY_STATE;
+                       
+                       if (fsData.appData && Object.keys(fsData.appData).length > 0) {
+                          localState = { ...EMPTY_STATE, ...fsData.appData };
+                       }
+                       if (fsData.userProfile) {
+                          localState = { ...localState, userProfile: fsData.userProfile };
+                       } else if (!fsData.appData && !fsData.chatHistory) {
+                          localState = { ...localState, userProfile: fsData };
+                       }
+                       
+                       setData(sanitizeTerminalState(localState) as TerminalState);
+                    } else {
+                       console.log("Terminal: Remote document deleted, resetting local state.");
+                       setData(EMPTY_STATE);
+                    }
+                    setLoadingAuth(false);
+                 }, (error) => {
+                    console.error("Firestore sync error:", error);
+                    setLoadingAuth(false);
+                    handleFirestoreError(error, OperationType.GET, `userProfiles/${u.uid}`);
+                 });
+              } else {
+                 // Disabled or Manual mode: load from localStorage if present
+                 if (localDataStr) {
+                     let localState = JSON.parse(localDataStr);
+                     setData(sanitizeTerminalState(localState) as TerminalState);
+                     setLoadingAuth(false);
+                 } else if (persistenceMode === 'manual') {
+                     // In manual mode, we might want to fetch from cloud once if local is empty
+                     const snapshot = await getDoc(doc(db, "userProfiles", u.uid));
+                     if (snapshot.exists()) {
+                         const fsData = snapshot.data();
+                         let localState: TerminalState = EMPTY_STATE;
+                         if (fsData.appData && Object.keys(fsData.appData).length > 0) {
+                            localState = { ...EMPTY_STATE, ...fsData.appData };
+                         }
+                         if (fsData.userProfile) {
+                            localState = { ...localState, userProfile: fsData.userProfile };
+                         } else if (!fsData.appData && !fsData.chatHistory) {
+                            localState = { ...localState, userProfile: fsData };
+                         }
+                         setData(sanitizeTerminalState(localState) as TerminalState);
+                     } else {
+                         setData(EMPTY_STATE);
+                     }
+                     setLoadingAuth(false);
+                 } else {
+                     setData(EMPTY_STATE);
+                     setLoadingAuth(false);
+                 }
+              }
+          } catch (e) {
+              console.error("Error setting up sync:", e);
+              setData(EMPTY_STATE);
+              setLoadingAuth(false);
+          }
       } else {
          setData(EMPTY_STATE);
          setLoadingAuth(false);
@@ -70,7 +116,7 @@ export function useTerminalSync() {
         unsubscribeSnapshot();
       }
     };
-  }, [setUser, setData, setLoadingAuth]);
+  }, [setUser, setData, setLoadingAuth, persistenceMode]);
 
   const fetchLongbridge = useWealthStore(state => state.fetchLongbridge);
 
@@ -78,9 +124,7 @@ export function useTerminalSync() {
     let intervalId: any;
 
     if (user && !loadingAuth) {
-      // First fetch
       fetchLongbridge();
-      // Poll every 60s
       intervalId = setInterval(fetchLongbridge, 60 * 1000);
     }
 
@@ -89,6 +133,5 @@ export function useTerminalSync() {
     };
   }, [user, loadingAuth, fetchLongbridge]);
 
-  // We return user and loadingAuth so App can block UI while starting up
-  return { user, loadingAuth, data, commitData }; // kept data & commitData for backward compat but App will stop using them
+  return { user, loadingAuth, data, commitData };
 }

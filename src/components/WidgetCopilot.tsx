@@ -4,6 +4,7 @@ import Markdown from 'react-markdown';
 import { getSettings } from '../lib/settings';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTranslation } from '../hooks/useTranslation';
+import { useWealthStore } from '../hooks/useWealthStore';
 
 export interface WidgetCopilotProps {
   isOpen: boolean;
@@ -92,6 +93,21 @@ export const WidgetCopilot: React.FC<WidgetCopilotProps> = ({
     abortControllerRef.current = new AbortController();
 
     try {
+      // Extract global variables for Agent analysis
+      const globalStateFromZustand = useWealthStore.getState().data;
+      const memSnapshots = useWealthStore.getState().agentMemorySnapshots || [];
+      const currentLivePortfolio = globalStateFromZustand?.distributions?.publicHoldings || [];
+      
+      let snapshotDiff = {};
+      if (memSnapshots.length >= 2) {
+         const currentSnap = memSnapshots[0];
+         const previousSnap = memSnapshots[1];
+         snapshotDiff = {
+            totalMarketValueChange: (currentSnap.totalMarketValue || 0) - (previousSnap.totalMarketValue || 0),
+            timeDiffMs: currentSnap.timestamp - previousSnap.timestamp
+         };
+      }
+
       const res = await fetch('/api/sandbox/chat', {
         method: 'POST',
         headers: {
@@ -100,10 +116,15 @@ export const WidgetCopilot: React.FC<WidgetCopilotProps> = ({
         body: JSON.stringify({
           history: currentHistory,
           message: userMsg,
-          widgetContext: widgetData,
+          widgetContext: {
+             ...widgetData,
+             currentLivePortfolio,
+             previousSnapshots: memSnapshots,
+             snapshotDiff
+          },
           widgetTitle: widgetTitle,
           expertRole: expertRole,
-          globalState: globalData,
+          globalState: globalStateFromZustand,
           settings: getSettings()
         }),
         signal: abortControllerRef.current.signal

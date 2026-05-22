@@ -61,7 +61,13 @@ const fetchSingleAccountPositions = async (account: LongbridgeAccount): Promise<
             const extractPos = (p: any) => {
                 const qty = Number(p.quantity || 0);
                 const costPrice = Number(p.costPrice || p.cost_price || 0);
-                const mktVal = Number(p.marketValue || p.market_value || 0);
+                const currentPx = Number(p.currentPrice || p.current_price || p.lastPrice || costPrice);
+                
+                // Don't result in 0 if there are missing fields but we know qty & price
+                let mktVal = Number(p.marketValue ?? p.market_value);
+                if (isNaN(mktVal) || mktVal === 0) {
+                    mktVal = qty * currentPx;
+                }
                 const currency = p.currency || p.stock_info?.currency || 'USD';
                 
                 positions.push({
@@ -69,7 +75,7 @@ const fetchSingleAccountPositions = async (account: LongbridgeAccount): Promise<
                     name: p.symbolName || p.name || p.stock_info?.name || p.symbol || p.stock_info?.symbol,
                     quantity: qty,
                     costPrice: costPrice,
-                    currentPrice: qty > 0 ? mktVal / qty : costPrice,
+                    currentPrice: currentPx,
                     marketValue: mktVal,
                     value: mktVal,
                     currency: currency

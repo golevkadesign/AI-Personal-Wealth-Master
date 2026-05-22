@@ -9,12 +9,23 @@ export function getCurrencySymbol(currency?: string) {
 
 export function getHoldingMarketValue(v: any): number {
   if (!v) return 0;
-  if (v.value !== undefined) return Number(v.value);
-  if (v.marketValue !== undefined) return Number(v.marketValue);
-  if (v.market_value !== undefined) return Number(v.market_value);
+  
+  const valueNum = Number(v.value);
+  const marketValueNum = Number(v.marketValue);
+  const market_valueNum = Number(v.market_value);
+  const totalMarketValueNum = Number(v.totalMarketValue);
+  const currentValueNum = Number(v.currentValue);
+
+  if (!isNaN(valueNum) && valueNum !== 0) return valueNum;
+  if (!isNaN(marketValueNum) && marketValueNum !== 0) return marketValueNum;
+  if (!isNaN(market_valueNum) && market_valueNum !== 0) return market_valueNum;
+  if (!isNaN(totalMarketValueNum) && totalMarketValueNum !== 0) return totalMarketValueNum;
+  if (!isNaN(currentValueNum) && currentValueNum !== 0) return currentValueNum;
   
   const qty = Number(v.quantity) || 0;
   const price = Number(v.currentPrice) || Number(v.current_price) || Number(v.lastPrice) || Number(v.costPrice) || 0;
+  
+  // fallback compute
   return qty * price;
 }
 

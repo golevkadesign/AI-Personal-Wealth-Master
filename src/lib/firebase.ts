@@ -20,7 +20,7 @@ async function testConnection() {
     }
   }
 }
-testConnection();
+// Removed testConnection(); to save reads
 
 export const storage = getStorage(app);
 

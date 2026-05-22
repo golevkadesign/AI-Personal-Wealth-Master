@@ -39,10 +39,17 @@ const debouncedSyncToCloud = debounce((uid: string, payload: any) => {
     });
 }, 2000);
 
+// We define persistence mode states
+export type PersistenceMode = 'disabled' | 'manual' | 'auto';
+
 interface WealthState {
   data: TerminalState;
   user: any;
   loadingAuth: boolean;
+  persistenceMode: PersistenceMode;
+  agentMemorySnapshots: any[];
+  setPersistenceMode: (mode: PersistenceMode) => void;
+  saveCloudCheckpoint: () => void;
   setUser: (user: any) => void;
   setLoadingAuth: (loadingAuth: boolean) => void;
   setData: (data: TerminalState) => void;
@@ -58,10 +65,29 @@ interface WealthState {
   publicHoldingsLastSyncAt?: number;
 }
 
+const syncToCloud = (uid: string, data: any) => {
+    if (isFirestoreQuotaExceeded) return;
+    setDoc(doc(db, "userProfiles", uid), data, { merge: true })
+      .catch(e => {
+          console.error("Failed to manually save cloud checkpoint:", e);
+      });
+};
+
 export const useWealthStore = create<WealthState>((set, get) => ({
   data: EMPTY_STATE,
   user: null,
   loadingAuth: true,
+  persistenceMode: 'disabled', // default to disabled to protect quota
+  agentMemorySnapshots: [],
+  setPersistenceMode: (mode) => set({ persistenceMode: mode }),
+  saveCloudCheckpoint: () => {
+      const { user, data } = get();
+      if (user?.uid) {
+          const appDataToSave = { ...data };
+          delete appDataToSave.userProfile;
+          syncToCloud(user.uid, { appData: appDataToSave, userProfile: data.userProfile });
+      }
+  },
   publicHoldingsSyncStatus: 'idle',
   publicHoldingsError: undefined,
   publicHoldingsLastSyncAt: undefined,
@@ -72,8 +98,6 @@ export const useWealthStore = create<WealthState>((set, get) => ({
   setUser: (user) => set({ user }),
   setLoadingAuth: (loadingAuth) => set({ loadingAuth }),
   setData: (newData) => set((state) => {
-    // 💥 竞态修复：如果当前已经在通过 Live API (如长桥) 轮询拉取数据，
-    // 则拒绝接受 Firestore onSnapshot 传来的旧 publicHoldings，防止最新持仓被覆盖为空或旧值
     if (state.data?._liveSources?.includes('longbridge')) {
       if (!newData.distributions) newData.distributions = { liquidity: [], expenses: [], privateAssets: [], publicHoldings: [], fixedAssets: [], options: [] };
       newData.distributions.publicHoldings = state.data.distributions.publicHoldings;
@@ -82,11 +106,14 @@ export const useWealthStore = create<WealthState>((set, get) => ({
     return { data: newData };
   }),
   clearData: () => {
-    set({ data: EMPTY_STATE });
-    const { user } = get();
+    set({ data: EMPTY_STATE, agentMemorySnapshots: [] });
+    const { user, persistenceMode } = get();
     if (user?.uid) {
         localStorage.removeItem(`ai_terminal_data_${user.uid}`);
-        debouncedSyncToCloud(user.uid, { appData: EMPTY_STATE, userProfile: EMPTY_STATE.userProfile });
+        localStorage.removeItem(`ai_terminal_snapshots_${user.uid}`);
+        if (persistenceMode !== 'disabled') {
+            debouncedSyncToCloud(user.uid, { appData: EMPTY_STATE, userProfile: EMPTY_STATE.userProfile });
+        }
     }
   },
   commitData: (newDataOrUpdater) => {
@@ -95,15 +122,10 @@ export const useWealthStore = create<WealthState>((set, get) => ({
       const rawNewData = typeof newDataOrUpdater === 'function' ? newDataOrUpdater(prev) : newDataOrUpdater;
       const newData = sanitizeTerminalState(rawNewData) as TerminalState;
       
-      // 使用 mergeWith 进行防御性合并，并在遇到数组时直接覆盖，防止出现数组索引混合污染
       const fullData = mergeWith({}, prev, newData, (objValue, srcValue) => {
-        if (isArray(srcValue)) {
-          return srcValue; // 数组全量替换，不执行深度合并
-        }
+        if (isArray(srcValue)) return srcValue;
       });
       
-      // 💥 新增：时序快照拦截器 (Temporal Snapshot Interceptor)
-      // 只有当用户真的有资产，且核心资产/指标发生实质性变化时，才进行快照
       if (prev.metrics?.netWorth > 0) {
         const coreChanged = 
           JSON.stringify(prev.distributions) !== JSON.stringify(fullData.distributions) || 
@@ -112,14 +134,13 @@ export const useWealthStore = create<WealthState>((set, get) => ({
         if (coreChanged) {
           const history = prev.historicalSnapshots || [];
           const lastSnap = history[0];
-          // 防抖：如果距离上次快照不到 5 分钟，则不重复记录，避免频繁的微调污染时序
           if (!lastSnap || (Date.now() - lastSnap.timestamp > 5 * 60 * 1000)) {
             const newSnapshot = {
               timestamp: Date.now(),
               metrics: prev.metrics,
               distributions: prev.distributions
             };
-            fullData.historicalSnapshots = [newSnapshot, ...history].slice(0, 5); // 永远只保留最近 5 次核心变更
+            fullData.historicalSnapshots = [newSnapshot, ...history].slice(0, 5);
           } else {
             fullData.historicalSnapshots = history;
           }
@@ -130,9 +151,12 @@ export const useWealthStore = create<WealthState>((set, get) => ({
 
       if (state.user?.uid) {
           localStorage.setItem(`ai_terminal_data_${state.user.uid}`, JSON.stringify(fullData));
-          const appDataToSave = { ...fullData };
-          delete appDataToSave.userProfile; // RAG profile saved separately in the same doc
-          debouncedSyncToCloud(state.user.uid, { appData: appDataToSave, userProfile: fullData.userProfile });
+          
+          if (state.persistenceMode === 'auto') {
+              const appDataToSave = { ...fullData };
+              delete appDataToSave.userProfile;
+              debouncedSyncToCloud(state.user.uid, { appData: appDataToSave, userProfile: fullData.userProfile });
+          }
       }
 
       return { data: fullData };
@@ -149,13 +173,8 @@ export const useWealthStore = create<WealthState>((set, get) => ({
     try {
       const headerValue = btoa(encodeURIComponent(JSON.stringify(settings.longbridgeAccounts)));
       const response = await axios.get('/api/v1/wealth/longbridge/positions', {
-          headers: {
-              'X-Longbridge-Accounts': headerValue,
-              'Cache-Control': 'no-cache'
-          },
-          params: {
-              _t: Date.now()
-          }
+          headers: { 'X-Longbridge-Accounts': headerValue, 'Cache-Control': 'no-cache' },
+          params: { _t: Date.now() }
       });
       
       if (response.data && response.data.success && response.data.data) {
@@ -171,12 +190,25 @@ export const useWealthStore = create<WealthState>((set, get) => ({
                   _liveSources: ['longbridge']
               };
               
+              const totalMktVal = newData.reduce((sum: number, p: any) => sum + (Number(p.marketValue) || Number(p.value) || ((Number(p.quantity) || 0) * (Number(p.currentPrice) || Number(p.costPrice) || 0))), 0);
+              
+              const snapshot = {
+                 timestamp: Date.now(),
+                 totalMarketValue: totalMktVal,
+                 topHoldings: [...newData].sort((a: any, b: any) => (Number(b.marketValue || 0) - Number(a.marketValue || 0))).slice(0, 5).map(h => ({ symbol: h.symbol, marketValue: h.marketValue, quantity: h.quantity })),
+                 source: 'longbridge'
+              };
+              
+              const newSnapshots = [snapshot, ...state.agentMemorySnapshots].slice(0, 10);
+              
               if (state.user?.uid) {
                   localStorage.setItem(`ai_terminal_data_${state.user.uid}`, JSON.stringify(nextData));
+                  localStorage.setItem(`ai_terminal_snapshots_${state.user.uid}`, JSON.stringify(newSnapshots));
               }
 
               return {
                   data: nextData,
+                  agentMemorySnapshots: newSnapshots,
                   publicHoldingsSyncStatus: newData.length === 0 ? 'empty' : 'success',
                   publicHoldingsLastSyncAt: Date.now(),
                   publicHoldingsError: undefined
