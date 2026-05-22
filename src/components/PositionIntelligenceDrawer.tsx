@@ -26,6 +26,8 @@ interface PositionIntelligenceDrawerProps {
 export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: PositionIntelligenceDrawerProps) {
   const { t } = useTranslation();
   const [history, setHistory] = useState<any[]>([]);
+  const [analysis, setAnalysis] = useState<any>(null);
+  const [analysisError, setAnalysisError] = useState(false);
   const [loading, setLoading] = useState(false);
   const openCopilot = useInteractionStore(state => state.openDrawerWithIntent);
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
@@ -37,15 +39,21 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
       setIsCopilotOpen(false);
       setCopilotPrompt('');
       setMainAskInput('');
+      setAnalysis(null);
+      setAnalysisError(false);
+      setHistory([]);
     }
   }, [isOpen]);
 
-  // Fetch quantitative price history on mount/selection change
+  // Fetch quantitative analysis
   useEffect(() => {
     if (isOpen && holding?.symbol) {
       setLoading(true);
+      setAnalysisError(false);
       const isLbBound = true;
-      fetch(`/api/quant/history?symbol=${holding.symbol}&useLb=${isLbBound}`)
+      const qty = holding.quantity || 0;
+      const cp = holding.currentPrice || holding.costPrice || 0;
+      fetch(`/api/quant/analysis?symbol=${holding.symbol}&useLb=${isLbBound}&quantity=${qty}&currentPrice=${cp}`)
         .then(async (res) => {
           if (!res.ok) {
             const errText = await res.text();
@@ -59,9 +67,15 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
           } else {
             console.error("QuantEngine: Returned empty history array");
           }
+          if (data.quantSignals && data.deterministicAdvice) {
+             setAnalysis(data);
+          } else {
+             setAnalysisError(true);
+          }
         })
         .catch((err) => {
           console.error("QuantEngine Load Failed:", err);
+          setAnalysisError(true);
         })
         .finally(() => {
           setLoading(false);
@@ -71,50 +85,25 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
 
   if (!holding) return null;
 
-  const quant = holding.quantSignals || {};
+  const quant = analysis?.quantSignals || holding.quantSignals || {};
   const isUp = (quant.changePercent || 0) >= 0;
   const val = getHoldingMarketValue(holding);
   const isCny = (holding.currency || 'CNY').toUpperCase() === 'CNY';
   const currSym = getCurrencySymbol(holding.currency);
 
-  // Approximate secondary currency conversion for premium visual feedback
   const exchangeRate = quant?.exchangeRate;
   const conversionVal = exchangeRate ? val * exchangeRate : null;
   const conversionSym = isCny ? '$' : '¥';
 
-  // Fallback metadata for holding parameters
   const instrumentType = holding.type || holding.category || t('drawer.notProvided');
   const domicile = holding.domicile || t('drawer.notProvided');
-  // expenseRatio and inceptionDate removed to avoid unused variables
 
-  // Dynamic advice conditions (Only show if quant signals exist)
-  const hasQuantSignals = !!holding.quantSignals && Object.keys(holding.quantSignals).length > 0;
+  const hasQuantSignals = !!analysis?.quantSignals || (!!holding.quantSignals && Object.keys(holding.quantSignals).length > 0);
   
-  const dynamicRisks = hasQuantSignals && quant.rsi ? [
-    `High equity exposure drives local asset and index volatility.`,
-    quant.rsi > 70 
-      ? `Momentum Warning: RSI is currently ${quant.rsi?.toFixed(1)}, signal overextended risks (Overbought).`
-      : `Portfolio concentration matches base allocations limits correctly.`,
-    `Moderate tracking error matching underlying indices parameters.`
-  ] : [];
+  const dynamicRisks = analysis?.deterministicAdvice?.risks || [];
+  const dynamicOpportunities = analysis?.deterministicAdvice?.opportunities || [];
+  const structuralSuggestedActions = analysis?.deterministicAdvice?.suggestedActions || [];
 
-  const dynamicOpportunities = hasQuantSignals && quant.rsi ? [
-    `Asset allocation optimization: Rebalancing can improve risk-adjusted capital returns.`,
-    quant.rsi < 40
-      ? `Oversold Bullish Setup: RSI at ${quant.rsi?.toFixed(1)} indicates a high-probability technical entry point.`
-      : `High liquid support creates opportunities for proactive target compounding.`,
-    `Tax-aware dynamic transition of position structures across asset classes.`
-  ] : [];
-
-  const structuralSuggestedActions = hasQuantSignals && quant.rsi ? [
-    `Review long-term allocation limits and schedule systematic rebalancing targets.`,
-    quant.rsi > 65 
-      ? `Consider technical trimming of current positions to secure accumulated gains.` 
-      : `Accumulate systematically surrounding Bollinger Low supports (BB: ${currSym}${quant.buyPrice?.toFixed(1) || '---'}).`,
-    `Optimize multi-currency exposures and analyze hedge ratios against EUR/USD movements.`
-  ] : [];
-
-  // Dynamic area sparkline chart
   const hasHistory = history && history.length > 0;
   const scaledTrendData = hasHistory ? history.map(item => Number(item[4]) || 0) : [];
 
@@ -338,30 +327,50 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
                         <Target className="w-3.5 h-3.5 text-[#C9B284]" />
                         {t('drawer.technicalIndicators')}
                       </span>
-                      <div className="grid grid-cols-4 gap-2">
-                        <div className="bg-black/25 rounded-lg p-2.5 border border-white/5 text-center">
-                          <span className="text-[8px] font-mono text-slate-500 uppercase block leading-none mb-1">BB Low</span>
-                          <span className="text-xs font-bold text-emerald-400 font-mono">{quant.buyPrice ? `$${quant.buyPrice.toFixed(1)}` : '---'}</span>
+                      
+                      {loading ? (
+                        <div className="p-4 flex items-center justify-center">
+                           <span className="text-[10px] text-[#8C8270] font-mono tracking-widest uppercase">正在计算技术指标...</span>
                         </div>
-                        <div className="bg-black/25 rounded-lg p-2.5 border border-white/5 text-center">
-                          <span className="text-[8px] font-mono text-slate-500 uppercase block leading-none mb-1">BB High</span>
-                          <span className="text-xs font-bold text-rose-400 font-mono">{quant.sellPrice ? `$${quant.sellPrice.toFixed(1)}` : '---'}</span>
+                      ) : analysisError ? (
+                        <div className="p-4 flex items-center justify-center border border-dashed border-white/10 rounded-lg">
+                           <span className="text-[10px] text-rose-500/70 font-mono tracking-widest uppercase">分析数据暂不可用</span>
                         </div>
-                        <div className="bg-black/25 rounded-lg p-2.5 border border-white/5 text-center animate-pulse">
-                          <span className="text-[8px] font-mono text-slate-500 uppercase block leading-none mb-1">RSI</span>
-                          <span className={`text-xs font-extrabold font-mono ${quant.rsi > 70 ? 'text-rose-400' : quant.rsi < 30 ? 'text-emerald-400' : 'text-slate-200'}`}>
-                            {quant.rsi ? quant.rsi.toFixed(1) : '---'}
-                          </span>
+                      ) : (
+                        <div className="grid grid-cols-4 gap-2">
+                          <div className="bg-black/25 rounded-lg p-2.5 border border-white/5 text-center">
+                            <span className="text-[8px] font-mono text-slate-500 uppercase block leading-none mb-1">BB Low</span>
+                            <span className="text-xs font-bold text-emerald-400 font-mono">{quant.buyPrice ? `$${parseFloat(quant.buyPrice).toFixed(1)}` : '---'}</span>
+                          </div>
+                          <div className="bg-black/25 rounded-lg p-2.5 border border-white/5 text-center">
+                            <span className="text-[8px] font-mono text-slate-500 uppercase block leading-none mb-1">BB High</span>
+                            <span className="text-xs font-bold text-rose-400 font-mono">{quant.sellPrice ? `$${parseFloat(quant.sellPrice).toFixed(1)}` : '---'}</span>
+                          </div>
+                          <div className="bg-black/25 rounded-lg p-2.5 border border-white/5 text-center">
+                            <span className="text-[8px] font-mono text-slate-500 uppercase block leading-none mb-1">RSI</span>
+                            <span className={`text-xs font-extrabold font-mono ${quant.rsi > 70 ? 'text-rose-400' : quant.rsi < 30 ? 'text-emerald-400' : 'text-slate-200'}`}>
+                              {quant.rsi ? parseFloat(quant.rsi).toFixed(1) : '---'}
+                            </span>
+                          </div>
+                          <div className="bg-black/25 rounded-lg p-2.5 border border-white/5 text-center">
+                            <span className="text-[8px] font-mono text-slate-500 uppercase block leading-none mb-1">ADX</span>
+                            <span className="text-xs font-bold text-[#C9B284] font-mono">{quant.adx ? parseFloat(quant.adx).toFixed(1) : '---'}</span>
+                          </div>
                         </div>
-                        <div className="bg-black/25 rounded-lg p-2.5 border border-white/5 text-center">
-                          <span className="text-[8px] font-mono text-slate-500 uppercase block leading-none mb-1">ADX</span>
-                          <span className="text-xs font-bold text-[#C9B284] font-mono">{quant.adx ? quant.adx.toFixed(1) : '---'}</span>
-                        </div>
-                      </div>
+                      )}
                     </div>
 
                     {/* Advisory AI Intelligence Area (Risk, Opportunity, Suggested Actions) */}
-                    {dynamicRisks.length > 0 && (
+                    {loading ? (
+                       <div className="p-6 flex flex-col items-center justify-center gap-2 border border-dashed border-[#C9B284]/20 rounded-xl bg-[#121416]/50">
+                         <div className="w-4 h-4 rounded-full border border-[#C9B284]/50 border-t-[#C9B284] animate-spin" />
+                         <span className="text-[10px] text-[#8C8270] font-mono tracking-widest uppercase mt-2">正在计算策略区间...</span>
+                       </div>
+                    ) : analysisError ? (
+                       <div className="p-6 flex items-center justify-center border border-dashed border-rose-500/20 rounded-xl bg-[#121416]/50">
+                          <span className="text-[10px] text-rose-500/70 font-mono tracking-widest uppercase">由于缺少足够的历史行情，技术分析无法完成</span>
+                       </div>
+                    ) : dynamicRisks.length > 0 ? (
                     <div className="space-y-3 pt-1">
                       <span className="text-[11px] font-semibold text-[#8C8270] tracking-wider uppercase font-mono flex items-center gap-1.5 pb-1 block">
                         <BrainCircuit className="w-3.5 h-3.5 text-[#C9B284]" />
@@ -425,7 +434,7 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
                         </div>
                       </div>
                     </div>
-                    )}
+                    ) : null}
 
                   </div>
 
@@ -485,7 +494,9 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
                       widgetData={{
                         holdingDetail: holding,
                         quantSignals: quant,
-                        systemInstruction: `你现在处于针对单只资产【${holding.symbol || holding.name}】的财富战略分析与推演模式。请密切配合相关的 quantSignals (BB Low: ${quant.buyPrice}, BB High: ${quant.sellPrice}, RSI: ${quant.rsi}, ADX: ${quant.adx}) 与持仓市值比例，为用户提供极其精准的对冲、结构微调与再平衡专业策略评估。`
+                        deterministicAdvice: analysis?.deterministicAdvice || {},
+                        historySummary: analysis?.historySummary || 0,
+                        systemInstruction: hasQuantSignals ? `你现在处于针对单只资产【${holding.symbol || holding.name}】的财富战略分析与推演模式。请密切配合相关的 quantSignals (BB Low: ${quant.buyPrice}, BB High: ${quant.sellPrice}, RSI: ${quant.rsi}, ADX: ${quant.adx}) 与持仓市值比例，结合系统提供的 deterministicAdvice 制定策略，为用户提供极其精准的对冲、结构微调与再平衡专业策略评估。` : `你现在处于针对单只资产【${holding.symbol || holding.name}】的分析模式，注意：由于历史行情数据不足，当前无法计算完整技术指标，请仅根据持有市值和基础信息答复。`
                       }} 
                       onPromoteIntent={(prompt) => {
                         setIsCopilotOpen(false);

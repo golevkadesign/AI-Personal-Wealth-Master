@@ -27,10 +27,108 @@ const calculateSignals = (data: any[], config: any) => {
 // 核心抓取与清洗引擎
 const getYahooSymbol = (sym: string) => sym.trim().toUpperCase().replace(/\.US$/i, '');
 
+export const analyzeHistory = (historyArr: any[], holdingSnapshot?: any) => {
+    if (!historyArr || historyArr.length === 0) return null;
+
+    let history;
+    if (Array.isArray(historyArr[0])) {
+        // [date, open, close, low, high]
+        history = historyArr.map(item => ({
+            date: item[0],
+            open: item[1],
+            close: item[2],
+            low: item[3],
+            high: item[4]
+        }));
+    } else {
+        history = historyArr;
+    }
+
+    const config = { maFast: 5, maSlow: 20, rsiPeriod: 14, bbPeriod: 20, bbStdDev: 2, adxPeriod: 14, adxThreshold: 25, rsiOverbought: 70, rsiOversold: 30 };
+    
+    let processed = calculateMA(history, config.maFast);
+    processed = calculateMA(processed, config.maSlow);
+    processed = calculateRSI(processed, config.rsiPeriod);
+    processed = calculateMACD(processed);
+    processed = calculateBB(processed, config.bbPeriod, config.bbStdDev);
+    processed = calculateADX(processed, config.adxPeriod);
+    processed = calculateSignals(processed, config);
+
+    const last = processed[processed.length - 1];
+    const prev = processed.length > 1 ? processed[processed.length - 2] : last;
+    if (!last) return null;
+
+    const currentPrice = holdingSnapshot?.currentPrice || last.close;
+    const changePercent = prev?.close ? ((currentPrice - prev.close) / prev.close) * 100 : 0;
+    
+    const bbW = (last.BB_Upper - last.BB_Lower) || (currentPrice * 0.05);
+
+    const quantSignals = {
+        currentPrice,
+        changePercent,
+        trend: last[`MA${config.maFast}`] > last[`MA${config.maSlow}`] ? 'up' : 'down',
+        ma5: last[`MA${config.maFast}`],
+        ma20: last[`MA${config.maSlow}`],
+        rsi: last.RSI || 0,
+        macdHist: last.MACD_Histogram || 0,
+        adx: last.ADX || 0,
+        signal: last.signal || 'hold',
+        bbUpper: last.BB_Upper,
+        bbLower: last.BB_Lower,
+        buyPrice: last.BB_Lower || (currentPrice * 0.95),
+        sellPrice: last.BB_Upper || (currentPrice * 1.05),
+        support: last.BB_Lower || (currentPrice * 0.95),
+        resistance: last.BB_Upper || (currentPrice * 1.05),
+        stopLoss: last.BB_Lower ? last.BB_Lower * 0.98 : currentPrice * 0.90,
+        takeProfit: last.BB_Upper ? last.BB_Upper * 1.02 : currentPrice * 1.10
+    };
+
+    const risks: string[] = [];
+    const opportunities: string[] = [];
+    const suggestedActions: string[] = [];
+
+    // Risks
+    if (quantSignals.rsi > config.rsiOverbought) risks.push(`RSI (${quantSignals.rsi.toFixed(1)}) 处于超买区间，需警惕回调风险。`);
+    if (quantSignals.macdHist < 0 && quantSignals.trend === 'down') risks.push(`MACD 动能向下且 MA5 低于 MA20，处于弱势下降趋势。`);
+    if (currentPrice < quantSignals.ma20) risks.push(`当前价格已跌破 MA20 (${quantSignals.ma20?.toFixed(2)}) 趋势支撑。`);
+
+    // Opportunities
+    if (quantSignals.rsi < config.rsiOversold) opportunities.push(`RSI (${quantSignals.rsi.toFixed(1)}) 位于超卖区间，可能出现技术性反弹。`);
+    if (quantSignals.macdHist > 0 && quantSignals.trend === 'up') opportunities.push(`MACD 动能向上且短期均线呈多头排列。`);
+    if (currentPrice > quantSignals.bbUpper) opportunities.push(`价格强势突破布林带上轨，动能强劲。`);
+
+    // Advice
+    if (quantSignals.signal === 'buy') {
+        suggestedActions.push(`当前触发技术面买入信号，可考虑在 ${quantSignals.buyPrice?.toFixed(2)} 附近建仓或加仓。`);
+    } else if (quantSignals.signal === 'sell') {
+        suggestedActions.push(`当前触发技术面卖出信号，建议在 ${quantSignals.sellPrice?.toFixed(2)} 附近逐步兑现利润。`);
+    } else {
+        suggestedActions.push(`当前处于震荡区间，建议空仓观望或持有，支撑位参考 ${quantSignals.support?.toFixed(2)}。`);
+    }
+
+    if (holdingSnapshot?.quantity && holdingSnapshot.quantity > 0) {
+        if (currentPrice < quantSignals.stopLoss) {
+            suggestedActions.push(`注意：当前持仓价格已接近止损位 ${quantSignals.stopLoss.toFixed(2)}，请做好防守。`);
+        }
+    }
+
+    if (risks.length === 0) risks.push("当前技术指标未显示明显异常风险。");
+    if (opportunities.length === 0) opportunities.push("暂无明显的短线突破机会。");
+
+    return {
+        quantSignals,
+        deterministicAdvice: {
+            risks,
+            opportunities,
+            suggestedActions
+        },
+        historySummary: history.length
+    };
+};
+
 export const analyzeStock = async (rawSymbol: string) => {
     const symbol = getYahooSymbol(rawSymbol);
     try {
-        // Node 端直接 fetch，无需跨域代理
         const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=6mo&interval=1d`, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
@@ -53,33 +151,9 @@ export const analyzeStock = async (rawSymbol: string) => {
         })).filter((d: any) => d.close !== null);
 
         const currentPrice = result.meta.regularMarketPrice;
-        const percentChange = ((currentPrice - result.meta.chartPreviousClose) / result.meta.chartPreviousClose) * 100;
-
-        // 硬编码一套默认指标参数跑量化计算
-        const config = { maFast: 5, maSlow: 20, rsiPeriod: 14, bbPeriod: 20, bbStdDev: 2, adxPeriod: 14, adxThreshold: 25, rsiOverbought: 70, rsiOversold: 30 };
         
-        let processed = calculateMA(history, config.maFast);
-        processed = calculateMA(processed, config.maSlow);
-        processed = calculateRSI(processed, config.rsiPeriod);
-        processed = calculateMACD(processed);
-        processed = calculateBB(processed, config.bbPeriod, config.bbStdDev);
-        processed = calculateADX(processed, config.adxPeriod);
-        processed = calculateSignals(processed, config);
-
-        const last = processed[processed.length - 1];
-        const bbW = (last.BB_Upper - last.BB_Lower) || (currentPrice * 0.05);
-
-        return {
-            currentPrice,
-            changePercent: percentChange,
-            trend: last[`MA${config.maFast}`] > last[`MA${config.maSlow}`] ? 'up' : 'down',
-            rsi: last.RSI || 0,
-            macdHist: last.MACD_Histogram || 0,
-            adx: last.ADX || 0,
-            signal: last.signal || 'hold',
-            buyPrice: last.BB_Lower || (currentPrice * 0.95),
-            sellPrice: last.BB_Upper || (currentPrice * 1.05)
-        };
+        const analysis = analyzeHistory(history, { currentPrice });
+        return analysis?.quantSignals || null;
     } catch (e) {
         console.error(`QuantEngine Error for ${symbol}:`, e);
         return null;
