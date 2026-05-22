@@ -66,6 +66,8 @@ const fetchQuotesUsingAccount = async (symbols: string[], account: LongbridgeAcc
     return {};
 };
 
+const normalizeSymbol = (s: string) => String(s || '').trim().toUpperCase();
+
 const fetchSingleAccountPositions = async (account: LongbridgeAccount): Promise<AggregatedPosition[]> => {
     console.log(`[Longbridge Adapter] ⚡ 正在请求实盘账户: ${account.name}...`);
     let accessToken = (account.accessToken || '').trim();
@@ -109,6 +111,10 @@ const fetchSingleAccountPositions = async (account: LongbridgeAccount): Promise<
             const list = Array.isArray(lbData.data) ? lbData.data : (lbData.data.list || []);
             
             const extractPos = (p: any) => {
+                const rawSymbol = p.symbol || p.stock_info?.symbol;
+                if (!rawSymbol) return; // Skip empty symbols
+                const symbol = normalizeSymbol(rawSymbol);
+
                 const qty = Number(p.quantity || 0);
                 const costPrice = Number(p.costPrice || p.cost_price || 0);
                 
@@ -137,7 +143,7 @@ const fetchSingleAccountPositions = async (account: LongbridgeAccount): Promise<
                 const currency = p.currency || p.stock_info?.currency || 'USD';
                 
                 positions.push({
-                    symbol: p.symbol || p.stock_info?.symbol,
+                    symbol: symbol,
                     name: p.symbolName || p.name || p.stock_info?.name || p.symbol || p.stock_info?.symbol,
                     quantity: qty,
                     costPrice: costPrice,
@@ -184,7 +190,7 @@ export const aggregateLongbridgePortfolios = async (accounts: LongbridgeAccount[
                     const newValue = (existing.value || 0) + (pos.value || 0);
                     const aggregatedCurrentPrice = totalQty > 0 ? newMarketValue / totalQty : 0;
                     
-                    const accountBreakdown = existing.accountBreakdown || [{...existing}];
+                    const accountBreakdown = existing.accountBreakdown ? [...existing.accountBreakdown] : [{...existing}];
                     accountBreakdown.push({...pos});
                     
                     positionMap.set(pos.symbol, {
@@ -226,6 +232,14 @@ export const aggregateLongbridgePortfolios = async (accounts: LongbridgeAccount[
                         existing.marketValue = existing.quantity * price;
                         existing.value = existing.marketValue;
                         existing.valuationSource = 'longbridge_quote_fallback';
+                        if (existing.accountBreakdown) {
+                            existing.accountBreakdown.forEach(row => {
+                                row.currentPrice = price;
+                                row.marketValue = row.quantity * price;
+                                row.value = row.marketValue;
+                                row.valuationSource = 'longbridge_quote_fallback';
+                            });
+                        }
                     }
                 }
             }

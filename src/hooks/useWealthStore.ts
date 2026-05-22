@@ -29,6 +29,22 @@ export const EMPTY_STATE: TerminalState = {
   historicalSnapshots: [],
 };
 
+const getSafeMktVal = (p: any): number => {
+  const mktVal = Number(p.marketValue);
+  const val = Number(p.value);
+  if (!isNaN(mktVal) && mktVal > 0) return mktVal;
+  if (!isNaN(val) && val > 0) return val;
+  
+  const qty = Number(p.quantity) || 0;
+  const currentPx = Number(p.currentPrice) || Number(p.lastPrice);
+  if (qty > 0 && currentPx > 0) return qty * currentPx;
+  
+  const cost = Number(p.costPrice) || 0;
+  if (qty > 0 && cost > 0) return qty * cost;
+  
+  return 0;
+};
+
 const debouncedSyncToCloud = debounce((uid: string, payload: any) => {
   if (isFirestoreQuotaExceeded) return;
   
@@ -195,12 +211,12 @@ export const useWealthStore = create<WealthState>((set, get) => ({
                   _liveValuationVersion: 2
               };
               
-              const totalMktVal = newData.reduce((sum: number, p: any) => sum + (Number(p.marketValue) || Number(p.value) || ((Number(p.quantity) || 0) * (Number(p.currentPrice) || Number(p.costPrice) || 0))), 0);
+              const totalMktVal = newData.reduce((sum: number, p: any) => sum + getSafeMktVal(p), 0);
               
               const snapshot = {
                  timestamp: Date.now(),
                  totalMarketValue: totalMktVal,
-                 topHoldings: [...newData].sort((a: any, b: any) => (Number(b.marketValue || 0) - Number(a.marketValue || 0))).slice(0, 5).map(h => ({ symbol: h.symbol, marketValue: h.marketValue, quantity: h.quantity })),
+                 topHoldings: [...newData].sort((a: any, b: any) => getSafeMktVal(b) - getSafeMktVal(a)).slice(0, 5).map(h => ({ symbol: h.symbol, marketValue: getSafeMktVal(h), quantity: h.quantity })),
                  source: 'longbridge'
               };
               
