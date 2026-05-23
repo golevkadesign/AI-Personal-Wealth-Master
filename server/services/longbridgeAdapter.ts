@@ -5,6 +5,17 @@ export interface LongbridgeAccount {
     id: string; name: string; appKey: string; appSecret: string; accessToken: string;
 }
 
+export interface RawAccountPosition {
+    symbol: string;
+    name: string;
+    quantity: number;
+    costPrice: number;
+    currency: string;
+    accountId: string;
+    accountName: string;
+    rawMarketValue?: number;
+}
+
 export interface AggregatedPosition {
     symbol: string;
     name: string;
@@ -68,7 +79,7 @@ const fetchQuotesUsingAccount = async (symbols: string[], account: LongbridgeAcc
 
 const normalizeSymbol = (s: string) => String(s || '').trim().toUpperCase();
 
-const fetchSingleAccountPositions = async (account: LongbridgeAccount): Promise<AggregatedPosition[]> => {
+const fetchSingleAccountPositions = async (account: LongbridgeAccount): Promise<RawAccountPosition[]> => {
     console.log(`[Longbridge Adapter] ⚡ 正在请求实盘账户: ${account.name}...`);
     let accessToken = (account.accessToken || '').trim();
     let appKey = (account.appKey || '').trim();
@@ -105,7 +116,7 @@ const fetchSingleAccountPositions = async (account: LongbridgeAccount): Promise<
         }).finally(() => clearTimeout(timeoutId));
         const lbData = await res.json();
         
-        let positions: AggregatedPosition[] = [];
+        let positions: RawAccountPosition[] = [];
         if (lbData.code === 0 && lbData.data) {
             const channels = lbData.data.channels || [];
             const list = Array.isArray(lbData.data) ? lbData.data : (lbData.data.list || []);
@@ -117,29 +128,7 @@ const fetchSingleAccountPositions = async (account: LongbridgeAccount): Promise<
 
                 const qty = Number(p.quantity || 0);
                 const costPrice = Number(p.costPrice || p.cost_price || 0);
-                
-                let currentPx = Number(p.currentPrice || p.current_price || p.latestPrice || p.latest_price || p.lastPrice || p.last_price || p.last_done || p.nominalPrice || p.nominal_price);
-                
-                let mktVal = Number(p.marketValue ?? p.market_value ?? p.holding_value ?? p.currentValue ?? p.current_value ?? p.totalMarketValue ?? p.total_market_value);
-                
-                let valuationSource = 'unknown';
-                
-                if (!isNaN(mktVal) && mktVal > 0) {
-                    valuationSource = 'longbridge_position';
-                } else if (!isNaN(currentPx) && currentPx > 0) {
-                    mktVal = qty * currentPx;
-                    valuationSource = 'longbridge_quote';
-                } else {
-                    if (costPrice > 0) {
-                        mktVal = qty * costPrice;
-                        valuationSource = 'positive_cost_fallback';
-                        currentPx = costPrice;
-                    } else {
-                        mktVal = 0;
-                        currentPx = 0;
-                    }
-                }
-
+                const mktVal = Number(p.marketValue ?? p.market_value);
                 const currency = p.currency || p.stock_info?.currency || 'USD';
                 
                 positions.push({
@@ -147,11 +136,10 @@ const fetchSingleAccountPositions = async (account: LongbridgeAccount): Promise<
                     name: p.symbolName || p.name || p.stock_info?.name || p.symbol || p.stock_info?.symbol,
                     quantity: qty,
                     costPrice: costPrice,
-                    currentPrice: currentPx,
-                    marketValue: mktVal,
-                    value: mktVal,
                     currency: currency,
-                    valuationSource
+                    accountId: account.id || account.name,
+                    accountName: account.name,
+                    rawMarketValue: (!isNaN(mktVal) && mktVal > 0) ? mktVal : undefined
                 });
             };
 
@@ -171,83 +159,126 @@ const fetchSingleAccountPositions = async (account: LongbridgeAccount): Promise<
     }
 };
 
-export const aggregateLongbridgePortfolios = async (accounts: LongbridgeAccount[]): Promise<AggregatedPosition[]> => {
-    if (!accounts || accounts.length === 0) return [];
+export const aggregateLongbridgePortfolios = async (accounts: LongbridgeAccount[]): Promise<{ positions: AggregatedPosition[], meta: any }> => {
+    if (!accounts || accounts.length === 0) return { positions: [], meta: {} };
     
     const results = await Promise.allSettled(accounts.map(acc => fetchSingleAccountPositions(acc)));
     
-    const positionMap = new Map<string, AggregatedPosition>();
-
+    const rawPositions: RawAccountPosition[] = [];
     results.forEach(result => {
         if (result.status === 'fulfilled' && result.value) {
-            result.value.forEach(pos => {
-                if (positionMap.has(pos.symbol)) {
-                    const existing = positionMap.get(pos.symbol)!;
-                    const totalQty = existing.quantity + pos.quantity;
-                    const newCostPrice = totalQty > 0 ? ((existing.quantity * existing.costPrice) + (pos.quantity * pos.costPrice)) / totalQty : 0;
-                    
-                    const newMarketValue = (existing.marketValue || 0) + (pos.marketValue || 0);
-                    const newValue = (existing.value || 0) + (pos.value || 0);
-                    const aggregatedCurrentPrice = totalQty > 0 ? newMarketValue / totalQty : 0;
-                    
-                    const accountBreakdown = existing.accountBreakdown ? [...existing.accountBreakdown] : [{...existing}];
-                    accountBreakdown.push({...pos});
-                    
-                    positionMap.set(pos.symbol, {
-                        ...existing,
-                        quantity: totalQty,
-                        costPrice: newCostPrice,
-                        currentPrice: aggregatedCurrentPrice,
-                        marketValue: newMarketValue,
-                        value: newValue,
-                        valuationSource: 'aggregated',
-                        accountBreakdown
-                    });
-                } else {
-                    positionMap.set(pos.symbol, { ...pos, accountBreakdown: [{...pos}] });
-                }
-            });
+            rawPositions.push(...result.value);
         } else if (result.status === 'rejected') {
             console.error(`[Longbridge Adapter] 某账户拉取失败:`, result.reason);
         }
     });
 
-    const finalPositions = Array.from(positionMap.values());
-    const missingQuoteSymbols = finalPositions.filter(p => !p.marketValue || p.marketValue <= 0 || p.valuationSource === 'unknown' || p.valuationSource === 'positive_cost_fallback').map(p => p.symbol);
-    
-    if (missingQuoteSymbols.length > 0 && accounts.length > 0) {
-        // use the first valid account to fetch quotes for missing symbols
-        const firstAccount = accounts.find(a => a.appKey && a.appSecret && a.accessToken);
-        if (firstAccount) {
-            // chunk symbols into 50 to avoid URI too long
-            const chunkSize = 50;
-            for (let i = 0; i < missingQuoteSymbols.length; i += chunkSize) {
-                const chunk = missingQuoteSymbols.slice(i, i + chunkSize);
-                const quotes = await fetchQuotesUsingAccount(chunk, firstAccount);
-                for (const symbol in quotes) {
-                    const price = quotes[symbol];
-                    const existing = positionMap.get(symbol);
-                    if (existing && price > 0) {
-                        existing.currentPrice = price;
-                        existing.marketValue = existing.quantity * price;
-                        existing.value = existing.marketValue;
-                        existing.valuationSource = 'longbridge_quote_fallback';
-                        if (existing.accountBreakdown) {
-                            existing.accountBreakdown.forEach(row => {
-                                row.currentPrice = price;
-                                row.marketValue = row.quantity * price;
-                                row.value = row.marketValue;
-                                row.valuationSource = 'longbridge_quote_fallback';
-                            });
-                        }
-                    }
-                }
-            }
+    const uniqueSymbols = Array.from(new Set(rawPositions.map(p => p.symbol)));
+    const firstAccount = accounts.find(a => a.appKey && a.appSecret && a.accessToken) || accounts[0];
+    const quotes: Record<string, number> = {};
+
+    if (uniqueSymbols.length > 0 && firstAccount) {
+        const chunkSize = 50;
+        for (let i = 0; i < uniqueSymbols.length; i += chunkSize) {
+            const chunk = uniqueSymbols.slice(i, i + chunkSize);
+            const chunkQuotes = await fetchQuotesUsingAccount(chunk, firstAccount);
+            Object.assign(quotes, chunkQuotes);
         }
     }
 
+    const positionMap = new Map<string, AggregatedPosition>();
+
+    rawPositions.forEach(raw => {
+        if (raw.quantity === 0) return; // Ignore empty positions right away 
+
+        const symbol = raw.symbol;
+        const existing = positionMap.get(symbol);
+        
+        let quotePrice = quotes[symbol];
+        let currentPrice: number | undefined;
+        let marketValue: number | undefined;
+        let valuationSource: string;
+
+        if (quotePrice && quotePrice > 0) {
+            currentPrice = quotePrice;
+            marketValue = raw.quantity * quotePrice;
+            valuationSource = 'longbridge_quote';
+        } else if (raw.rawMarketValue && raw.rawMarketValue > 0) {
+            marketValue = raw.rawMarketValue;
+            currentPrice = undefined;
+            valuationSource = 'missing_quote_fallback';
+        } else {
+            marketValue = undefined;
+            currentPrice = undefined;
+            valuationSource = 'missing_quote';
+        }
+
+        const accountBreakdownRow = {
+            accountId: raw.accountId,
+            accountName: raw.accountName,
+            quantity: raw.quantity,
+            costPrice: raw.costPrice,
+            currentPrice,
+            marketValue,
+            valuationSource
+        };
+
+        if (existing) {
+            const totalQty = existing.quantity + raw.quantity;
+            const newCostPrice = totalQty > 0 ? ((existing.quantity * existing.costPrice) + (raw.quantity * raw.costPrice)) / totalQty : 0;
+            
+            let newMarketValue: number | undefined;
+            let newCurrentPrice: number | undefined;
+            
+            if (quotePrice && quotePrice > 0) {
+                 newMarketValue = totalQty * quotePrice;
+                 newCurrentPrice = quotePrice;
+            } else {
+                 const mVal1 = existing.marketValue || 0;
+                 const mVal2 = marketValue || 0;
+                 if (mVal1 > 0 || mVal2 > 0) {
+                     newMarketValue = mVal1 + mVal2;
+                 }
+            }
+
+            existing.quantity = totalQty;
+            existing.costPrice = newCostPrice;
+            existing.currentPrice = newCurrentPrice;
+            existing.marketValue = newMarketValue;
+            existing.value = newMarketValue;
+            if (quotePrice && quotePrice > 0) {
+                 existing.valuationSource = 'longbridge_quote';
+            } else if (existing.valuationSource === 'missing_quote') {
+                 if (valuationSource !== 'missing_quote') existing.valuationSource = valuationSource;
+            }
+            existing.accountBreakdown?.push(accountBreakdownRow);
+        } else {
+            positionMap.set(symbol, {
+                symbol,
+                name: raw.name,
+                currency: raw.currency,
+                quantity: raw.quantity,
+                costPrice: raw.costPrice,
+                currentPrice,
+                marketValue,
+                value: marketValue,
+                valuationSource,
+                accountBreakdown: [accountBreakdownRow]
+            });
+        }
+    });
+
+    const finalPositions = Array.from(positionMap.values()).sort((a, b) => (b.marketValue || 0) - (a.marketValue || 0));
+
+    const quoteCoverage = uniqueSymbols.length > 0 ? Object.keys(quotes).length / uniqueSymbols.length : 1;
+    const missingQuoteSymbols = uniqueSymbols.filter(s => !quotes[s]);
+
+    if (quoteCoverage < 1) {
+        console.warn(`[Longbridge Adapter] Missing quote for symbols:`, missingQuoteSymbols);
+    }
+
     if (process.env.NODE_ENV !== 'production') {
-        const debugPositions = Array.from(positionMap.values()).map(p => ({
+        const debugPositions = finalPositions.map(p => ({
             symbol: p.symbol,
             quantity: p.quantity,
             currentPrice: p.currentPrice,
@@ -259,5 +290,15 @@ export const aggregateLongbridgePortfolios = async (accounts: LongbridgeAccount[
         console.table(debugPositions);
     }
 
-    return Array.from(positionMap.values()).sort((a, b) => (b.marketValue || 0) - (a.marketValue || 0));
+    return {
+        positions: finalPositions,
+        meta: {
+            valuationVersion: 3,
+            accountCount: accounts.length,
+            positionCount: finalPositions.length,
+            quoteCoverage,
+            missingQuoteSymbols,
+            generatedAt: Date.now()
+        }
+    };
 };

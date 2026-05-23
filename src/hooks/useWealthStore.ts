@@ -39,9 +39,6 @@ const getSafeMktVal = (p: any): number => {
   const currentPx = Number(p.currentPrice) || Number(p.lastPrice);
   if (qty > 0 && currentPx > 0) return qty * currentPx;
   
-  const cost = Number(p.costPrice) || 0;
-  if (qty > 0 && cost > 0) return qty * cost;
-  
   return 0;
 };
 
@@ -208,7 +205,7 @@ export const useWealthStore = create<WealthState>((set, get) => ({
                       publicHoldings: newData
                   },
                   _liveSources: ['longbridge'],
-                  _liveValuationVersion: 2
+                  _liveValuationVersion: 3
               };
               
               const totalMktVal = newData.reduce((sum: number, p: any) => sum + getSafeMktVal(p), 0);

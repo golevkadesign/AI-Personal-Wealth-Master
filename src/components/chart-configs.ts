@@ -12,26 +12,15 @@ export function getHoldingMarketValue(v: any): number {
   
   const valueNum = Number(v.value);
   const marketValueNum = Number(v.marketValue);
-  const market_valueNum = Number(v.market_value);
-  const totalMarketValueNum = Number(v.totalMarketValue);
-  const currentValueNum = Number(v.currentValue);
 
-  if (!isNaN(valueNum) && valueNum > 0) return valueNum;
   if (!isNaN(marketValueNum) && marketValueNum > 0) return marketValueNum;
-  if (!isNaN(market_valueNum) && market_valueNum > 0) return market_valueNum;
-  if (!isNaN(totalMarketValueNum) && totalMarketValueNum > 0) return totalMarketValueNum;
-  if (!isNaN(currentValueNum) && currentValueNum > 0) return currentValueNum;
+  if (!isNaN(valueNum) && valueNum > 0) return valueNum;
   
   const qty = Number(v.quantity) || 0;
   const currentPrice = Number(v.currentPrice) || Number(v.current_price) || Number(v.lastPrice);
   
   if (qty > 0 && currentPrice > 0) {
       return qty * currentPrice;
-  }
-  
-  const cost = Number(v.costPrice) || 0;
-  if (qty > 0 && cost > 0) {
-      return qty * cost;
   }
   
   return 0;

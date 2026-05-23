@@ -173,13 +173,13 @@ export const PublicHoldingsView: React.FC<PublicHoldingsViewProps> = ({
                   </div>
 
                   {/* Currency / Value */}
-                  <div className="col-span-4 text-right font-mono text-xs font-semibold text-slate-200">
-                    {currSym}{val.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                  <div className={`col-span-4 text-right font-mono ${val > 0 ? 'text-xs font-semibold text-slate-200' : 'text-[10px] text-rose-400 font-medium'}`}>
+                    {val > 0 ? `${currSym}${val.toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '估值缺失'}
                   </div>
 
                   {/* Percentage and action arrow */}
-                  <div className="col-span-2 flex items-center justify-end gap-1.5 text-right font-mono text-xs font-semibold text-[#C9B284]/90">
-                    <span>{pct}</span>
+                  <div className={`col-span-2 flex items-center justify-end gap-1.5 text-right font-mono text-xs font-semibold ${val > 0 ? 'text-[#C9B284]/90' : 'text-slate-500'}`}>
+                    <span>{val > 0 ? pct : '--'}</span>
                     <svg className={`w-3 h-3 text-[#C9B284]/65 transition-transform ${isSelected ? 'translate-x-[2px]' : 'opacity-30'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.8} d="M9 5l7 7-7 7" />
                     </svg>

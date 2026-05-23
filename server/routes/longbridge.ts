@@ -13,11 +13,12 @@ router.get('/positions', async (req, res) => {
             accounts = JSON.parse(decodedStr);
         }
         
-        const positions = await aggregateLongbridgePortfolios(accounts);
+        const result = await aggregateLongbridgePortfolios(accounts);
         
         res.json({
             success: true,
-            data: positions
+            data: result.positions,
+            meta: result.meta
         });
     } catch (error) {
         console.error('[Longbridge API] Error fetching positions:', error);

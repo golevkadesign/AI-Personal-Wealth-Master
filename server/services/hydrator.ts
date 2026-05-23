@@ -101,16 +101,18 @@ export async function hydrateContext(message: string, contextData: any, settings
     // 💥 [新增] 第一防线：优先聚合长桥实盘多账户数据
     if (settings?.longbridgeAccounts && settings.longbridgeAccounts.length > 0) {
         console.log(`[Hydrator] 侦测到长桥配置，启动多账户实盘聚合...`);
-        const lbHoldings = await aggregateLongbridgePortfolios(settings.longbridgeAccounts);
+        const lbResult = await aggregateLongbridgePortfolios(settings.longbridgeAccounts);
+        const lbHoldings = lbResult.positions;
         
-        if (lbHoldings.length > 0) {
+        if (lbHoldings && lbHoldings.length > 0) {
             const lbMappedHoldings = lbHoldings.map(pos => ({
                 symbol: pos.symbol,
                 name: pos.name,
                 quantity: pos.quantity,
                 costPrice: pos.costPrice,
-                marketValue: pos.quantity * (pos.currentPrice || pos.costPrice), // 初始估值
-                value: pos.quantity * (pos.currentPrice || pos.costPrice)
+                currentPrice: pos.currentPrice,
+                marketValue: pos.marketValue, // 已经精确计算
+                value: pos.value
             }));
 
             // 利用 Map 进行基于 symbol 的去重合并 (长桥优先级最高，后写入)
