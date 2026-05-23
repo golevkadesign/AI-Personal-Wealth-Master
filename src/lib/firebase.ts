@@ -1,15 +1,44 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
-import firebaseConfig from '../../firebase-applet-config.json';
-
-const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
+import { getAuth, signInWithPopup, signInWithRedirect, GoogleAuthProvider, signOut, onAuthStateChanged } from 'firebase/auth';
 import { initializeFirestore, doc, getDocFromServer } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
+import firebaseConfig from '../../firebase-applet-config.json';
+
+const env = import.meta.env;
+const requiredFirebaseEnvKeys = [
+  'VITE_FIREBASE_API_KEY',
+  'VITE_FIREBASE_AUTH_DOMAIN',
+  'VITE_FIREBASE_PROJECT_ID',
+  'VITE_FIREBASE_STORAGE_BUCKET',
+  'VITE_FIREBASE_MESSAGING_SENDER_ID',
+  'VITE_FIREBASE_APP_ID',
+] as const;
+const usingEnvFirebaseProject = requiredFirebaseEnvKeys.some(key => Boolean(env[key]));
+
+if (usingEnvFirebaseProject) {
+  const missingKeys = requiredFirebaseEnvKeys.filter(key => !env[key]);
+  if (missingKeys.length > 0) {
+    throw new Error(`Missing Firebase environment variables: ${missingKeys.join(', ')}`);
+  }
+}
+
+const resolvedFirebaseConfig = {
+  apiKey: usingEnvFirebaseProject ? env.VITE_FIREBASE_API_KEY : firebaseConfig.apiKey,
+  authDomain: usingEnvFirebaseProject ? env.VITE_FIREBASE_AUTH_DOMAIN : firebaseConfig.authDomain,
+  projectId: usingEnvFirebaseProject ? env.VITE_FIREBASE_PROJECT_ID : firebaseConfig.projectId,
+  storageBucket: usingEnvFirebaseProject ? env.VITE_FIREBASE_STORAGE_BUCKET : firebaseConfig.storageBucket,
+  messagingSenderId: usingEnvFirebaseProject ? env.VITE_FIREBASE_MESSAGING_SENDER_ID : firebaseConfig.messagingSenderId,
+  appId: usingEnvFirebaseProject ? env.VITE_FIREBASE_APP_ID : firebaseConfig.appId,
+  measurementId: usingEnvFirebaseProject ? env.VITE_FIREBASE_MEASUREMENT_ID : firebaseConfig.measurementId,
+};
+
+const firestoreDatabaseId = env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || (usingEnvFirebaseProject ? '(default)' : firebaseConfig.firestoreDatabaseId);
+
+const app = initializeApp(resolvedFirebaseConfig);
+export const auth = getAuth(app);
 export const db = initializeFirestore(app, {
   experimentalForceLongPolling: true,
-}, firebaseConfig.firestoreDatabaseId);
+}, firestoreDatabaseId);
 
 async function testConnection() {
   try {
@@ -26,7 +55,16 @@ export const storage = getStorage(app);
 
 const provider = new GoogleAuthProvider();
 
-export const loginWithGoogle = () => signInWithPopup(auth, provider);
+export const loginWithGoogle = async () => {
+  try {
+    return await signInWithPopup(auth, provider);
+  } catch (error: any) {
+    if (error?.code === 'auth/popup-blocked' || error?.code === 'auth/operation-not-supported-in-this-environment') {
+      return signInWithRedirect(auth, provider);
+    }
+    throw error;
+  }
+};
 export const logout = () => signOut(auth);
 
 export const subscribeToAuthChanges = (callback: (user: any) => void) => {
