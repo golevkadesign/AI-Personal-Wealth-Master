@@ -113,9 +113,16 @@ export const PublicHoldingsView: React.FC<PublicHoldingsViewProps> = ({
       isReloading={isRefreshing}
     >
       {/* If we have old data but status is loading/error, we show a lightweight banner at top */}
-      {hasData && rawStatus === 'error' && (
-        <div className="absolute top-0 inset-x-0 h-6 bg-rose-500/10 border-b border-rose-500/20 flex items-center justify-center -mx-6 sm:-mx-8 z-20">
-          <span className="text-[9px] font-mono text-rose-400 font-medium tracking-wide">
+      {hasData && errorMessage && (
+        <div className="absolute top-0 inset-x-0 py-0.5 min-h-[24px] bg-amber-500/10 border-b border-amber-500/20 flex items-center justify-center -mx-6 sm:-mx-8 z-20 px-4">
+          <span className="text-[9px] font-mono text-amber-400 font-medium tracking-wide text-center">
+            {errorMessage}
+          </span>
+        </div>
+      )}
+      {hasData && !errorMessage && rawStatus === 'error' && (
+        <div className="absolute top-0 inset-x-0 py-0.5 min-h-[24px] bg-rose-500/10 border-b border-rose-500/20 flex items-center justify-center -mx-6 sm:-mx-8 z-20 px-4">
+          <span className="text-[9px] font-mono text-rose-400 font-medium tracking-wide text-center">
             {t('drawer.syncFailed') || 'SYNC FAILED - SHOWING LAST KNOWN STATE'}
           </span>
         </div>

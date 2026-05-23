@@ -107,6 +107,8 @@ export interface TerminalState {
   lifeStrategiesShort: LifeStrategy[];
   lifeStrategiesLong: LifeStrategy[];
   _liveSources?: string[];
+  _liveValuationVersion?: number;
+  _liveFetchedAt?: number;
   dynamicWidgets?: SDUIComponent[];
   dashboardSchema?: SDUIComponent[];
   historicalSnapshots?: Snapshot[];

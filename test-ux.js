@@ -41,8 +41,8 @@ import puppeteer from 'puppeteer';
     console.log("\n🧪 [Test 1] 测试主对话流式渲染与 JSON 鲁棒性...");
 
     // 假设用户已经跳过登录，或者我们在开发者视图。我们直接找到输入框。
-    await page.waitForSelector('textarea[placeholder="发送消息..."]', { timeout: 10000 });
-    await page.type('textarea[placeholder="发送消息..."]', "请帮我制定一份极度硬核的财务压测计划，必须包含 JSON 状态更新。");
+    await page.waitForSelector('textarea', { timeout: 10000 });
+    await page.type('textarea', "请帮我制定一份极度硬核的财务压测计划，必须包含 JSON 状态更新。");
     await page.keyboard.press('Enter');
     
     console.log("   - 消息已发送，等待 AI 响应...");

@@ -127,7 +127,16 @@ export const useWealthStore = create<WealthState>((set, get) => ({
           newData.distributions.publicHoldings = currentHoldings;
           newData._liveSources = state.data._liveSources;
           newData._liveValuationVersion = state.data._liveValuationVersion;
+          newData._liveFetchedAt = state.data._liveFetchedAt;
+          
           if (process.env.NODE_ENV !== 'production') console.log('[useWealthStore] Protected live holdings from being overwritten.');
+          
+          return {
+              data: newData,
+              publicHoldingsSyncStatus: state.publicHoldingsSyncStatus,
+              publicHoldingsLastSyncAt: state.publicHoldingsLastSyncAt,
+              publicHoldingsError: state.publicHoldingsError
+          };
       }
     }
     return { data: newData };
@@ -232,7 +241,8 @@ export const useWealthStore = create<WealthState>((set, get) => ({
                       publicHoldings: newData
                   },
                   _liveSources: ['longbridge'],
-                  _liveValuationVersion: LIVE_VALUATION_VERSION
+                  _liveValuationVersion: LIVE_VALUATION_VERSION,
+                  _liveFetchedAt: Date.now()
               };
               
               const totalMktVal = newData.reduce((sum: number, p: any) => sum + getSafeMktVal(p), 0);
@@ -241,7 +251,9 @@ export const useWealthStore = create<WealthState>((set, get) => ({
                  timestamp: Date.now(),
                  totalMarketValue: totalMktVal,
                  topHoldings: [...newData].sort((a: any, b: any) => getSafeMktVal(b) - getSafeMktVal(a)).slice(0, 5).map(h => ({ symbol: h.symbol, marketValue: getSafeMktVal(h), quantity: h.quantity })),
-                 source: 'longbridge'
+                 source: 'longbridge',
+                 quoteCoverage: meta.quoteCoverage,
+                 missingQuoteSymbols: meta.missingQuoteSymbols
               };
               
               const newSnapshots = [snapshot, ...state.agentMemorySnapshots].slice(0, 10);
@@ -253,12 +265,20 @@ export const useWealthStore = create<WealthState>((set, get) => ({
 
               if (process.env.NODE_ENV !== 'production') console.log(`[useWealthStore] fetchLongbridge success, updated ${newData.length} positions`);
 
+              let syncStatus: WealthState['publicHoldingsSyncStatus'] = newData.length === 0 ? 'empty' : 'success';
+              let syncError: string | undefined = undefined;
+
+              if (meta.quoteCoverage !== undefined && meta.quoteCoverage < 1) {
+                  syncError = `部分持仓缺少实时价格：${(meta.missingQuoteSymbols || []).join(', ')}`;
+                  if (process.env.NODE_ENV !== 'production') console.log(`[useWealthStore] fetchLongbridge warning: ${syncError}`);
+              }
+
               return {
                   data: nextData,
                   agentMemorySnapshots: newSnapshots,
-                  publicHoldingsSyncStatus: newData.length === 0 ? 'empty' : 'success',
+                  publicHoldingsSyncStatus: syncStatus,
                   publicHoldingsLastSyncAt: Date.now(),
-                  publicHoldingsError: undefined
+                  publicHoldingsError: syncError
               };
           });
       } else {
