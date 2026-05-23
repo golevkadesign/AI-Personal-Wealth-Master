@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { subscribeToAuthChanges, db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { doc, onSnapshot, getDoc } from 'firebase/firestore';
-import { TerminalState } from '../types/terminal';
+import { TerminalState, LIVE_VALUATION_VERSION } from '../types/terminal';
 import { sanitizeTerminalState } from '../lib/sanitizer';
 import { useWealthStore, EMPTY_STATE } from './useWealthStore';
 
@@ -54,7 +54,8 @@ export function useTerminalSync() {
                        }
                        if (localState?.distributions?.publicHoldings) {
                            const hasNegative = localState.distributions.publicHoldings.some((p: any) => Number(p.marketValue) < 0 || Number(p.value) < 0);
-                           if (hasNegative || localState._liveValuationVersion !== 2) {
+                           const version = Number(localState._liveValuationVersion || 0);
+                           if (hasNegative || (version > 0 && version < LIVE_VALUATION_VERSION)) {
                                localState.distributions.publicHoldings = [];
                            }
                        }
@@ -81,7 +82,8 @@ export function useTerminalSync() {
                      let localState = JSON.parse(localDataStr);
                      if (localState?.distributions?.publicHoldings) {
                          const hasNegative = localState.distributions.publicHoldings.some((p: any) => Number(p.marketValue) < 0 || Number(p.value) < 0);
-                         if (hasNegative || localState._liveValuationVersion !== 2) {
+                         const version = Number(localState._liveValuationVersion || 0);
+                         if (hasNegative || (version > 0 && version < LIVE_VALUATION_VERSION)) {
                              localState.distributions.publicHoldings = [];
                          }
                      }
@@ -98,7 +100,8 @@ export function useTerminalSync() {
                          }
                          if (localState?.distributions?.publicHoldings) {
                              const hasNegative = localState.distributions.publicHoldings.some((p: any) => Number(p.marketValue) < 0 || Number(p.value) < 0);
-                             if (hasNegative || localState._liveValuationVersion !== 2) {
+                             const version = Number(localState._liveValuationVersion || 0);
+                             if (hasNegative || (version > 0 && version < LIVE_VALUATION_VERSION)) {
                                  localState.distributions.publicHoldings = [];
                              }
                          }
@@ -142,8 +145,10 @@ export function useTerminalSync() {
     let intervalId: any;
 
     if (user && !loadingAuth) {
-      fetchLongbridge();
-      intervalId = setInterval(fetchLongbridge, 60 * 1000);
+      if (process.env.NODE_ENV !== 'production') console.log('[useTerminalSync] Automount fetchLongbridge Triggered');
+      // Execute the initial fetch async to offload the hook immediately
+      setTimeout(() => fetchLongbridge(), 0);
+      intervalId = setInterval(() => fetchLongbridge(), 60 * 1000);
     }
 
     return () => {

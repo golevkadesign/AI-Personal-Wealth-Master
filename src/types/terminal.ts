@@ -1,3 +1,5 @@
+export const LIVE_VALUATION_VERSION = 3;
+
 export interface UserPersona {
   tags: string[];
   description: string;

@@ -165,13 +165,19 @@ export const aggregateLongbridgePortfolios = async (accounts: LongbridgeAccount[
     const results = await Promise.allSettled(accounts.map(acc => fetchSingleAccountPositions(acc)));
     
     const rawPositions: RawAccountPosition[] = [];
+    let successCount = 0;
     results.forEach(result => {
         if (result.status === 'fulfilled' && result.value) {
+            successCount++;
             rawPositions.push(...result.value);
         } else if (result.status === 'rejected') {
             console.error(`[Longbridge Adapter] 某账户拉取失败:`, result.reason);
         }
     });
+
+    if (successCount === 0 && accounts.length > 0) {
+        throw new Error("All Longbridge accounts failed to sync. Check network or API keys.");
+    }
 
     const uniqueSymbols = Array.from(new Set(rawPositions.map(p => p.symbol)));
     const firstAccount = accounts.find(a => a.appKey && a.appSecret && a.accessToken) || accounts[0];

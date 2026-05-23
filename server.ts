@@ -17,7 +17,7 @@ const __dirname = dirname(__filename);
 
 async function startServer() {
   const app = express();
-  const PORT = Number(process.env.PORT) || 3000;
+  const PORT = 3000;
 
   // Rate Limiting (Simple In-Memory)
   const rateLimitMap = new Map<string, { count: number, resetTime: number }>();
@@ -53,23 +53,9 @@ async function startServer() {
       next();
   });
 
-  const configuredOrigins = (process.env.ALLOWED_ORIGINS || process.env.APP_URL || '')
-    .split(',')
-    .map(origin => origin.trim())
-    .filter(Boolean);
-
   const corsOptions = {
     origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-        const isDevOrigin = !origin || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
-        const isConfiguredOrigin = origin ? configuredOrigins.includes(origin) : false;
-        const isKnownDeployOrigin = origin ? (
-          origin.endsWith('.onrender.com') ||
-          origin.endsWith('.run.app') ||
-          origin.endsWith('.web.app') ||
-          origin.endsWith('.firebaseapp.com')
-        ) : false;
-
-        if (isDevOrigin || isConfiguredOrigin || isKnownDeployOrigin) {
+        if (!origin || origin.includes('localhost') || origin.includes('.run.app') || origin.includes('google.com')) {
             callback(null, true);
         } else {
             callback(new Error('Not allowed by CORS'));

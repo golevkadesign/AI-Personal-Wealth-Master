@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import axios from 'axios';
 import { getSettings } from '../lib/settings';
-import { TerminalState } from '../types/terminal';
+import { TerminalState, LIVE_VALUATION_VERSION } from '../types/terminal';
 import { sanitizeTerminalState } from '../lib/sanitizer';
 import { mergeWith, isArray, debounce } from 'lodash-es';
 import { setDoc, doc } from 'firebase/firestore';
@@ -65,7 +65,7 @@ interface WealthState {
   saveCloudCheckpoint: () => void;
   setUser: (user: any) => void;
   setLoadingAuth: (loadingAuth: boolean) => void;
-  setData: (data: TerminalState) => void;
+  setData: (data: TerminalState, options?: { preserveLiveData?: boolean }) => void;
   commitData: (newDataOrUpdater: any) => void;
   clearData: () => void;
   selectedHolding: any | null;
@@ -110,11 +110,25 @@ export const useWealthStore = create<WealthState>((set, get) => ({
   setSelectedHolding: (holding) => set({ selectedHolding: holding }),
   setUser: (user) => set({ user }),
   setLoadingAuth: (loadingAuth) => set({ loadingAuth }),
-  setData: (newData) => set((state) => {
-    if (state.data?._liveSources?.includes('longbridge')) {
-      if (!newData.distributions) newData.distributions = { liquidity: [], expenses: [], privateAssets: [], publicHoldings: [], fixedAssets: [], options: [] };
-      newData.distributions.publicHoldings = state.data.distributions.publicHoldings;
-      newData._liveSources = state.data._liveSources;
+  setData: (newData, options) => set((state) => {
+    const shouldPreserve = options?.preserveLiveData !== false;
+    
+    if (shouldPreserve && state.data?._liveSources?.includes('longbridge')) {
+      const currentHoldings = state.data.distributions?.publicHoldings;
+      const hasCurrentHoldings = currentHoldings && currentHoldings.length > 0;
+      
+      const newHoldings = newData.distributions?.publicHoldings;
+      const hasNewHoldings = newHoldings && newHoldings.length > 0;
+      const newVersion = Number(newData._liveValuationVersion || 0);
+
+      // We preserve existing live holdings if the incoming data doesn't have valid new ones
+      if (hasCurrentHoldings && (!hasNewHoldings || newVersion < LIVE_VALUATION_VERSION)) {
+          if (!newData.distributions) newData.distributions = { liquidity: [], expenses: [], privateAssets: [], publicHoldings: [], fixedAssets: [], options: [] };
+          newData.distributions.publicHoldings = currentHoldings;
+          newData._liveSources = state.data._liveSources;
+          newData._liveValuationVersion = state.data._liveValuationVersion;
+          if (process.env.NODE_ENV !== 'production') console.log('[useWealthStore] Protected live holdings from being overwritten.');
+      }
     }
     return { data: newData };
   }),
@@ -129,7 +143,7 @@ export const useWealthStore = create<WealthState>((set, get) => ({
         localStorage.removeItem('arbitra_app_settings');
         localStorage.removeItem('custom_gemini_api_key');
         if (persistenceMode !== 'disabled') {
-            debouncedSyncToCloud(user.uid, { appData: EMPTY_STATE, userProfile: EMPTY_STATE.userProfile });
+            debouncedSyncToCloud(user.uid, { appData: JSON.parse(JSON.stringify(EMPTY_STATE)), userProfile: EMPTY_STATE.userProfile });
         }
     }
   },
@@ -196,7 +210,20 @@ export const useWealthStore = create<WealthState>((set, get) => ({
       
       if (response.data && response.data.success && response.data.data) {
           const newData = response.data.data;
+          const meta = response.data.meta || {};
+          
           set((state) => {
+              // If it's empty, we must ensure it's a real empty response, not a failure disguised as empty
+              if (newData.length === 0) {
+                 const isGenuinelyEmpty = meta.accountCount > 0 && meta.positionCount === 0;
+                 if (!isGenuinelyEmpty) {
+                     return {
+                         publicHoldingsSyncStatus: 'error',
+                         publicHoldingsError: 'API returned empty list without empty confirmation. Retaining old data.'
+                     };
+                 }
+              }
+
               const prevData = state.data;
               const nextData = {
                   ...prevData,
@@ -205,7 +232,7 @@ export const useWealthStore = create<WealthState>((set, get) => ({
                       publicHoldings: newData
                   },
                   _liveSources: ['longbridge'],
-                  _liveValuationVersion: 3
+                  _liveValuationVersion: LIVE_VALUATION_VERSION
               };
               
               const totalMktVal = newData.reduce((sum: number, p: any) => sum + getSafeMktVal(p), 0);
@@ -223,6 +250,8 @@ export const useWealthStore = create<WealthState>((set, get) => ({
                   localStorage.setItem(`ai_terminal_data_${state.user.uid}`, JSON.stringify(nextData));
                   localStorage.setItem(`ai_terminal_snapshots_${state.user.uid}`, JSON.stringify(newSnapshots));
               }
+
+              if (process.env.NODE_ENV !== 'production') console.log(`[useWealthStore] fetchLongbridge success, updated ${newData.length} positions`);
 
               return {
                   data: nextData,
