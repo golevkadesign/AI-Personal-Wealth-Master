@@ -48,11 +48,11 @@ export function TerminalHeader({
           <button
             onClick={() => setShowProfileReport(true)}
             className="hidden sm:inline-flex items-center gap-2 bg-[#1A1D1F] hover:bg-[#202326] text-dash-primary border border-dash-subtle px-3 py-1.5 rounded-xl font-mono text-[11px] font-semibold tracking-wider transition-colors duration-200"
-            title={t('nav.sync')}
-            aria-label={t('nav.sync')}
+            title={t('nav.memoryProfile')}
+            aria-label={t('nav.memoryProfile')}
           >
             <Database className="w-3.5 h-3.5 text-[#A39167]" />
-            <span>{t('nav.sync')}</span>
+            <span>{t('nav.memoryProfile')}</span>
           </button>
 
           <button

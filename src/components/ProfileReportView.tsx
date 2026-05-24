@@ -9,18 +9,61 @@ export const ProfileReportView = ({ isOpen, onClose }: any) => {
   const [localContext, setLocalContext] = useState('');
   const [localGoal, setLocalGoal] = useState<any>({});
   const [editingSection, setEditingSection] = useState<string | null>(null);
+  const [initialSnapshot, setInitialSnapshot] = useState<any>(null);
 
   useEffect(() => {
     if (isOpen) {
-      setLocalProfile(data?.userProfile || {});
-      setLocalPersona(data?.userPersona || { tags: [], description: '' });
-      setLocalContext(data?.insights?.global || '');
-      setLocalGoal(data?.goal || { name: '财富长期增值与家族传承', current: 0, target: 1, index: 0 });
+      const profile = data?.userProfile || {};
+      const persona = data?.userPersona || { tags: [], description: '' };
+      const context = data?.insights?.global || '';
+      const goal = data?.goal || { name: '财富长期增值与家族传承', current: 0, target: 1, index: 0 };
+      
+      setLocalProfile(profile);
+      setLocalPersona(persona);
+      setLocalContext(context);
+      setLocalGoal(goal);
       setEditingSection(null);
+      setInitialSnapshot({ profile, persona, context, goal });
     }
   }, [isOpen, data]);
 
+  const handleClose = () => {
+    const isDirty = initialSnapshot && (
+      JSON.stringify(localProfile) !== JSON.stringify(initialSnapshot.profile) ||
+      JSON.stringify(localPersona) !== JSON.stringify(initialSnapshot.persona) ||
+      localContext !== initialSnapshot.context ||
+      JSON.stringify(localGoal) !== JSON.stringify(initialSnapshot.goal)
+    );
+
+    if (isDirty) {
+      if (window.confirm('有未保存修改，确认放弃吗？')) {
+        onClose();
+      }
+    } else {
+      onClose();
+    }
+  };
+
   const handleSave = () => {
+    const rawIndex = localGoal.index;
+    let validIndex = data?.goal?.index || 0;
+    
+    if (typeof rawIndex === 'number' && !isNaN(rawIndex)) {
+       validIndex = rawIndex;
+    } else if (typeof rawIndex === 'string') {
+       const parsed = parseFloat(rawIndex.replace(/[^0-9.-]+/g, ''));
+       if (!isNaN(parsed)) {
+          validIndex = parsed;
+       }
+    }
+
+    const normalizedGoal = {
+      ...localGoal,
+      current: Number(localGoal.current) || 0,
+      target: Number(localGoal.target) || 0,
+      index: validIndex
+    };
+
     commitData((prev: any) => ({
       ...prev,
       userPersona: {
@@ -37,7 +80,7 @@ export const ProfileReportView = ({ isOpen, onClose }: any) => {
       },
       goal: {
         ...(prev?.goal || {}),
-        ...localGoal
+        ...normalizedGoal
       }
     }));
     setEditingSection(null);
@@ -54,6 +97,12 @@ export const ProfileReportView = ({ isOpen, onClose }: any) => {
   
   // Use localGoal for rendering progress and stats so edits reflect immediately
   const percent = localGoal.target > 0 ? Math.min(100, Math.round((localGoal.current / localGoal.target) * 100)) : 0;
+
+  const hasProfile = Object.keys(localProfile).some(k => k !== 'name' && localProfile[k]);
+  const hasPersonaTags = localPersona?.tags?.length > 0;
+  const hasContext = localContext && localContext.length > 5;
+  const hasStrategies = strategies && strategies.length > 0;
+  const hasSync = !!data?._liveFetchedAt;
 
   const SectionCard = ({ title, enTitle, fieldName, children, className = '' }: any) => {
     const isEditing = editingSection === fieldName;
@@ -102,7 +151,7 @@ export const ProfileReportView = ({ isOpen, onClose }: any) => {
           </div>
           <div className="flex items-center gap-3">
             <button 
-              onClick={onClose} 
+              onClick={handleClose} 
               className="px-4 py-2 border border-[#C9B284]/30 hover:border-[#C9B284]/50 bg-[#16181A]/80 hover:bg-[#C9B284]/10 text-[#E7D7B0] text-sm font-medium rounded-lg transition-all flex items-center gap-2 cursor-pointer"
             >
               关闭 Close <X className="w-4 h-4"/>
@@ -261,15 +310,20 @@ export const ProfileReportView = ({ isOpen, onClose }: any) => {
                   <div className="border-t border-[#C9B284]/10 pt-3 flex items-center justify-between text-[11px] font-mono">
                     <span className="text-[#8C8370] opacity-80">目标指数 / Goal Index:</span>
                     {editingSection === 'goal' ? (
-                      <input 
-                         type="text"
-                         className="bg-[#0B0D0F] border border-[#1A1D20] px-2 py-0.5 text-right w-16 text-[#C9B284] font-bold rounded focus:outline-none focus:border-[#C9B284]/50 transition-all"
-                         value={localGoal.index || ''}
-                         onChange={(e) => setLocalGoal({...localGoal, index: e.target.value})}
-                         placeholder="1.00x"
-                      />
+                      <div className="flex items-center">
+                        <input 
+                           type="text"
+                           className="bg-[#0B0D0F] border border-[#1A1D20] px-2 py-0.5 text-right w-16 text-[#C9B284] font-bold rounded focus:outline-none focus:border-[#C9B284]/50 transition-all"
+                           value={localGoal.index || ''}
+                           onChange={(e) => setLocalGoal({...localGoal, index: e.target.value})}
+                           placeholder="1.00"
+                        />
+                        <span className="text-[#C9B284] font-bold ml-1">x</span>
+                      </div>
                     ) : (
-                      <span className="text-[#C9B284] font-bold">{localGoal.index || '1.68x'}</span>
+                      <span className="text-[#C9B284] font-bold">
+                        {localGoal.index !== undefined ? `${localGoal.index}x` : '1.68x'}
+                      </span>
                     )}
                   </div>
                 </div>
@@ -391,61 +445,32 @@ export const ProfileReportView = ({ isOpen, onClose }: any) => {
 
               {/* Wealth Preference (Visual) */}
               <SectionCard title="财富偏好" enTitle="Wealth Preference">
-                <div className="flex items-center justify-between gap-2 py-3 bg-[#0B0D0F] rounded-lg border border-[#1A1D20]">
-                   <div className="flex flex-col items-center flex-1 gap-2 border-r border-[#C9B284]/10 last:border-0 relative group">
-                      <Activity className="w-5 h-5 text-[#C9B284]/60 group-hover:text-[#C9B284] transition-colors" />
-                      <div className="text-center">
-                          <div className="text-[10px] text-[#8C8370] mb-0.5 font-mono">投资风格</div>
-                          <div className="text-[11px] text-slate-300">价值投资为主</div>
-                      </div>
-                   </div>
-                   <div className="flex flex-col items-center flex-1 gap-2 border-r border-[#C9B284]/10 last:border-0 relative group">
-                      <Target className="w-5 h-5 text-[#C9B284]/60 group-hover:text-[#C9B284] transition-colors" />
-                      <div className="text-center">
-                          <div className="text-[10px] text-[#8C8370] mb-0.5 font-mono">持有周期</div>
-                          <div className="text-[11px] text-slate-300">长期持有 (5年以上)</div>
-                      </div>
-                   </div>
-                   <div className="flex flex-col items-center flex-1 gap-2 border-r border-[#C9B284]/10 last:border-0 relative group">
-                      <Globe className="w-5 h-5 text-[#C9B284]/60 group-hover:text-[#C9B284] transition-colors" />
-                      <div className="text-center">
-                          <div className="text-[10px] text-[#8C8370] mb-0.5 font-mono">关注领域</div>
-                          <div className="text-[11px] text-slate-300">全球宏观、科技、消费</div>
-                      </div>
-                   </div>
-                   <div className="flex flex-col items-center flex-1 gap-2 border-r border-[#C9B284]/10 last:border-0 relative group">
-                      <Shield className="w-5 h-5 text-[#C9B284]/60 group-hover:text-[#C9B284] transition-colors" />
-                      <div className="text-center">
-                          <div className="text-[10px] text-[#8C8370] mb-0.5 font-mono">偏好资产</div>
-                          <div className="text-[11px] text-slate-300">股票、固收、另类</div>
-                      </div>
-                   </div>
-                </div>
+                {hasPersonaTags ? (
+                  <div className="flex flex-wrap gap-2 py-3 bg-[#0B0D0F] rounded-lg border border-[#1A1D20] px-4">
+                    {localPersona.tags.map((tag: string, i: number) => (
+                      <span key={i} className="px-3 py-1 bg-[#1A1D20] text-[#E7D7B0] border border-[#C9B284]/20 rounded-md text-[11px] font-mono">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center py-6 bg-[#0B0D0F] rounded-lg border border-[#1A1D20]">
+                    <div className="text-[11px] text-[#8C8370] italic">基于历史会话的系统标签识别中...（待沉淀）</div>
+                  </div>
+                )}
               </SectionCard>
 
               {/* Risk Tolerance */}
               <SectionCard title="风险偏好" enTitle="Risk Tolerance">
                 <div className="flex items-center gap-6 p-2">
                   <div className="w-12 h-12 rounded-full border-2 border-[#C9B284]/20 flex items-center justify-center shrink-0 shadow-inner bg-[#1A1D20]/50">
-                    <ShieldAlert className="w-5 h-5 text-[#C9B284]" />
+                    <ShieldAlert className="w-5 h-5 text-[#C9B284]/30" />
                   </div>
                   <div className="flex-1">
-                    <div className="flex justify-between items-end mb-4">
+                    <div className="flex justify-between items-end mb-2">
                       <div>
-                        <div className="text-[13px] font-bold text-[#E7D7B0]">中等偏稳健 <span className="font-mono text-[11px] text-[#8C8370] ml-1">( 3 / 5 )</span></div>
-                        <div className="text-[11px] text-[#8C8370] mt-1">可承受适度波动以换取长期回报，注重风险控制与回撤管理。</div>
-                      </div>
-                    </div>
-                    {/* Mock Progress Slider with tick marks */}
-                    <div className="relative w-full h-1 bg-[#1A1D20] rounded-full flex items-center">
-                      <div className="absolute left-[50%] top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-[#C9B284] rounded-full shadow-[0_0_12px_rgba(201,178,132,0.6)] z-10"></div>
-                      <div className="absolute left-0 top-1/2 -translate-y-1/2 h-full bg-gradient-to-r from-[#C9B284]/20 to-[#C9B284]/60 rounded-full" style={{ width: '50%' }}></div>
-                      <div className="absolute w-full flex justify-between text-[10px] font-mono top-[14px]">
-                        <span className="text-[#8C8370] opacity-50">1</span>
-                        <span className="text-[#8C8370] opacity-50">2</span>
-                        <span className="text-[#C9B284] font-bold">3</span>
-                        <span className="text-[#8C8370] opacity-50">4</span>
-                        <span className="text-[#8C8370] opacity-50">5</span>
+                        <div className="text-[13px] font-bold text-[#E7D7B0]">待评估 <span className="font-mono text-[11px] text-[#8C8370] ml-1">( 缺失数据 )</span></div>
+                        <div className="text-[11px] text-[#8C8370] mt-1">系统暂无足够持仓与交易行为特征生成真实风险画像。</div>
                       </div>
                     </div>
                   </div>
@@ -478,64 +503,60 @@ export const ProfileReportView = ({ isOpen, onClose }: any) => {
               <div className="bg-[#121415]/60 border border-[#C9B284]/10 rounded-xl p-8 flex flex-col items-center relative overflow-hidden">
                 <span className="text-[11px] text-[#A39167] font-mono uppercase tracking-wider w-full text-left mb-6 font-semibold">AI 记忆质量 / Memory Quality</span>
                 
-                <div className="relative w-32 h-32 flex items-center justify-center mb-6">
-                  {/* Outer glow */}
+                <div className="relative w-32 h-32 flex items-center justify-center mb-6 mt-2">
                   <div className="absolute inset-0 bg-[#C9B284]/5 rounded-full blur-[20px]"></div>
                   
-                  <svg className="w-full h-full -rotate-90 relative z-10">
-                    <circle cx="64" cy="64" r="54" fill="none" stroke="#1A1D20" strokeWidth="6" />
-                    {/* Dasharray for ~82% of circumference (2 * pi * 54 = 339) -> 339 * 0.82 = 278 */}
-                    <circle cx="64" cy="64" r="54" fill="none" stroke="#C9B284" strokeWidth="6" strokeDasharray="339" strokeDashoffset="61" className="drop-shadow-[0_0_10px_rgba(201,178,132,0.4)]" strokeLinecap="round" />
-                  </svg>
-                  
-                  <div className="absolute inset-0 flex flex-col items-center justify-center z-20">
-                     <span className="text-3xl font-light font-mono text-[#E7D7B0]">82<span className="text-sm ml-0.5">%</span></span>
-                     <span className="text-[9px] text-[#8C8370] uppercase mt-1 tracking-widest">High Quality</span>
+                  <div className="absolute inset-4 rounded-full border border-[#1A1D20] bg-[#0E1012] flex items-center justify-center z-20">
+                     <span className="text-[11px] text-[#8C8370] text-center leading-relaxed">暂无真实<br/>质量评分</span>
                   </div>
                 </div>
                 
                 <div className="text-center w-full">
-                  <div className="text-[13px] text-[#E7D7B0] font-medium mb-1">记忆完整度高</div>
-                  <div className="text-[10px] text-[#8C8370] leading-relaxed">AI 对您的理解较为全面和准确，支持生成高质量战略推演。</div>
+                  <div className="text-[13px] text-[#E7D7B0] font-medium mb-1">待长期会话沉淀</div>
+                  <div className="text-[10px] text-[#8C8370] leading-relaxed">系统需要更多结构化对话历史以准确评估记忆维度。</div>
                 </div>
               </div>
 
               {/* Context Completeness */}
               <div className="bg-[#121415]/60 border border-[#C9B284]/10 rounded-xl p-6">
-                <span className="text-[11px] text-[#A39167] font-mono uppercase tracking-wider block mb-5 font-semibold">上下文完整度 / Context Completeness</span>
+                <span className="text-[11px] text-[#A39167] font-mono uppercase tracking-wider block mb-5 font-semibold">上下文维度状态 / Context Status</span>
                 <div className="space-y-4">
                   {[
-                    { label: '身份信息', val: 100 },
-                    { label: '财富上下文', val: 90 },
-                    { label: '投资偏好', val: 85 },
-                    { label: '风险偏好', val: 80 },
-                    { label: '人生策略', val: 85 },
-                    { label: '数据时效性', val: 90 },
+                    { label: '身份信息', active: hasProfile },
+                    { label: '财富上下文', active: hasContext },
+                    { label: '投资偏好', active: hasPersonaTags },
+                    { label: '风险评估', active: false },
+                    { label: '人生策略', active: hasStrategies },
+                    { label: '数据挂载', active: hasSync },
                   ].map((item, i) => (
                     <div key={i} className="flex items-center gap-3">
                       <span className="text-[11px] text-slate-300 w-16 shrink-0">{item.label}</span>
                       <div className="flex-1 h-1 bg-[#1A1D20] rounded-full overflow-hidden relative">
-                        <div className="absolute left-0 top-0 h-full bg-[#C9B284]/80 rounded-full" style={{ width: `${item.val}%` }}></div>
+                        <div className="absolute left-0 top-0 h-full bg-[#C9B284]/80 rounded-full transition-all duration-500" style={{ width: item.active ? '100%' : '0%' }}></div>
                       </div>
-                      <span className="text-[10px] font-mono text-[#E7D7B0] w-8 text-right shrink-0">{item.val}%</span>
+                      <span className={`text-[10px] font-mono w-10 text-right shrink-0 ${item.active ? 'text-[#E7D7B0]' : 'text-[#8C8370]'}`}>
+                        {item.active ? '已沉淀' : '待补充'}
+                      </span>
                     </div>
                   ))}
+                  <div className="text-[9px] text-[#8C8370] mt-3 text-center italic">基于已填写字段估算</div>
                 </div>
               </div>
 
               {/* Last Updated */}
               <div className="bg-[#121415]/60 border border-[#C9B284]/10 rounded-xl p-6">
-                <span className="text-[11px] text-[#A39167] font-mono uppercase tracking-wider block mb-4 font-semibold">最后更新 / Last Updated</span>
+                <span className="text-[11px] text-[#A39167] font-mono uppercase tracking-wider block mb-4 font-semibold">最后挂载 / Last Synced</span>
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-lg bg-[#1A1D20] border border-[#C9B284]/20 flex items-center justify-center shrink-0">
-                    <Clock className="w-4 h-4 text-[#C9B284]" />
+                    <Clock className="w-4 h-4 text-[#C9B284]/50" />
                   </div>
                   <div>
                     <div className="text-[12px] font-mono text-[#E7D7B0]">
-                      {/* Safe fallback formatted date */}
-                      {new Date().toISOString().slice(0,10)} 10:42 AM
+                      {data?._liveFetchedAt ? new Date(data._liveFetchedAt).toLocaleString() : '暂无同步记录'}
                     </div>
-                    <div className="text-[10px] text-[#8C8370] mt-0.5">由 Arbi AI 自动生成/更新</div>
+                    <div className="text-[10px] text-[#8C8370] mt-0.5">
+                      {data?._liveFetchedAt ? '由 Arbi AI 自动写入' : '等待应用主动挂载'}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -545,31 +566,31 @@ export const ProfileReportView = ({ isOpen, onClose }: any) => {
                 <span className="text-[11px] text-[#A39167] font-mono uppercase tracking-wider block mb-4 font-semibold">数据来源 / Data Sources</span>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="flex items-center gap-3 p-3 rounded-lg bg-[#0E1012] border border-[#1A1D20]">
-                     <CheckCircle2 className="w-4 h-4 text-[#C9B284]/70 shrink-0" />
+                     <CheckCircle2 className={`w-4 h-4 ${hasContext ? 'text-[#C9B284]' : 'text-[#C9B284]/30'} shrink-0`} />
                      <div className="flex flex-col">
                         <div className="text-[11px] text-slate-300 mb-0.5">对话记录</div>
-                        <div className="text-[9px] text-[#8C8370] font-mono">100+ Nodes</div>
+                        <div className="text-[9px] text-[#8C8370] font-mono">Agent 抽取</div>
                      </div>
                   </div>
                   <div className="flex items-center gap-3 p-3 rounded-lg bg-[#0E1012] border border-[#1A1D20]">
-                     <Activity className="w-4 h-4 text-[#C9B284]/70 shrink-0" />
+                     <Activity className={`w-4 h-4 ${hasSync ? 'text-[#C9B284]' : 'text-[#C9B284]/30'} shrink-0`} />
                      <div className="flex flex-col">
                         <div className="text-[11px] text-slate-300 mb-0.5">投资组合</div>
-                        <div className="text-[9px] text-[#8C8370] font-mono">实时同步</div>
+                        <div className="text-[9px] text-[#8C8370] font-mono">实盘挂载</div>
                      </div>
                   </div>
                   <div className="flex items-center gap-3 p-3 rounded-lg bg-[#0E1012] border border-[#1A1D20]">
-                     <Globe className="w-4 h-4 text-[#C9B284]/70 shrink-0" />
+                     <Globe className={`w-4 h-4 ${hasStrategies ? 'text-[#C9B284]' : 'text-[#C9B284]/30'} shrink-0`} />
                      <div className="flex flex-col">
                         <div className="text-[11px] text-slate-300 mb-0.5">市场洞察</div>
-                        <div className="text-[9px] text-[#8C8370] font-mono">宏观指标</div>
+                        <div className="text-[9px] text-[#8C8370] font-mono">RAG 知识库</div>
                      </div>
                   </div>
                   <div className="flex items-center gap-3 p-3 rounded-lg bg-[#0E1012] border border-[#1A1D20]">
-                     <Briefcase className="w-4 h-4 text-[#C9B284]/70 shrink-0" />
+                     <Briefcase className="w-4 h-4 text-[#C9B284]/30 shrink-0" />
                      <div className="flex flex-col">
                         <div className="text-[11px] text-slate-300 mb-0.5">外部研究</div>
-                        <div className="text-[9px] text-[#8C8370] font-mono">定期刷新</div>
+                        <div className="text-[9px] text-[#8C8370] font-mono">待接入</div>
                      </div>
                   </div>
                 </div>

@@ -6,6 +6,7 @@ export const translations = {
     },
     nav: {
       sync: '同步资产',
+      memoryProfile: '长线记忆',
       settings: '控制面板',
       developer: '开发者视图',
     },
@@ -101,6 +102,7 @@ export const translations = {
     },
     nav: {
       sync: 'Sync Assets',
+      memoryProfile: 'Memory Profile',
       settings: 'Settings',
       developer: 'Developer View',
     },
