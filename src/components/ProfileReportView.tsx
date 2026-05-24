@@ -10,9 +10,10 @@ export const ProfileReportView = ({ isOpen, onClose }: any) => {
   const [localGoal, setLocalGoal] = useState<any>({});
   const [editingSection, setEditingSection] = useState<string | null>(null);
   const [initialSnapshot, setInitialSnapshot] = useState<any>(null);
+  const wasOpenRef = React.useRef(false);
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !wasOpenRef.current) {
       const profile = data?.userProfile || {};
       const persona = data?.userPersona || { tags: [], description: '' };
       const context = data?.insights?.global || '';
@@ -25,6 +26,7 @@ export const ProfileReportView = ({ isOpen, onClose }: any) => {
       setEditingSection(null);
       setInitialSnapshot({ profile, persona, context, goal });
     }
+    wasOpenRef.current = isOpen;
   }, [isOpen, data]);
 
   const handleClose = () => {
@@ -177,7 +179,7 @@ export const ProfileReportView = ({ isOpen, onClose }: any) => {
                 <div className="w-24 h-24 rounded-full bg-[#1A1D20] border-2 border-[#C9B284]/30 shadow-[0_0_30px_rgba(201,178,132,0.05)] flex items-center justify-center mb-5 text-[#C9B284] relative z-10">
                   <User className="w-12 h-12 opacity-60" />
                 </div>
-                <h3 className="text-xl font-bold text-[#E7D7B0] relative z-10">{localProfile.name || 'Client A'}</h3>
+                <h3 className="text-xl font-bold text-[#E7D7B0] relative z-10">{localProfile.name || '未设置称呼'}</h3>
                 <span className="text-[#8C8370] text-xs font-medium mt-1.5 relative z-10">私人财富客户</span>
                 <span className="text-[#C9B284] border border-[#C9B284]/20 bg-[#C9B284]/5 px-2.5 py-0.5 rounded text-[9px] font-mono uppercase tracking-widest mt-3 relative z-10">
                   Private Client
@@ -322,7 +324,7 @@ export const ProfileReportView = ({ isOpen, onClose }: any) => {
                       </div>
                     ) : (
                       <span className="text-[#C9B284] font-bold">
-                        {localGoal.index !== undefined ? `${localGoal.index}x` : '1.68x'}
+                        {localGoal.index !== undefined && localGoal.index !== null ? `${localGoal.index}x` : '待计算'}
                       </span>
                     )}
                   </div>
@@ -345,7 +347,7 @@ export const ProfileReportView = ({ isOpen, onClose }: any) => {
                           value={localProfile.name || ''} 
                           onChange={e => setLocalProfile({...localProfile, name: e.target.value})}
                           className="w-full bg-[#0B0D0F] border border-[#1A1D20] rounded-lg px-3 py-2 text-[13px] text-slate-200 focus:outline-none focus:border-[#C9B284]/50 focus:bg-[#121415] transition-all"
-                          placeholder="e.g. Client A"
+                          placeholder="e.g. 未设置称呼"
                         />
                       ) : (
                         <div className="text-[13px] text-slate-200 py-1">{localProfile.name || '—'}</div>
@@ -543,9 +545,9 @@ export const ProfileReportView = ({ isOpen, onClose }: any) => {
                 </div>
               </div>
 
-              {/* Last Updated */}
+              {/* Last Synced */}
               <div className="bg-[#121415]/60 border border-[#C9B284]/10 rounded-xl p-6">
-                <span className="text-[11px] text-[#A39167] font-mono uppercase tracking-wider block mb-4 font-semibold">最后挂载 / Last Synced</span>
+                <span className="text-[11px] text-[#A39167] font-mono uppercase tracking-wider block mb-4 font-semibold">持仓数据挂载 / Portfolio Sync</span>
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-lg bg-[#1A1D20] border border-[#C9B284]/20 flex items-center justify-center shrink-0">
                     <Clock className="w-4 h-4 text-[#C9B284]/50" />
@@ -604,10 +606,10 @@ export const ProfileReportView = ({ isOpen, onClose }: any) => {
         <div className="px-8 py-4 border-t border-[#C9B284]/15 bg-[#0B0D0F] flex justify-between items-center text-[10px] text-[#A39167] font-mono shrink-0 shadow-[0_-5px_20px_rgba(0,0,0,0.3)] z-10 relative">
           <div className="flex flex-row items-center gap-2 opacity-80">
             <Shield size={13} className="text-[#C9B284]"/> 
-            <span>您的隐私与数据安全受到最高级别保护 (SOC Type II Compliant)</span>
+            <span>您的隐私与数据仅储存于受信任的隔离沙箱中</span>
           </div>
           <div className="flex items-center gap-4 opacity-80">
-            <span>Memory Profile ID: MP-{new Date().toISOString().slice(0, 10).replace(/-/g, '')}-001</span>
+            <span>Powered by Arbitra Security</span>
           </div>
         </div>
         

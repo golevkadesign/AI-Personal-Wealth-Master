@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Database, Cpu, Sparkles, Settings, LogOut, Languages } from 'lucide-react';
+import { Database, Cpu, Sparkles, Settings, LogOut } from 'lucide-react';
 import { logout } from '../lib/firebase';
 import { useTranslation } from '../hooks/useTranslation';
 
