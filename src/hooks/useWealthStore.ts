@@ -171,6 +171,22 @@ export const useWealthStore = create<WealthState>((set, get) => ({
       const rawNewData = typeof newDataOrUpdater === 'function' ? newDataOrUpdater(prev) : newDataOrUpdater;
       const newData = sanitizeTerminalState(rawNewData) as TerminalState;
       
+      // Before deep merge, if we currently hold valid Longbridge live data,
+      // prevent the AI patch from overwriting it unless it explicitly provides a valid newer live version.
+      if (prev?._liveSources?.includes('longbridge') && prev?.distributions?.publicHoldings?.length > 0) {
+          const incomingVersion = Number(newData._liveValuationVersion || 0);
+          if (incomingVersion < LIVE_VALUATION_VERSION) {
+              if (newData.distributions && newData.distributions.publicHoldings) {
+                  delete newData.distributions.publicHoldings;
+                  if (process.env.NODE_ENV !== 'production') console.log('[useWealthStore] Filtered out AI patch publicHoldings to protect Longbridge live data.');
+              }
+              // Also protect live metadata from being overwritten by empty/stale AI patches
+              delete newData._liveSources;
+              delete newData._liveValuationVersion;
+              delete newData._liveFetchedAt;
+          }
+      }
+
       const fullData = mergeWith({}, prev, newData, (objValue, srcValue) => {
         if (isArray(srcValue)) return srcValue;
       });
@@ -245,24 +261,46 @@ export const useWealthStore = create<WealthState>((set, get) => ({
                  }
               }
 
+              // Preserve old marketValues if the new data is missing it due to API rate limits (quote failures)
+              const existingHoldings = state.data?.distributions?.publicHoldings || [];
+              const mergedNewData = newData.map((newPos: any) => {
+                  const mVal = getSafeMktVal(newPos);
+                  if (mVal <= 0) {
+                      const oldPos = existingHoldings.find((p: any) => p.symbol === newPos.symbol);
+                      if (oldPos) {
+                          const oldMVal = getSafeMktVal(oldPos);
+                          if (oldMVal > 0) {
+                              return {
+                                  ...newPos,
+                                  marketValue: oldPos.marketValue !== undefined ? oldPos.marketValue : oldMVal,
+                                  value: oldPos.value !== undefined ? oldPos.value : oldMVal,
+                                  currentPrice: oldPos.currentPrice,
+                                  _staleQuote: true
+                              };
+                          }
+                      }
+                  }
+                  return newPos;
+              });
+
               const prevData = state.data;
               const nextData = {
                   ...prevData,
                   distributions: {
                       ...prevData.distributions,
-                      publicHoldings: newData
+                      publicHoldings: mergedNewData
                   },
                   _liveSources: ['longbridge'],
                   _liveValuationVersion: LIVE_VALUATION_VERSION,
                   _liveFetchedAt: Date.now()
               };
               
-              const totalMktVal = newData.reduce((sum: number, p: any) => sum + getSafeMktVal(p), 0);
+              const totalMktVal = mergedNewData.reduce((sum: number, p: any) => sum + getSafeMktVal(p), 0);
               
               const snapshot = {
                  timestamp: Date.now(),
                  totalMarketValue: totalMktVal,
-                 topHoldings: [...newData].sort((a: any, b: any) => getSafeMktVal(b) - getSafeMktVal(a)).slice(0, 5).map(h => ({ symbol: h.symbol, marketValue: getSafeMktVal(h), quantity: h.quantity })),
+                 topHoldings: [...mergedNewData].sort((a: any, b: any) => getSafeMktVal(b) - getSafeMktVal(a)).slice(0, 5).map(h => ({ symbol: h.symbol, marketValue: getSafeMktVal(h), quantity: h.quantity })),
                  source: 'longbridge',
                  quoteCoverage: meta.quoteCoverage,
                  missingQuoteSymbols: meta.missingQuoteSymbols
@@ -275,9 +313,9 @@ export const useWealthStore = create<WealthState>((set, get) => ({
                   localStorage.setItem(`ai_terminal_snapshots_${state.user.uid}`, JSON.stringify(newSnapshots));
               }
 
-              if (process.env.NODE_ENV !== 'production') console.log(`[useWealthStore] fetchLongbridge success, updated ${newData.length} positions`);
+              if (process.env.NODE_ENV !== 'production') console.log(`[useWealthStore] fetchLongbridge success, updated ${mergedNewData.length} positions`);
 
-              let syncStatus: WealthState['publicHoldingsSyncStatus'] = newData.length === 0 ? 'empty' : 'success';
+              let syncStatus: WealthState['publicHoldingsSyncStatus'] = mergedNewData.length === 0 ? 'empty' : 'success';
               let syncError: string | undefined = undefined;
 
               if (meta.quoteCoverage !== undefined && meta.quoteCoverage < 1) {
