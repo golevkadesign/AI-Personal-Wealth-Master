@@ -52,6 +52,30 @@ const debouncedSyncToCloud = debounce((uid: string, payload: any) => {
     });
 }, 2000);
 
+const preserveLiveLongbridgeSlice = (prevData: TerminalState, incomingData: TerminalState): boolean => {
+  if (prevData?._liveSources?.includes('longbridge')) {
+    const currentHoldings = prevData.distributions?.publicHoldings;
+    const hasCurrentHoldings = currentHoldings && currentHoldings.length > 0;
+    
+    const newHoldings = incomingData.distributions?.publicHoldings;
+    const hasNewHoldings = newHoldings && newHoldings.length > 0;
+    const newVersion = Number(incomingData._liveValuationVersion || 0);
+
+    // We preserve existing live holdings if the incoming data doesn't have valid new ones
+    if (hasCurrentHoldings && (!hasNewHoldings || newVersion < LIVE_VALUATION_VERSION)) {
+        if (!incomingData.distributions) incomingData.distributions = { liquidity: [], expenses: [], privateAssets: [], publicHoldings: [], fixedAssets: [], options: [] };
+        incomingData.distributions.publicHoldings = currentHoldings;
+        incomingData._liveSources = prevData._liveSources;
+        incomingData._liveValuationVersion = prevData._liveValuationVersion;
+        incomingData._liveFetchedAt = prevData._liveFetchedAt;
+        
+        if (process.env.NODE_ENV !== 'production') console.log('[useWealthStore] Preserved Longbridge live holdings during commitData/setData');
+        return true;
+    }
+  }
+  return false;
+};
+
 // We define persistence mode states
 export type PersistenceMode = 'disabled' | 'manual' | 'auto';
 
@@ -113,31 +137,16 @@ export const useWealthStore = create<WealthState>((set, get) => ({
   setData: (newData, options) => set((state) => {
     const shouldPreserve = options?.preserveLiveData !== false;
     
-    if (shouldPreserve && state.data?._liveSources?.includes('longbridge')) {
-      const currentHoldings = state.data.distributions?.publicHoldings;
-      const hasCurrentHoldings = currentHoldings && currentHoldings.length > 0;
-      
-      const newHoldings = newData.distributions?.publicHoldings;
-      const hasNewHoldings = newHoldings && newHoldings.length > 0;
-      const newVersion = Number(newData._liveValuationVersion || 0);
-
-      // We preserve existing live holdings if the incoming data doesn't have valid new ones
-      if (hasCurrentHoldings && (!hasNewHoldings || newVersion < LIVE_VALUATION_VERSION)) {
-          if (!newData.distributions) newData.distributions = { liquidity: [], expenses: [], privateAssets: [], publicHoldings: [], fixedAssets: [], options: [] };
-          newData.distributions.publicHoldings = currentHoldings;
-          newData._liveSources = state.data._liveSources;
-          newData._liveValuationVersion = state.data._liveValuationVersion;
-          newData._liveFetchedAt = state.data._liveFetchedAt;
-          
-          if (process.env.NODE_ENV !== 'production') console.log('[useWealthStore] Protected live holdings from being overwritten.');
-          
-          return {
-              data: newData,
-              publicHoldingsSyncStatus: state.publicHoldingsSyncStatus,
-              publicHoldingsLastSyncAt: state.publicHoldingsLastSyncAt,
-              publicHoldingsError: state.publicHoldingsError
-          };
-      }
+    if (shouldPreserve) {
+        const preserved = preserveLiveLongbridgeSlice(state.data, newData);
+        if (preserved) {
+            return {
+                data: newData,
+                publicHoldingsSyncStatus: state.publicHoldingsSyncStatus,
+                publicHoldingsLastSyncAt: state.publicHoldingsLastSyncAt,
+                publicHoldingsError: state.publicHoldingsError
+            };
+        }
     }
     return { data: newData };
   }),
@@ -165,6 +174,9 @@ export const useWealthStore = create<WealthState>((set, get) => ({
       const fullData = mergeWith({}, prev, newData, (objValue, srcValue) => {
         if (isArray(srcValue)) return srcValue;
       });
+      
+      // Protect live data from AI patch overwriting
+      preserveLiveLongbridgeSlice(prev, fullData);
       
       if (prev.metrics?.netWorth > 0) {
         const coreChanged = 
