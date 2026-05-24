@@ -91,6 +91,7 @@ interface WealthState {
   setLoadingAuth: (loadingAuth: boolean) => void;
   setData: (data: TerminalState, options?: { preserveLiveData?: boolean }) => void;
   commitData: (newDataOrUpdater: any) => void;
+  clearDynamicWidgets: () => void;
   clearData: () => void;
   selectedHolding: any | null;
   setSelectedHolding: (holding: any) => void;
@@ -150,6 +151,9 @@ export const useWealthStore = create<WealthState>((set, get) => ({
     }
     return { data: newData };
   }),
+  clearDynamicWidgets: () => {
+    get().commitData({ dynamicWidgets: [] });
+  },
   clearData: () => {
     set({ data: JSON.parse(JSON.stringify(EMPTY_STATE)), agentMemorySnapshots: [], publicHoldingsSyncStatus: 'empty', publicHoldingsError: undefined, publicHoldingsLastSyncAt: undefined });
     const { user, persistenceMode } = get();

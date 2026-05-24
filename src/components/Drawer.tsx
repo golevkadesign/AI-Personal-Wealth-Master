@@ -22,7 +22,7 @@ function fileToBase64(file: File): Promise<{ mimeType: string, data: string, nam
   });
 }
 
-export const Drawer = ({ isDrawerOpen, setIsDrawerOpen, setSduiState, setIsSynthesizing }: any) => {
+export const Drawer = ({ isDrawerOpen, setIsDrawerOpen, setIsSynthesizing }: any) => {
   const { t } = useTranslation();
   const { data } = useWealthStore();
   const [showDrawerClearConfirm, setShowDrawerClearConfirm] = useState(false);
@@ -42,7 +42,7 @@ export const Drawer = ({ isDrawerOpen, setIsDrawerOpen, setSduiState, setIsSynth
     handleStop,
     handleRegenerate,
     handleAiSubmit,
-  } = useAiAgent({ setSduiState, setIsSynthesizing });
+  } = useAiAgent({ setIsSynthesizing });
 
   const handlePaste = async (e: React.ClipboardEvent) => {
     if (e.clipboardData.files && e.clipboardData.files.length > 0) {

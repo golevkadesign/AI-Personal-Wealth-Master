@@ -57,7 +57,6 @@ export default function App() {
 
   useSentinel(); // Update useSentinel next.
 
-  const [sduiState, setSduiState] = useState<any[]>([]);
   const [isSynthesizing, setIsSynthesizing] = useState(false);
   const [showDeveloperView, setShowDeveloperView] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -310,7 +309,6 @@ export default function App() {
         isDrawerOpen={isDrawerOpen} 
         setIsDrawerOpen={setDrawerOpen} 
         user={user} 
-        setSduiState={setSduiState} 
         setIsSynthesizing={setIsSynthesizing}
       />
 

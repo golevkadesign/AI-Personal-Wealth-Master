@@ -5,8 +5,9 @@ import { getSettings } from '../lib/settings';
 import { sanitizeTerminalState } from '../lib/sanitizer';
 import { Attachment } from '../App';
 import { useWealthStore } from './useWealthStore';
+import { normalizeSDUISchema } from '../lib/sdui-normalizer';
 
-export function useAiAgent({ setSduiState, setIsSynthesizing }: any) {
+export function useAiAgent({ setIsSynthesizing }: any) {
   const { user, data, commitData } = useWealthStore();
   const [inputMsg, setInputMsg] = useState('');
   const [syncProfile, setSyncProfile] = useState(true);
@@ -403,13 +404,22 @@ export function useAiAgent({ setSduiState, setIsSynthesizing }: any) {
         return newHist;
       });
 
-      if (sduiPayload?.sduiSchema) {
-         setSduiState(sduiPayload.sduiSchema);
-      }
-      
       if (sduiPayload?.updateGlobalState) {
          // Sanitize AI's raw update payload BEFORE merging, removing nulls/bad types but keeping omitted fields untouched
          const sanitizedUpdate = sanitizeTerminalState(sduiPayload.updateGlobalState);
+
+         if (sanitizedUpdate.dynamicWidgets) {
+           sanitizedUpdate.dynamicWidgets = normalizeSDUISchema(sanitizedUpdate.dynamicWidgets);
+         }
+         
+         if (sanitizedUpdate.dashboardSchema) {
+           const normalized = normalizeSDUISchema(sanitizedUpdate.dashboardSchema);
+           if (normalized && normalized.length > 0) {
+             sanitizedUpdate.dashboardSchema = normalized;
+           } else {
+             delete sanitizedUpdate.dashboardSchema;
+           }
+         }
 
          commitData((prevData: any) => ({ 
             ...prevData, 
