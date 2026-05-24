@@ -1,7 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, Trash2 } from 'lucide-react';
-import { TerminalState } from '../types/terminal';
 import { useWealthStore } from '../hooks/useWealthStore';
 import { ErrorBoundary } from './ui/ErrorBoundary';
 import { SDUIRenderer } from '../lib/sdui-registry';

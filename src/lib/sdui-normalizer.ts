@@ -35,10 +35,8 @@ export function normalizeSDUISchema(schema: any, depth = 0): SDUIComponent[] {
       continue;
     }
 
-    let props = block.props;
-    if (!props || typeof props !== 'object' || Array.isArray(props)) {
-      props = {};
-    }
+    const rawProps = block.props;
+    let props = rawProps && typeof rawProps === 'object' && !Array.isArray(rawProps) ? { ...rawProps } : {};
 
     // Grid specific normalization
     if (type === 'Grid') {

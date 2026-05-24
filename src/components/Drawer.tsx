@@ -97,14 +97,14 @@ export const Drawer = ({ isDrawerOpen, setIsDrawerOpen, setIsSynthesizing }: any
         </div>
       )}
       
-      <div className="p-4 sm:p-6 border-b border-dash-subtle flex justify-between items-center bg-transparent relative z-10 shrink-0">
+      <div className="px-4 py-3 sm:px-5 sm:py-4 border-b border-dash-subtle flex justify-between items-center bg-[#0B0D0F]/80 backdrop-blur-md relative z-10 shrink-0 shadow-sm">
         <div className="flex items-center gap-3">
-           <div className="w-10 h-10 rounded-[12px] bg-dash-surface flex items-center justify-center border border-dash-subtle shadow-sm">
-              <div className="w-4 h-4 rounded-full bg-dash-primary shadow-[0_0_12px_rgba(201,178,132,0.4)]"></div>
+           <div className="w-8 h-8 rounded-[10px] bg-dash-surface flex items-center justify-center border border-dash-subtle shadow-sm">
+              <div className="w-3.5 h-3.5 rounded-full bg-dash-primary shadow-[0_0_10px_rgba(201,178,132,0.4)]"></div>
            </div>
            <div>
-              <p className="arbitra-text-mono text-[10px] uppercase tracking-[0.2em] arbitra-text-tertiary mb-0.5">{t('drawer.terminalAiTitle')}</p>
-              <h2 className="text-lg font-medium arbitra-text-primary leading-tight tracking-tight">{t('drawer.agentName')}</h2>
+              <p className="arbitra-text-mono text-[9px] uppercase tracking-[0.2em] arbitra-text-tertiary mb-0.5">{t('drawer.terminalAiTitle')}</p>
+              <h2 className="text-[15px] font-semibold arbitra-text-primary leading-tight tracking-tight">{t('drawer.agentName')}</h2>
            </div>
         </div>
         <div className="flex items-center gap-2 sm:gap-3">
@@ -163,13 +163,13 @@ export const Drawer = ({ isDrawerOpen, setIsDrawerOpen, setIsSynthesizing }: any
         <div className="mx-auto w-full max-w-4xl pointer-events-auto relative">
           
           {/* Memory Toggle */}
-          <div className="absolute right-2 -top-8 flex items-center">
-            <label className="flex items-center gap-1.5 cursor-pointer group">
-              <div className={`w-3.5 h-3.5 rounded-[4px] flex items-center justify-center transition-colors ${syncProfile ? 'bg-dash-primary/80 border border-dash-primary' : 'bg-surface border border-outline/50'}`}>
-                 {syncProfile && <Check className="w-2.5 h-2.5 text-background stroke-[4px]" />}
+          <div className="absolute right-2 -top-10 flex items-center">
+            <label className="flex items-center gap-2 cursor-pointer group bg-dash-surface-hover/90 backdrop-blur-md border border-white/5 py-1.5 px-3 rounded-full shadow-sm hover:border-dash-primary/30 transition-colors">
+              <div className={`w-3.5 h-3.5 rounded-[4px] flex items-center justify-center transition-colors ${syncProfile ? 'bg-dash-primary shadow-[0_0_8px_rgba(201,178,132,0.4)] border-none' : 'bg-[#1A1D20] border border-white/20'}`}>
+                 {syncProfile && <Check className="w-2.5 h-2.5 text-black stroke-[4px]" />}
               </div>
               <input type="checkbox" className="hidden" checked={syncProfile} onChange={(e) => setSyncProfile(e.target.checked)} />
-              <span className="text-[10px] arbitra-text-secondary uppercase tracking-wider font-semibold group-hover:text-dash-primary transition-colors">{t('drawer.syncMemory')}</span>
+              <span className={`text-[10px] uppercase font-mono tracking-wider font-semibold transition-colors ${syncProfile ? 'text-dash-primary' : 'text-dash-tertiary group-hover:text-dash-secondary'}`}>{t('drawer.syncMemory')}</span>
             </label>
           </div>
 
@@ -275,7 +275,7 @@ export const Drawer = ({ isDrawerOpen, setIsDrawerOpen, setIsSynthesizing }: any
                      exit={{ scale: 0.8, opacity: 0 }}
                      type="button"
                      onClick={() => {(inputMsg.trim() || attachments.length > 0) && handleAiSubmit()}}
-                     className={`w-11 h-11 flex items-center justify-center rounded-[12px] shadow-sm transition-all arbitra-focus-ring active:scale-95 ${inputMsg.trim() || attachments.length > 0 ? 'bg-dash-primary text-background hover:bg-dash-primary/90' : 'bg-surface-hover border border-dash-subtle text-dash-tertiary cursor-default'}`}
+                     className={`w-11 h-11 flex items-center justify-center rounded-[12px] shadow-sm transition-all arbitra-focus-ring active:scale-95 ${inputMsg.trim() || attachments.length > 0 ? 'bg-dash-primary text-[#0B0D0F] hover:bg-dash-primary/90' : 'bg-surface-hover border border-dash-subtle text-dash-tertiary cursor-default'}`}
                      aria-label="Send Message"
                    >
                      <Send className="w-4 h-4 ml-0.5" />

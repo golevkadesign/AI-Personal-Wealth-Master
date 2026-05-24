@@ -114,7 +114,7 @@ export const ChatList = React.memo(function ChatList({ messages, isTyping, onReg
   ];
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-5 custom-scroll pb-40" ref={containerRef} onScroll={handleScroll}>
+    <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-5 custom-scroll pb-[200px]" ref={containerRef} onScroll={handleScroll}>
       {messages.length === 0 ? (
         <div className="h-full flex flex-col items-center justify-center text-center opacity-65 py-16 px-4">
           <Sparkles className="w-6 h-6 mb-3 text-[#C9B284]" />
@@ -130,7 +130,6 @@ export const ChatList = React.memo(function ChatList({ messages, isTyping, onReg
               <div key={i} className="flex flex-col items-end gap-1 w-full max-w-[90%] ml-auto">
                 <div className="flex items-center gap-1.5 text-[10px] font-mono text-dash-tertiary uppercase tracking-wider mb-0.5 font-semibold">
                   <span>You</span>
-                  <span>10:32 AM</span>
                 </div>
                 <div className="relative group bg-[#16181A] border border-[#C9B284]/20 text-white rounded-2xl rounded-tr-sm px-4 py-2.5 text-[13px] leading-relaxed shadow-sm font-sans w-full">
                   {msg.attachments && msg.attachments.length > 0 && (
@@ -177,25 +176,31 @@ export const ChatList = React.memo(function ChatList({ messages, isTyping, onReg
               <div key={i} className="flex flex-col items-start gap-1 w-full max-w-[95%]">
                 <div className="flex items-center gap-1.5 text-[10px] font-mono text-dash-tertiary uppercase tracking-wider mb-1 font-semibold">
                   <span className="font-bold text-[#C9B284]">Arbitra AI</span>
-                  <span>10:32 AM</span>
                 </div>
                 
-                {/* Thinking Section styled as custom Telemetry telemetry panel */}
+                {/* Thinking Section styled to be elegant and progressive */}
                 {msg.thinking && (
-                  <div className="w-full mb-2 font-mono">
-                    <div className="rounded-xl overflow-hidden backdrop-blur-md bg-[#101113] border border-[#C9B284]/15 text-xs shadow-sm">
+                  <div className="w-full mb-2">
+                    <div className="rounded-xl overflow-hidden bg-dash-surface-hover/50 border border-[#C9B284]/15 shadow-sm backdrop-blur-sm">
                         <button onClick={() => {
                             setExpandedThinking(prev => ({ ...prev, [i]: prev[i] === undefined ? false : !prev[i] }))
-                        }} className="w-full flex items-center justify-between py-2 px-3 text-[#A39167] hover:text-[#C9B284] hover:bg-white/5 transition-colors border-b border-transparent data-[expanded=true]:border-[#C9B284]/15" data-expanded={expandedThinking[i] !== false}>
-                            <div className="flex items-center gap-2">
+                        }} className="w-full flex items-center justify-between py-2 px-3 hover:bg-white/5 transition-colors border-b border-transparent data-[expanded=true]:border-[#C9B284]/10" data-expanded={expandedThinking[i] !== false}>
+                            <div className="flex items-center gap-2 overflow-hidden flex-1 shrink">
                               {isTyping && i === messages.length - 1 && !msg.content ? (
                                 <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2, ease: "linear" }}>
-                                  <Cpu className="w-3 h-3 text-[#C9B284] animate-pulse" />
+                                  <Sparkles className="w-3.5 h-3.5 text-[#C9B284] animate-pulse" />
                                 </motion.div>
-                              ) : <Activity className="w-3 h-3 text-[#C9B284]" />}
-                              <span className="font-mono tracking-widest uppercase font-bold text-[9px] text-[#A39167]">{isTyping && i === messages.length - 1 && !msg.content ? '调度中...' : '运行日志与数据 TELEMETRY LOG'}</span>
+                              ) : <Check className="w-3.5 h-3.5 text-[#8C8270]" />}
+                              <span className="font-semibold text-[11px] text-[#C9B284] tracking-wide shrink-0">
+                                {isTyping && i === messages.length - 1 && !msg.content ? '深度推演中...' : '推演完成'}
+                              </span>
+                              {expandedThinking[i] === false && (
+                                <span className="text-[10px] text-[#A39167]/70 truncate flex-1 block text-left ml-2 font-mono">
+                                   {msg.thinking.trim().split('\n').filter(Boolean).pop()?.replace(/^["'-]|["'-]$/g, '').trim() || '分析数据...'}
+                                </span>
+                              )}
                             </div>
-                            <ChevronDown className={`w-3 h-3 transition-transform duration-300 ${expandedThinking[i] !== false ? 'rotate-180' : ''}`} />
+                            <ChevronDown className={`w-3.5 h-3.5 text-[#8C8270] transition-transform duration-300 ml-2 shrink-0 ${expandedThinking[i] !== false ? 'rotate-180' : ''}`} />
                         </button>
                         <AnimatePresence>
                           {expandedThinking[i] !== false && (
@@ -203,9 +208,9 @@ export const ChatList = React.memo(function ChatList({ messages, isTyping, onReg
                                 initial={{ height: 0, opacity: 0 }}
                                 animate={{ height: "auto", opacity: 1 }}
                                 exit={{ height: 0, opacity: 0 }}
-                                className="text-dash-tertiary font-mono text-[10px] leading-relaxed whitespace-pre-wrap bg-[#0D0E10] border-t border-[#C9B284]/10"
+                                className="text-[#A39167] font-mono text-[10px] leading-relaxed whitespace-pre-wrap bg-[#08090A]/50 border-t border-[#C9B284]/10"
                               >
-                                <div className="p-3 border-l-2 border-[#C9B284]/30 ml-2 my-1.5 max-h-[160px] overflow-y-auto custom-scroll">{msg.thinking}</div>
+                                <div className="p-3 border-l-2 border-[#C9B284]/30 ml-2.5 my-2 max-h-[160px] overflow-y-auto custom-scroll">{msg.thinking}</div>
                               </motion.div>
                           )}
                         </AnimatePresence>
@@ -230,19 +235,26 @@ export const ChatList = React.memo(function ChatList({ messages, isTyping, onReg
                         {msg.content && (
                            <div className="mt-6 pt-4 border-t border-[#C9B284]/10 flex flex-col gap-3 font-sans">
                              {/* Metric Badges Info */}
-                             <div className="flex flex-wrap gap-1.5">
+                             <div className="flex flex-wrap gap-2 items-center">
                                {msg._liveSources?.includes('longbridge') && (
-                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-mono uppercase tracking-wider font-semibold bg-[#6B8E6B]/10 text-[#6B8E6B] border border-[#6B8E6B]/20">
-                                   Live Source Included
+                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#6B8E6B]/10 text-[#6B8E6B] border border-[#6B8E6B]/20">
+                                   <Activity className="w-3 h-3" />
+                                   实盘数据源
                                  </span>
                                )}
                                {msg.hasMemoryUpdate && (
-                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-mono uppercase tracking-wider font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20 font-sans">
-                                   Memory Updated
-                                 </span>
+                                 <motion.span 
+                                   initial={{ opacity: 0, y: 5 }}
+                                   animate={{ opacity: 1, y: 0 }}
+                                   className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium text-[#C9B284] bg-[#C9B284]/10 border border-[#C9B284]/20 relative overflow-hidden group/memory"
+                                 >
+                                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#C9B284]/10 to-transparent -translate-x-full group-hover/memory:animate-[shimmer_1.5s_infinite]" />
+                                   <Sparkles className="w-3 h-3 opacity-80" />
+                                   已刷新长期记忆
+                                 </motion.span>
                                )}
                                {msg.timeTaken !== undefined && (
-                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-mono uppercase tracking-wider font-semibold bg-[#1D1F21] text-dash-tertiary border border-[#C9B284]/10">
+                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono tracking-wider text-dash-tertiary bg-[#1D1F21] border border-[#C9B284]/10">
                                    {(msg.timeTaken / 1000).toFixed(1)}s
                                  </span>
                                )}
@@ -283,7 +295,7 @@ export const ChatList = React.memo(function ChatList({ messages, isTyping, onReg
           }
         })
       )}
-      <div ref={chatEndRef} className="h-4" />
+      <div ref={chatEndRef} className="h-10" />
 
       {/* Fullscreen Code Modal */}
       <AnimatePresence>
@@ -379,14 +391,14 @@ export function ChatInput({ input, handleInputChange, handleSubmit, isLoading, o
               <StopCircle className="w-5 h-5" />
             </motion.button>
           ) : (input.trim() || hasAttachments) ? (
-            <motion.button
+              <motion.button
               key="send"
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.8, opacity: 0 }}
               transition={{ type: "spring", stiffness: 400, damping: 25 }}
               type="submit"
-              className="w-10 h-10 sm:w-11 sm:h-11 bg-dash-primary text-dash-base hover:bg-white rounded-xl flex items-center justify-center transition-colors shadow-sm active:scale-95"
+              className="w-10 h-10 sm:w-11 sm:h-11 bg-dash-primary text-[#0B0D0F] hover:bg-white rounded-xl flex items-center justify-center transition-colors shadow-sm active:scale-95"
             >
               <Send className="w-5 h-5 ml-0.5" />
             </motion.button>

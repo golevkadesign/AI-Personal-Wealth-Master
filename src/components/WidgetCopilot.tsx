@@ -412,8 +412,6 @@ export const WidgetCopilot: React.FC<WidgetCopilotProps> = ({
                         <span className="text-[#C9B284]">{expertRole}</span>
                       </>
                     )}
-                    <span className="text-[#8C8270]/60">•</span>
-                    <span className="text-[#8C8270]/50 font-normal">10:32 AM</span>
                   </div>
 
                   <div className="w-full bg-[#16181A] border border-[#C9B284]/15 rounded-2xl p-4 shadow-sm font-sans">
