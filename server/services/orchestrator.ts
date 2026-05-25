@@ -173,7 +173,8 @@ export async function evaluateWealthStatus(userTier: string, message: string, hi
 
   // 如果有市场数据（股票等），额外拉起市场分析Agent
   if (shouldRun("Market Analysis") && ((externalData?.marketData && Object.keys(externalData.marketData).length > 0) ||
-      (externalData?.livePortfolio && externalData.livePortfolio.length > 0))) {
+      (externalData?.livePortfolio && externalData.livePortfolio.length > 0) ||
+      (externalData?.livePortfolioAccounts && externalData.livePortfolioAccounts.length > 0))) {
     if (onProgress) onProgress(`⏳ [子节点派发] 请求外部数据交汇汇流，唤醒华尔街量化分析节点...`);
     agentTasks.push(
       runAnalysisAgent(userTier, cleanExternalData, history, "Market Analysis", "请帮我分析我持有的或提到的这些标的", settings, attachments).then((res: any) => { 

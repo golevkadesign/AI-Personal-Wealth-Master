@@ -162,15 +162,27 @@ export const useWealthStore = create<WealthState>((set, get) => ({
     get().commitData({ dynamicWidgets: [] });
   },
   clearData: () => {
-    set({ data: JSON.parse(JSON.stringify(EMPTY_STATE)), agentMemorySnapshots: [], publicHoldingsSyncStatus: 'empty', publicHoldingsError: undefined, publicHoldingsLastSyncAt: undefined });
+    // ⚠️ API Key / Token 等安全凭证只能由用户在 Settings 表单中手动清理。
+    // clearData 仅清空当前工作区的用户财务数据、聊天记录、状态树、指标跟进及快照文件，静默保留所有 API 密钥与股票账户配置。
+    set({ 
+      data: JSON.parse(JSON.stringify(EMPTY_STATE)), 
+      agentMemorySnapshots: [], 
+      selectedHolding: null,
+      publicHoldingsSyncStatus: 'empty', 
+      publicHoldingsError: undefined, 
+      publicHoldingsLastSyncAt: undefined,
+      publicHoldingAccountsSyncStatus: 'empty',
+      publicHoldingAccountsError: undefined,
+      publicHoldingAccountsLastSyncAt: undefined
+    });
+
     const { user, persistenceMode } = get();
     if (user?.uid) {
         localStorage.removeItem(`ai_terminal_data_${user.uid}`);
         localStorage.removeItem(`ai_terminal_snapshots_${user.uid}`);
         localStorage.removeItem(`ai_terminal_position_snapshots_${user.uid}`);
         localStorage.removeItem(`ai_terminal_chat_${user.uid}`);
-        localStorage.removeItem('arbitra_app_settings');
-        localStorage.removeItem('custom_gemini_api_key');
+        
         if (persistenceMode !== 'disabled') {
             debouncedSyncToCloud(user.uid, { appData: JSON.parse(JSON.stringify(EMPTY_STATE)), userProfile: EMPTY_STATE.userProfile });
         }

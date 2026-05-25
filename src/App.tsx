@@ -126,7 +126,6 @@ export default function App() {
       <DeveloperView 
         isOpen={showDeveloperView} 
         onClose={() => setShowDeveloperView(false)} 
-        onClearData={handleClearDataClick}
       />
 
       {/* Top Header */}
@@ -294,7 +293,7 @@ export default function App() {
         </div>
       )}
 
-      <SettingsModal isOpen={showSettingsModal} onClose={() => setShowSettingsModal(false)} />
+      <SettingsModal isOpen={showSettingsModal} onClose={() => setShowSettingsModal(false)} onClearData={handleClearDataClick} />
       <ProfileReportView isOpen={showProfileReport} onClose={() => setShowProfileReport(false)} />
       <WidgetCopilot 
         isOpen={copilotConfig.isOpen}

@@ -628,22 +628,8 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({
                   </div>
                 )}
 
-                {/* Left region safety wipe controls */}
-                <div className="flex items-center gap-4 max-w-[50%]">
-                  <button 
-                    onClick={onClearData}
-                    className="flex items-center gap-2 px-3 py-2 border border-red-500/25 hover:border-red-500/50 bg-red-500/5 hover:bg-red-500/10 text-red-400 rounded-xl text-xs font-mono tracking-widest uppercase transition-all duration-300 cursor-pointer shadow-sm select-none shrink-0"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    Clear Data
-                  </button>
-                  <div className="hidden lg:flex flex-col text-left">
-                    <span className="text-[10px] text-red-400 font-mono font-bold tracking-wider uppercase">Reset Workspace</span>
-                    <span className="text-[10px] text-[#8C8370] leading-tight select-none">
-                      This will permanently clear all local data and reset the workspace to initial state.
-                    </span>
-                  </div>
-                </div>
+                {/* Space holder */}
+                <div />
 
                 {/* Right region workflow controller */}
                 <div className="flex items-center gap-3">

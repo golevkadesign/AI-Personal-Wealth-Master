@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
-import { Database, Cpu, Sparkles, Settings, LogOut } from 'lucide-react';
+import { Database, Cpu, Sparkles, Settings, LogOut, Globe } from 'lucide-react';
 import { logout } from '../lib/firebase';
 import { useTranslation } from '../hooks/useTranslation';
 
@@ -20,6 +20,32 @@ export function TerminalHeader({
   setShowSettingsModal
 }: TerminalHeaderProps) {
   const { t, language, setLanguage } = useTranslation();
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setIsDropdownOpen(false);
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
   return (
     <header className="sticky top-0 z-40 bg-dash-bg/80 backdrop-blur-md border-b border-[#312B20] mb-6 md:mb-8 transition-colors">
@@ -80,42 +106,83 @@ export function TerminalHeader({
 
           <div className="h-6 w-px bg-dash-subtle/80 mx-1"></div>
 
-          <button
-            onClick={() => setLanguage(language === 'zh-CN' ? 'en-US' : 'zh-CN')}
-            className="text-dash-tertiary hover:text-[#C9B284] w-10 h-10 flex items-center justify-center rounded-xl hover:bg-[#1A1D1F]/60 transition-colors relative"
-            title={language === 'zh-CN' ? 'Switch to English' : '切换到中文'}
-            aria-label="Toggle Language"
-          >
-            <div className="absolute inset-0 m-auto w-6 h-6 border border-dash-subtle rounded flex items-center justify-center text-[10px] font-bold font-mono">
-              {language === 'zh-CN' ? '中' : 'EN'}
-            </div>
-          </button>
+          {/* Avatar dropdown trigger & menu */}
+          <div className="relative" ref={dropdownRef}>
+            <button
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className="w-10 h-10 rounded-xl bg-dash-surface-hover border border-[#C9B284]/30 hover:border-[#C9B284] flex items-center justify-center overflow-hidden shrink-0 shadow-sm transition-all ml-1 duration-300 cursor-pointer focus:outline-none"
+              title={user.displayName || "User Account Menu"}
+              aria-label="Toggle account menu"
+            >
+              <img src={user.photoURL} alt="User Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            </button>
 
-          <button
-            onClick={() => setShowSettingsModal(true)}
-            className="text-dash-tertiary hover:text-[#C9B284] w-10 h-10 flex items-center justify-center rounded-xl hover:bg-[#1A1D1F]/60 transition-colors"
-            title={t('nav.settings')}
-            aria-label={t('nav.settings')}
-          >
-            <Settings className="w-4.5 h-4.5 text-current" />
-          </button>
+            {isDropdownOpen && (
+              <div 
+                className="absolute right-0 mt-3 w-64 bg-[#0B0F19]/95 border border-[#C9B284]/20 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] overflow-hidden z-50 text-sans font-normal backdrop-blur-md animate-in fade-in slide-in-from-top-3 duration-200"
+              >
+                {/* User info info cards */}
+                <div className="p-4 border-b border-[#C9B284]/10 bg-black/30 flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg border border-[#C9B284]/30 flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
+                    <img src={user.photoURL} alt="User Avatar Mini" className="w-full h-full object-cover animate-fade-in" referrerPolicy="no-referrer" />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <div className="text-[12.5px] font-bold text-white truncate pr-1">
+                      {user.displayName || "Alex H."}
+                    </div>
+                    <div className="text-[10px] font-mono text-[#8C8370] truncate leading-tight mt-0.5">
+                      {user.email || "user@example.com"}
+                    </div>
+                  </div>
+                </div>
 
-          <button
-            onClick={logout}
-            className="text-dash-tertiary hover:text-red-400 w-10 h-10 flex items-center justify-center rounded-xl hover:bg-[#1A1D1F]/60 transition-colors"
-            title="退出登录"
-            aria-label="退出登录"
-          >
-            <LogOut className="w-4.5 h-4.5 text-current" />
-          </button>
+                {/* Dropdown Menu List Items */}
+                <div className="p-1.5 space-y-1">
+                  {/* Toggle Interface Language Option */}
+                  <button
+                    onClick={() => {
+                      setLanguage(language === 'zh-CN' ? 'en-US' : 'zh-CN');
+                    }}
+                    className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-left text-[12.5px] text-[#8C8370] hover:bg-[#C9B284]/10 hover:text-[#E7D7B0] transition-all cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Globe className="w-4 h-4 text-[#8C8370]" />
+                      <span>{language === 'zh-CN' ? '切换语言 / Language' : 'Language / 切换语言'}</span>
+                    </div>
+                    <span className="text-[10px] font-mono font-bold bg-[#C9B284]/10 border border-[#C9B284]/20 text-[#C9B284] px-1.5 py-0.5 rounded uppercase leading-none text-center">
+                      {language === 'zh-CN' ? 'EN' : '中'}
+                    </span>
+                  </button>
 
-          {/* Avatar frame with gold active boundary ring */}
-          <div 
-            className="w-10 h-10 rounded-xl bg-dash-surface-hover border border-[#C9B284]/30 flex items-center justify-center overflow-hidden shrink-0 shadow-sm hover:border-[#C9B284] transition-all ml-1 duration-300" 
-            title={user.displayName} 
-            aria-label="User Avatar"
-          >
-            <img src={user.photoURL} alt="User Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  {/* Settings Modal Toggle Option */}
+                  <button
+                    onClick={() => {
+                      setIsDropdownOpen(false);
+                      setShowSettingsModal(true);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg text-left text-[12.5px] text-[#8C8370] hover:bg-[#C9B284]/10 hover:text-[#E7D7B0] transition-all cursor-pointer"
+                  >
+                    <Settings className="w-4 h-4 text-[#8C8370]" />
+                    <span>{t('nav.settings') || '设置 / Settings'}</span>
+                  </button>
+
+                  <div className="h-px bg-[#C9B284]/10 my-1 mx-2" />
+
+                  {/* Ultimate Logout Option */}
+                  <button
+                    onClick={() => {
+                      setIsDropdownOpen(false);
+                      logout();
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg text-left text-[12.5px] text-[#8C8370] hover:bg-rose-500/10 hover:text-rose-400 transition-all cursor-pointer"
+                  >
+                    <LogOut className="w-4 h-4 text-red-500/60" />
+                    <span>{language === 'zh-CN' ? '退出登录' : 'Logout'}</span>
+                  </button>
+
+                </div>
+              </div>
+            )}
           </div>
 
         </div>

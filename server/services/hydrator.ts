@@ -102,8 +102,9 @@ export async function hydrateContext(message: string, contextData: any, settings
     let workingPortfolio = manualHoldings;
 
     // 💥 [新增] 第一防线：优先聚合长桥实盘多账户数据
-    if (settings?.longbridgeAccounts && settings.longbridgeAccounts.length > 0) {
-        console.log(`[Hydrator] 侦测到长桥配置，启动多账户实盘聚合...`);
+    const hasLiveAccounts = contextData?.livePortfolioAccounts && contextData.livePortfolioAccounts.length > 0;
+    if (!hasLiveAccounts && settings?.longbridgeAccounts && settings.longbridgeAccounts.length > 0) {
+        console.log(`[Hydrator] 侦测到长桥配置，且未见 livePortfolioAccounts，启动多账户实盘聚合...`);
         const lbResult = await aggregateLongbridgePortfolios(settings.longbridgeAccounts);
         const lbHoldings = lbResult.positions;
         

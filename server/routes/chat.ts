@@ -141,7 +141,11 @@ chatRouter.post("/", async (req, res) => {
     // SEND PARTIAL RESULT: immediately update the UI with fresh numerical data
     sendPartialResult({
         userTier,
-        externalData: { marketData: hydratedData.marketData || {}, livePortfolio: hydratedData.livePortfolio },
+        externalData: { 
+            marketData: hydratedData.marketData || {}, 
+            livePortfolio: hydratedData.livePortfolio,
+            livePortfolioAccounts: hydratedData.livePortfolioAccounts
+        },
         updatedProfile: intentResult.updatedProfile
     });
     
@@ -173,7 +177,11 @@ chatRouter.post("/", async (req, res) => {
            type: 'partial_result', 
            data: {
                userTier, 
-               externalData: { marketData: hydratedData.marketData || {}, livePortfolio: hydratedData.livePortfolio }, 
+               externalData: { 
+                   marketData: hydratedData.marketData || {}, 
+                   livePortfolio: hydratedData.livePortfolio,
+                   livePortfolioAccounts: hydratedData.livePortfolioAccounts
+               }, 
                expertAnalysis, 
                updatedProfile: intentResult.updatedProfile 
            } 
@@ -227,7 +235,11 @@ chatRouter.post("/", async (req, res) => {
 
     sendResult({ 
         userTier, 
-        externalData: { marketData: hydratedData.marketData || {}, livePortfolio: hydratedData.livePortfolio }, 
+        externalData: { 
+            marketData: hydratedData.marketData || {}, 
+            livePortfolio: hydratedData.livePortfolio,
+            livePortfolioAccounts: hydratedData.livePortfolioAccounts
+        }, 
         expertAnalysis, 
         updatedProfile: intentResult.updatedProfile 
     });

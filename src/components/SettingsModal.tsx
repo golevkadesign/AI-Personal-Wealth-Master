@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { X, Settings, Loader2, RefreshCw, Wallet, Cpu, LineChart, Shield, CheckCircle2 } from 'lucide-react';
+import { X, Settings, Loader2, RefreshCw, Wallet, Cpu, LineChart, Shield, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { getSettings, saveSettings as persistSettings, AppSettings } from '../lib/settings';
 import { useTranslation } from '../hooks/useTranslation';
 
-export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
+export const SettingsModal = ({ isOpen, onClose, onClearData }: { isOpen: boolean, onClose: () => void, onClearData?: () => void }) => {
   const { t } = useTranslation();
   const [settings, setSettings] = useState<AppSettings>(getSettings());
   const [availableGeminiModels, setAvailableGeminiModels] = useState<string[]>([
@@ -441,6 +441,30 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
                    <Shield className="w-6 h-6 mb-2 text-[#C9B284]/50" />
                    <span className="text-xs uppercase tracking-widest font-mono">{t('settings.authDisabled')}</span>
                 </div>
+
+                {onClearData && (
+                  <div className="border border-red-950/40 bg-[#1A0B0B]/40 rounded-xl p-5 space-y-4">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="w-5 h-5 text-red-500/70 shrink-0 mt-0.5" />
+                      <div className="space-y-1">
+                        <h4 className="text-[13px] font-bold text-white tracking-wide">
+                          重置工作区 / Reset Workspace
+                        </h4>
+                        <p className="text-[#8C8370] text-[11px] leading-relaxed">
+                          清空资产状态、聊天历史、AI 分析缓存、画像数据，但保留 AI API Key 与券商账户 API Key；如需删除 Key，请在对应表单中手动清空。
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex justify-start">
+                      <button
+                        onClick={onClearData}
+                        className="px-4 py-2 bg-red-900/10 hover:bg-red-900/20 border border-red-900/30 text-red-400 hover:text-red-300 text-xs font-mono uppercase tracking-wider rounded-lg transition-all cursor-pointer"
+                      >
+                        重置工作区
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
