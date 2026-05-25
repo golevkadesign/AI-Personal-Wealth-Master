@@ -6,6 +6,8 @@ import { sanitizeTerminalState } from '../lib/sanitizer';
 import { Attachment } from '../App';
 import { useWealthStore } from './useWealthStore';
 import { normalizeSDUISchema } from '../lib/sdui-normalizer';
+import { filterAiWritableStatePatch } from '../lib/ai-state-permissions';
+import { parseSseBuffer } from '../lib/sse-parser';
 
 export function useAiAgent({ setIsSynthesizing }: any) {
   const { user, data, commitData } = useWealthStore();
@@ -248,17 +250,16 @@ export function useAiAgent({ setIsSynthesizing }: any) {
           const { done, value } = await reader.read();
           
           if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || ''; // Keep the last incomplete line in the buffer
+          const chunkText = decoder.decode(value, { stream: true });
+          const { events, remainingBuffer } = parseSseBuffer(buffer, chunkText);
+          buffer = remainingBuffer;
           
-          for (const line of lines) {
-             if (line.startsWith('data: ')) {
-                const dataStr = line.trim().slice(6);
-                if (!dataStr) continue;
-                try {
-                   const parsed = JSON.parse(dataStr);
-                   if (parsed.type === 'progress') {
+          for (const parsed of events) {
+             if (parsed.type === '__parse_error') {
+                console.error("[SSE Parser Error]:", parsed.error, parsed.dataStr);
+                continue;
+             }
+             if (parsed.type === 'progress') {
                       thinkingProgress += parsed.message + '\n';
                       if (parsed.message.includes("各节点数据已回流") || parsed.message.includes("CEO 级全局 Synthesizer")) {
                           setIsSynthesizing?.(true);
@@ -313,12 +314,12 @@ export function useAiAgent({ setIsSynthesizing }: any) {
                    } else if (parsed.type === 'error') {
                       serverError = parsed.error || parsed.message || "Unknown Backend Server Error (无明确错误信息)";
                    }
-                } catch(e: any) {
-                   console.error("SSE JSON Parse Error for line:", dataStr, e);
+                // } catch(e: any) {
+                   // console.error("SSE JSON Parse Error for line:", e);
                    // 如果是严重格式错误，不要继续静默
-                }
+                // }
              }
-          }
+          // }
         }
       }
 
@@ -405,8 +406,10 @@ export function useAiAgent({ setIsSynthesizing }: any) {
       });
 
       if (sduiPayload?.updateGlobalState) {
+         // Filter out any unauthorized properties utilizing the permission gating whitelist
+         const filteredUpdate = filterAiWritableStatePatch(sduiPayload.updateGlobalState);
          // Sanitize AI's raw update payload BEFORE merging, removing nulls/bad types but keeping omitted fields untouched
-         const sanitizedUpdate = sanitizeTerminalState(sduiPayload.updateGlobalState);
+         const sanitizedUpdate = sanitizeTerminalState(filteredUpdate);
 
          if (sanitizedUpdate.dynamicWidgets) {
            sanitizedUpdate.dynamicWidgets = normalizeSDUISchema(sanitizedUpdate.dynamicWidgets);
