@@ -1,7 +1,6 @@
 import { getRealTimeQuotes } from "./marketData";
 import { extractTickers } from "./utils";
 import { analyzeStock } from "./quantEngine";
-import { aggregateLongbridgePortfolios } from "./longbridgeAdapter";
 
 import * as crypto from 'crypto';
 
@@ -100,42 +99,6 @@ export async function hydrateContext(message: string, contextData: any, settings
     }
 
     let workingPortfolio = manualHoldings;
-
-    // 💥 [新增] 第一防线：优先聚合长桥实盘多账户数据
-    const hasLiveAccounts = contextData?.livePortfolioAccounts && contextData.livePortfolioAccounts.length > 0;
-    if (!hasLiveAccounts && settings?.longbridgeAccounts && settings.longbridgeAccounts.length > 0) {
-        console.log(`[Hydrator] 侦测到长桥配置，且未见 livePortfolioAccounts，启动多账户实盘聚合...`);
-        const lbResult = await aggregateLongbridgePortfolios(settings.longbridgeAccounts);
-        const lbHoldings = lbResult.positions;
-        
-        if (lbHoldings && lbHoldings.length > 0) {
-            const lbMappedHoldings = lbHoldings.map(pos => ({
-                symbol: pos.symbol,
-                name: pos.name,
-                quantity: pos.quantity,
-                costPrice: pos.costPrice,
-                currentPrice: pos.currentPrice,
-                marketValue: pos.marketValue, // 已经精确计算
-                value: pos.value
-            }));
-
-            // 利用 Map 进行基于 symbol 的去重合并 (长桥优先级最高，后写入)
-            const mergedMap = new Map();
-            
-            manualHoldings.forEach((h: any) => {
-                const key = h.symbol || h.name;
-                if (key) mergedMap.set(key, h);
-            });
-            
-            lbMappedHoldings.forEach((h: any) => {
-                mergedMap.set(h.symbol, h); // 如果长桥也有，直接用长桥的绝对精准数据覆盖手填数据
-            });
-
-            // 将合并后的集合转回数组
-            workingPortfolio = Array.from(mergedMap.values());
-            hydratedData.livePortfolio = workingPortfolio;
-        }
-    }
     
     // 💥 植入量化指标洗注逻辑
     if (workingPortfolio && workingPortfolio.length > 0) {

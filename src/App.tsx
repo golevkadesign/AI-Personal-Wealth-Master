@@ -269,7 +269,7 @@ export default function App() {
                    重置工作区
                 </h3>
                 <p className="text-[#8C8370] text-[13px] leading-relaxed mb-6 font-light">
-                   此操作将永久擦除当前用户的所有 AI 分析历史和工作区产物。此操作无法撤销。是否继续？
+                   此操作将永久擦除当前用户的资产状态、聊天历史、AI 分析缓存、画像数据和工作区产物，但会保留 AI API Key 与券商账户 API Key。如需删除 Key，请在设置表单中手动清空。此操作无法撤销。是否继续？
                 </p>
                 <div className="flex justify-end gap-3">
                   <button 
