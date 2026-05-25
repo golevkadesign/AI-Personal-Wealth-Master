@@ -18,7 +18,7 @@ export function useAiAgent({ setIsSynthesizing }: any) {
   const abortControllerRef = useRef<AbortController | null>(null);
   const isChatLoaded = useRef(false);
 
-  const [chatHistory, setChatHistory] = useState<{ user: string, ai: string, attachments: Attachment[], thinking?: string, isThinkingExpanded?: boolean, hasMemoryUpdate?: boolean, _liveSources?: string[], timeTaken?: number, debugData?: any }[]>([]);
+  const [chatHistory, setChatHistory] = useState<{ user: string, ai: string, attachments: Attachment[], thinking?: string, isThinkingExpanded?: boolean, hasMemoryUpdate?: boolean, _liveSources?: string[], timeTaken?: number, debugData?: any, aiSuggestedState?: any }[]>([]);
 
   useEffect(() => {
     const handleClearChat = () => {
@@ -214,6 +214,10 @@ export function useAiAgent({ setIsSynthesizing }: any) {
       };
       
       const cleanedContextData = stripHeavyData(data);
+      const publicHoldingAccounts = cleanedContextData?.publicHoldingAccounts || cleanedContextData?.distributions?.publicHoldingAccounts;
+      if (publicHoldingAccounts && publicHoldingAccounts.length > 0) {
+        cleanedContextData.livePortfolioAccounts = publicHoldingAccounts;
+      }
 
       const contextRes = await fetch("/api/chat", {
         method: "POST",
@@ -373,6 +377,7 @@ export function useAiAgent({ setIsSynthesizing }: any) {
       const txt = streamedAi || bffData.expertAnalysis?.['综合统筹结论'] || "";
 
       let sduiPayload: any = null;
+      let suggestedStatePatch: any = null;
 
       try {
         // 策略：匹配所有的代码块，强制提取最后一个（因为 AI 的 JSON Patch 必定在最后）
@@ -397,17 +402,41 @@ export function useAiAgent({ setIsSynthesizing }: any) {
         console.error("Parse SDUI error:", e); 
       }
 
+      if (sduiPayload?.updateGlobalState) {
+         let suggest: any = {};
+         if (sduiPayload.updateGlobalState.metrics) {
+            suggest.metrics = sduiPayload.updateGlobalState.metrics;
+         }
+         if (sduiPayload.updateGlobalState.distributions) {
+            suggest.distributions = sduiPayload.updateGlobalState.distributions;
+         }
+         if (Object.keys(suggest).length > 0) {
+            suggestedStatePatch = suggest;
+            if (bffData) {
+               bffData.suggestedStatePatch = suggest;
+            }
+         }
+      }
+
       setChatHistory(prev => {
         const newHist = [...prev];
         const displayAi = txt.substring(0, txt.indexOf('```json') !== -1 ? txt.indexOf('```json') : txt.length).trim();
         newHist[newHist.length - 1].ai = displayAi || (sduiPayload ? "> ⚙️ 高级视图数据已同步至终端..." : txt);
         newHist[newHist.length - 1].debugData = bffData;
+        if (suggestedStatePatch) {
+           newHist[newHist.length - 1].aiSuggestedState = suggestedStatePatch;
+        }
         return newHist;
       });
 
       if (sduiPayload?.updateGlobalState) {
-         // Filter out any unauthorized properties utilizing the permission gating whitelist
-         const filteredUpdate = filterAiWritableStatePatch(sduiPayload.updateGlobalState);
+         // Filter out any unauthorized properties utilizing the source-aware permission gating whitelist
+         const filteredUpdate = filterAiWritableStatePatch(sduiPayload.updateGlobalState, {
+            allowMemoryWrite: syncProfile,
+            allowTrustedFactWrite: false, // updateGlobalState by the AI is defaulted to untrusted/suggestions
+            livePortfolio: bffData?.externalData?.livePortfolio,
+            livePortfolioAccounts: bffData?.externalData?.livePortfolioAccounts
+         });
          // Sanitize AI's raw update payload BEFORE merging, removing nulls/bad types but keeping omitted fields untouched
          const sanitizedUpdate = sanitizeTerminalState(filteredUpdate);
 

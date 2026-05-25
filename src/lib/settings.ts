@@ -110,13 +110,6 @@ export const savePublicSettings = (settings: PublicAppSettings) => {
       strategicDebtThreshold: settings.strategicDebtThreshold,
     };
     localStorage.setItem('arbitra_public_settings', JSON.stringify(pubToSave));
-    
-    // Also save key to full settings to guarantee compatibility of legacy getSettings readers
-    try {
-      const fullStored = localStorage.getItem('arbitra_app_settings');
-      const baseObj = fullStored ? JSON.parse(fullStored) : {};
-      localStorage.setItem('arbitra_app_settings', JSON.stringify({ ...baseObj, ...pubToSave }));
-    } catch {}
   }
 };
 
@@ -141,19 +134,42 @@ export const getSecretSettingsUnsafe = (): SecretAppSettings => {
   if (storedFull) {
     try {
       const full = JSON.parse(storedFull);
-      return {
-        geminiKey: full.geminiKey ?? defaultSecret.geminiKey,
-        openaiKey: full.openaiKey ?? defaultSecret.openaiKey,
-        longbridgeAppKey: full.longbridgeAppKey ?? defaultSecret.longbridgeAppKey,
-        longbridgeAppSecret: full.longbridgeAppSecret ?? defaultSecret.longbridgeAppSecret,
-        longbridgeKey: full.longbridgeKey ?? defaultSecret.longbridgeKey,
-        longbridgeAccounts: full.longbridgeAccounts ?? defaultSecret.longbridgeAccounts,
-      };
+      const secretKeys = ['geminiKey', 'openaiKey', 'longbridgeAppKey', 'longbridgeAppSecret', 'longbridgeKey', 'longbridgeAccounts'];
+      const hasSecrets = secretKeys.some(key => full[key] !== undefined && full[key] !== '');
+      
+      if (hasSecrets) {
+        const foundSecrets: SecretAppSettings = {
+          geminiKey: full.geminiKey ?? defaultSecret.geminiKey,
+          openaiKey: full.openaiKey ?? defaultSecret.openaiKey,
+          longbridgeAppKey: full.longbridgeAppKey ?? defaultSecret.longbridgeAppKey,
+          longbridgeAppSecret: full.longbridgeAppSecret ?? defaultSecret.longbridgeAppSecret,
+          longbridgeKey: full.longbridgeKey ?? defaultSecret.longbridgeKey,
+          longbridgeAccounts: full.longbridgeAccounts ?? defaultSecret.longbridgeAccounts,
+        };
+
+        // 1. Write the found secrets to arbitra_secret_settings
+        localStorage.setItem('arbitra_secret_settings', JSON.stringify(foundSecrets));
+
+        // 2. Remove secret fields from legacy stored object
+        for (const key of secretKeys) {
+          delete full[key];
+        }
+
+        // 3. Write back the sanitized public-only object to preserve compatibility
+        localStorage.setItem('arbitra_app_settings', JSON.stringify(full));
+
+        return foundSecrets;
+      }
     } catch {}
   }
   // migrate legacy key
   const legacyKey = localStorage.getItem('custom_gemini_api_key');
   if (legacyKey) {
+    try {
+      const foundSecrets: SecretAppSettings = { ...defaultSecret, geminiKey: legacyKey };
+      localStorage.setItem('arbitra_secret_settings', JSON.stringify(foundSecrets));
+      return foundSecrets;
+    } catch {}
     return { ...defaultSecret, geminiKey: legacyKey };
   }
   return defaultSecret;
@@ -177,13 +193,6 @@ export const saveSecretSettingsUnsafe = (settings: SecretAppSettings) => {
     } else {
         localStorage.removeItem('custom_gemini_api_key');
     }
-
-    // Also save key to full settings to guarantee compatibility of legacy getSettings readers
-    try {
-      const fullStored = localStorage.getItem('arbitra_app_settings');
-      const baseObj = fullStored ? JSON.parse(fullStored) : {};
-      localStorage.setItem('arbitra_app_settings', JSON.stringify({ ...baseObj, ...secToSave }));
-    } catch {}
   }
 };
 

@@ -6,7 +6,18 @@ import { ErrorBoundary } from './ui/ErrorBoundary';
 import { SDUIRenderer } from '../lib/sdui-registry';
 
 export const DashboardGrid: React.FC = () => {
-  const { data, selectedHolding, setSelectedHolding, publicHoldingsSyncStatus, publicHoldingsError, publicHoldingsLastSyncAt, clearDynamicWidgets } = useWealthStore();
+  const { 
+    data, 
+    selectedHolding, 
+    setSelectedHolding, 
+    publicHoldingsSyncStatus, 
+    publicHoldingsError, 
+    publicHoldingsLastSyncAt, 
+    publicHoldingAccountsSyncStatus,
+    publicHoldingAccountsError,
+    publicHoldingAccountsLastSyncAt,
+    clearDynamicWidgets 
+  } = useWealthStore();
   
   const enhancedGlobalData = { 
     ...data, 
@@ -14,7 +25,10 @@ export const DashboardGrid: React.FC = () => {
     setSelectedHolding, 
     publicHoldingsSyncStatus, 
     publicHoldingsError, 
-    publicHoldingsLastSyncAt 
+    publicHoldingsLastSyncAt,
+    publicHoldingAccountsSyncStatus,
+    publicHoldingAccountsError,
+    publicHoldingAccountsLastSyncAt
   };
 
   return (

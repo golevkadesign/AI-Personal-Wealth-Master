@@ -73,6 +73,9 @@ export async function hydrateContext(message: string, contextData: any, settings
     );
     
     const hydratedData: any = { marketData: {} };
+    if (contextData?.livePortfolioAccounts) {
+        hydratedData.livePortfolioAccounts = contextData.livePortfolioAccounts;
+    }
     const sources: string[] = [];
     
     for (const res of results) {

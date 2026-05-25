@@ -308,3 +308,137 @@ export const aggregateLongbridgePortfolios = async (accounts: LongbridgeAccount[
         }
     };
 };
+
+export interface AccountPosition {
+    symbol: string;
+    name: string;
+    quantity: number;
+    costPrice: number;
+    currentPrice?: number;
+    marketValue?: number;
+    currency?: string;
+    valuationSource?: string;
+    accountId: string;
+    accountName: string;
+}
+
+export interface AccountPortfolio {
+    accountId: string;
+    accountName: string;
+    positions: AccountPosition[];
+    meta: {
+        positionCount: number;
+        quoteCoverage?: number;
+        missingQuoteSymbols?: string[];
+        generatedAt: number;
+        error?: string;
+    };
+}
+
+export const fetchLongbridgeAccountPortfolios = async (
+    accounts: LongbridgeAccount[]
+): Promise<{ accounts: AccountPortfolio[]; meta: any }> => {
+    if (!accounts || accounts.length === 0) {
+        return { accounts: [], meta: { generatedAt: Date.now(), accountCount: 0 } };
+    }
+
+    const accountErrors: Record<string, string> = {};
+    const portfolios: AccountPortfolio[] = [];
+
+    for (const acc of accounts) {
+        try {
+            console.log(`[Longbridge Adapter] ⚡ 正在独立请求账户持仓和行情: ${acc.name}...`);
+            const rawPositions = await fetchSingleAccountPositions(acc);
+            
+            const uniqueSymbols = Array.from(new Set(rawPositions.map(p => p.symbol)));
+            const quotes: Record<string, number> = {};
+            
+            if (uniqueSymbols.length > 0) {
+                const chunkSize = 50;
+                for (let i = 0; i < uniqueSymbols.length; i += chunkSize) {
+                    const chunk = uniqueSymbols.slice(i, i + chunkSize);
+                    const chunkQuotes = await fetchQuotesUsingAccount(chunk, acc);
+                    Object.assign(quotes, chunkQuotes);
+                }
+            }
+
+            const positions: AccountPosition[] = rawPositions
+                .filter(raw => raw.quantity !== 0)
+                .map(raw => {
+                    const symbol = raw.symbol;
+                    let quotePrice = quotes[symbol];
+                    
+                    let currentPrice: number | undefined;
+                    let marketValue: number | undefined;
+                    let valuationSource: string;
+
+                    if (quotePrice && quotePrice > 0) {
+                        currentPrice = quotePrice;
+                        marketValue = raw.quantity * quotePrice;
+                        valuationSource = 'longbridge_quote';
+                    } else if (raw.rawMarketValue && raw.rawMarketValue > 0) {
+                        marketValue = raw.rawMarketValue;
+                        currentPrice = undefined;
+                        valuationSource = 'missing_quote_fallback';
+                    } else {
+                        marketValue = undefined;
+                        currentPrice = undefined;
+                        valuationSource = 'missing_quote';
+                    }
+
+                    return {
+                        symbol,
+                        name: raw.name,
+                        quantity: raw.quantity,
+                        costPrice: raw.costPrice,
+                        currentPrice,
+                        marketValue,
+                        currency: raw.currency,
+                        valuationSource,
+                        accountId: raw.accountId,
+                        accountName: raw.accountName
+                    };
+                });
+
+            const missingQuoteSymbols = uniqueSymbols.filter(s => !quotes[s]);
+            const quoteCoverage = uniqueSymbols.length > 0 ? Object.keys(quotes).length / uniqueSymbols.length : 1;
+
+            portfolios.push({
+                accountId: acc.id || acc.name,
+                accountName: acc.name,
+                positions,
+                meta: {
+                    positionCount: positions.length,
+                    quoteCoverage,
+                    missingQuoteSymbols,
+                    generatedAt: Date.now()
+                }
+            });
+        } catch (err: any) {
+            console.error(`[Longbridge Adapter] Error processing account ${acc.name}:`, err);
+            const errMsg = err?.message || String(err);
+            accountErrors[acc.name || acc.id] = errMsg;
+
+            portfolios.push({
+                accountId: acc.id || acc.name,
+                accountName: acc.name,
+                positions: [],
+                meta: {
+                    positionCount: 0,
+                    generatedAt: Date.now(),
+                    error: errMsg
+                }
+            });
+        }
+    }
+
+    return {
+        accounts: portfolios,
+        meta: {
+            generatedAt: Date.now(),
+            accountCount: accounts.length,
+            successCount: portfolios.filter(p => !p.meta.error).length,
+            accountErrors: Object.keys(accountErrors).length > 0 ? accountErrors : undefined
+        }
+    };
+};

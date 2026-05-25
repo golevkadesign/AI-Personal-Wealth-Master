@@ -13,6 +13,18 @@ function dehydrateExternalData(data: any) {
             }
         });
     }
+    if (cleanData.livePortfolioAccounts) {
+        cleanData.livePortfolioAccounts.forEach((acc: any) => {
+            if (acc.positions) {
+                acc.positions.forEach((pos: any) => {
+                    if (pos.quantSignals) {
+                        delete pos.quantSignals.history;
+                        delete pos.quantSignals.raw;
+                    }
+                });
+            }
+        });
+    }
     return cleanData;
 }
 
@@ -326,7 +338,15 @@ ${temporalContext}
     .replace('{userTier}', () => userTier)
     .replace('{message}', () => message)
     .replace('{userProfileRAG}', () => JSON.stringify(externalData?.contextData?.userProfile || {}, null, 2))
-    .replace('{livePortfolioRAG}', () => JSON.stringify(cleanExternalData?.livePortfolio || cleanExternalData?.contextData?.distributions?.publicHoldings || [], null, 2))
+    .replace('{livePortfolioRAG}', () => {
+      if (cleanExternalData?.livePortfolioAccounts && cleanExternalData.livePortfolioAccounts.length > 0) {
+        return JSON.stringify({
+          info: "这是来自真实证券账户的多账户细分持仓。请优先按账户维度展开评估分析与调仓建言。只有当多账户持仓缺失或不可用时，才 fallback 使用合并后的 publicHoldings 数据。",
+          portfolioAccounts: cleanExternalData.livePortfolioAccounts
+        }, null, 2);
+      }
+      return JSON.stringify(cleanExternalData?.livePortfolio || cleanExternalData?.contextData?.distributions?.publicHoldings || [], null, 2);
+    })
     .replace('{marketDataRAG}', () => JSON.stringify(externalData?.marketData || {}, null, 2))
     .replace('{agentResults}', () => JSON.stringify(dehydratedResults, null, 2))
     + "\n" + uiSummaryInstructions;

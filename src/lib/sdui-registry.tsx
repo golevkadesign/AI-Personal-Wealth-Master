@@ -9,6 +9,7 @@ import { useInteractionStore } from '../hooks/useInteractionStore';
 import { useSDUIEventStore } from '../hooks/useSDUIEventStore';
 import { useTranslation } from '../hooks/useTranslation';
 import { PublicHoldingsView } from '../components/PublicHoldingsView';
+import { PublicHoldingAccountsView } from '../components/PublicHoldingAccountsView';
 
 const bgMap: Record<string, string> = {
   'surface-base': 'bg-dash-surface',
@@ -78,6 +79,25 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
     const distData = globalData?.distributions?.[chartType] || [];
 
     if (chartType === 'publicHoldings') {
+      const publicHoldingAccounts = globalData?.publicHoldingAccounts || [];
+      if (publicHoldingAccounts.length > 0) {
+        return (
+          <PublicHoldingAccountsView
+            title={title}
+            chartType={chartType}
+            accountPortfolios={publicHoldingAccounts}
+            syncStatus={globalData?.publicHoldingAccountsSyncStatus || 'idle'}
+            syncError={globalData?.publicHoldingAccountsError}
+            lastSyncAt={globalData?.publicHoldingAccountsLastSyncAt}
+            chartHeight={chartHeight}
+            delay={delay}
+            selectedHolding={selectedHolding}
+            setSelectedHolding={setSelectedHolding}
+            t={t}
+            globalData={globalData}
+          />
+        );
+      }
       return (
         <PublicHoldingsView
           title={title}

@@ -90,6 +90,32 @@ export interface Snapshot {
   distributions: any;
 }
 
+export interface AccountPosition {
+  symbol: string;
+  name: string;
+  quantity: number;
+  costPrice: number;
+  currentPrice?: number;
+  marketValue?: number;
+  currency?: string;
+  valuationSource?: string;
+  accountId: string;
+  accountName: string;
+}
+
+export interface AccountPortfolio {
+  accountId: string;
+  accountName: string;
+  positions: AccountPosition[];
+  meta: {
+    positionCount: number;
+    quoteCoverage?: number;
+    missingQuoteSymbols?: string[];
+    generatedAt: number;
+    error?: string;
+  };
+}
+
 export interface SDUIComponent {
   id: string;
   type: string;
@@ -115,5 +141,9 @@ export interface TerminalState {
   publicHoldingsSyncStatus?: 'idle' | 'loading' | 'success' | 'empty' | 'error';
   publicHoldingsError?: string;
   publicHoldingsLastSyncAt?: number;
+  publicHoldingAccounts?: AccountPortfolio[];
+  publicHoldingAccountsSyncStatus?: 'idle' | 'loading' | 'success' | 'empty' | 'error';
+  publicHoldingAccountsError?: string;
+  publicHoldingAccountsLastSyncAt?: number;
   [key: string]: any;
 }

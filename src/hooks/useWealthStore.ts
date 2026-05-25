@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import axios from 'axios';
 import { getSettings } from '../lib/settings';
-import { TerminalState, LIVE_VALUATION_VERSION } from '../types/terminal';
+import { TerminalState, LIVE_VALUATION_VERSION, AccountPortfolio } from '../types/terminal';
 import { sanitizeTerminalState } from '../lib/sanitizer';
 import { mergeWith, isArray, debounce } from 'lodash-es';
 import { setDoc, doc } from 'firebase/firestore';
@@ -96,11 +96,15 @@ interface WealthState {
   selectedHolding: any | null;
   setSelectedHolding: (holding: any) => void;
   fetchLongbridge: () => Promise<void>;
+  fetchLongbridgeAccountPortfolios: () => Promise<void>;
   language: 'zh-CN' | 'en-US';
   setLanguage: (lang: 'zh-CN' | 'en-US') => void;
   publicHoldingsSyncStatus: 'idle' | 'loading' | 'success' | 'empty' | 'error';
   publicHoldingsError?: string;
   publicHoldingsLastSyncAt?: number;
+  publicHoldingAccountsSyncStatus: 'idle' | 'loading' | 'success' | 'empty' | 'error';
+  publicHoldingAccountsError?: string;
+  publicHoldingAccountsLastSyncAt?: number;
 }
 
 const syncToCloud = (uid: string, data: any) => {
@@ -129,6 +133,9 @@ export const useWealthStore = create<WealthState>((set, get) => ({
   publicHoldingsSyncStatus: 'idle',
   publicHoldingsError: undefined,
   publicHoldingsLastSyncAt: undefined,
+  publicHoldingAccountsSyncStatus: 'idle',
+  publicHoldingAccountsError: undefined,
+  publicHoldingAccountsLastSyncAt: undefined,
   language: 'zh-CN',
   setLanguage: (lang) => set({ language: lang }),
   selectedHolding: null,
@@ -346,6 +353,66 @@ export const useWealthStore = create<WealthState>((set, get) => ({
       set({
         publicHoldingsSyncStatus: 'error',
         publicHoldingsError: err?.message || String(err)
+      });
+    }
+  },
+  fetchLongbridgeAccountPortfolios: async () => {
+    const settings = getSettings();
+    if (!settings.longbridgeAccounts || settings.longbridgeAccounts.length === 0) return;
+    const { user } = get();
+    if (!user) return;
+    
+    set({ publicHoldingAccountsSyncStatus: 'loading', publicHoldingAccountsError: undefined });
+
+    try {
+      const headerValue = btoa(encodeURIComponent(JSON.stringify(settings.longbridgeAccounts)));
+      const response = await axios.get('/api/v1/wealth/longbridge/account-portfolios', {
+          headers: { 'X-Longbridge-Accounts': headerValue, 'Cache-Control': 'no-cache' },
+          params: { _t: Date.now() }
+      });
+      
+      if (response.data && response.data.success && response.data.data) {
+          const newData = response.data.data;
+          const meta = response.data.meta || {};
+          
+          set((state) => {
+              const prevData = state.data;
+              const nextData = {
+                  ...prevData,
+                  publicHoldingAccounts: newData
+              };
+              
+              if (state.user?.uid) {
+                  localStorage.setItem(`ai_terminal_data_${state.user.uid}`, JSON.stringify(nextData));
+              }
+
+              if (process.env.NODE_ENV !== 'production') console.log(`[useWealthStore] fetchLongbridgeAccountPortfolios success, updated ${newData.length} accounts`);
+
+              let syncStatus: 'idle' | 'loading' | 'success' | 'empty' | 'error' = newData.length === 0 ? 'empty' : 'success';
+              let syncError: string | undefined = undefined;
+
+              if (meta.accountErrors && Object.keys(meta.accountErrors).length > 0) {
+                  syncError = `部分账户同步失败: ${Object.entries(meta.accountErrors).map(([acc, err]) => `${acc}: ${err}`).join(', ')}`;
+              }
+
+              return {
+                  data: nextData,
+                  publicHoldingAccountsSyncStatus: syncStatus,
+                  publicHoldingAccountsLastSyncAt: Date.now(),
+                  publicHoldingAccountsError: syncError
+              };
+          });
+      } else {
+         set({
+             publicHoldingAccountsSyncStatus: 'error',
+             publicHoldingAccountsError: response.data?.error || response.data?.message || "Unknown error fetching account portfolios"
+         });
+      }
+    } catch (err: any) {
+      console.error('[Longbridge] error fetching account portfolios via API:', err);
+      set({
+        publicHoldingAccountsSyncStatus: 'error',
+        publicHoldingAccountsError: err?.message || String(err)
       });
     }
   }
