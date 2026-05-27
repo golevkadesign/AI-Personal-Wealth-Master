@@ -1,6 +1,33 @@
 import { TerminalState, DistributionItem, Goal, UserPersona } from '../types/terminal';
 
 /**
+ * Helper function to retrieve numeric asset valuations supporting string,
+ * number, or object schemas with prioritised keys.
+ */
+export function getAssetValue(input: any): number | undefined {
+  if (input === null || input === undefined) return undefined;
+  if (typeof input === 'number') {
+    return isNaN(input) ? undefined : input;
+  }
+  if (typeof input === 'string') {
+    const parsed = Number(input);
+    return isNaN(parsed) ? undefined : parsed;
+  }
+  if (typeof input === 'object') {
+    const keys = ['valueCNY', 'value', 'amount', 'marketValue', 'estimatedValue'];
+    for (const key of keys) {
+      if (input[key] !== undefined && input[key] !== null) {
+        const val = Number(input[key]);
+        if (!isNaN(val)) {
+          return val;
+        }
+      }
+    }
+  }
+  return undefined;
+}
+
+/**
  * Pure function to map clear, factual properties in updatedProfile directly into
  * core Terminal State metrics, distributions, active goals, and persona indicators.
  */
@@ -112,53 +139,106 @@ export function deriveTerminalStatePatchFromProfile(profile: any): Partial<Termi
 
   // Private assets mapping
   const privateAssetItems: DistributionItem[] = [];
-  if (profile.financial?.assets?.realEstate !== undefined) {
-    privateAssetItems.push({
-      id: "priv_real_estate",
-      name: "住宅及商业房产",
-      value: Number(profile.financial.assets.realEstate),
-      category: "private",
-      type: "realestate"
-    });
+  const realEstate = profile.financial?.assets?.realEstate;
+  if (realEstate !== undefined) {
+    const val = getAssetValue(realEstate);
+    if (val !== undefined) {
+      let reName = "住宅及商业房产";
+      if (typeof realEstate === 'object' && realEstate !== null) {
+        const loc = realEstate.location;
+        const comm = realEstate.community;
+        if (loc && comm) {
+          reName = `${loc} / ${comm}`;
+        } else if (loc || comm) {
+          reName = loc || comm;
+        }
+      }
+      privateAssetItems.push({
+        id: "priv_real_estate",
+        name: reName,
+        value: val,
+        category: "private",
+        type: "realestate"
+      });
+    }
   }
 
   const equity = profile.financial?.assets?.equity;
   if (equity && typeof equity === 'object') {
     if (equity.byteOptions !== undefined) {
-      privateAssetItems.push({
-        id: "priv_byte_options",
-        name: "字节跳动限制性期权",
-        value: Number(equity.byteOptions),
-        category: "private",
-        type: "options"
-      });
+      const byteVal = getAssetValue(equity.byteOptions);
+      if (byteVal !== undefined) {
+        privateAssetItems.push({
+          id: "priv_byte_options",
+          name: "字节跳动限制性期权",
+          value: byteVal,
+          category: "private",
+          type: "options"
+        });
+      } else if (equity.byteOptions && typeof equity.byteOptions === 'object' && equity.byteOptions.shares !== undefined) {
+        privateAssetItems.push({
+          id: "priv_byte_options",
+          name: "字节跳动限制性期权",
+          raw: equity.byteOptions,
+          notes: `持股数量: ${equity.byteOptions.shares} 股`,
+          category: "private",
+          type: "options"
+        });
+      }
     }
     if (equity.antSERs !== undefined) {
-      privateAssetItems.push({
-        id: "priv_ant_sers",
-        name: "蚂蚁集团 SERs 股份",
-        value: Number(equity.antSERs),
-        category: "private",
-        type: "options"
-      });
+      const antVal = getAssetValue(equity.antSERs);
+      if (antVal !== undefined) {
+        privateAssetItems.push({
+          id: "priv_ant_sers",
+          name: "蚂蚁集团 SERs 股份",
+          value: antVal,
+          category: "private",
+          type: "options"
+        });
+      } else if (equity.antSERs && typeof equity.antSERs === 'object' && equity.antSERs.shares !== undefined) {
+        privateAssetItems.push({
+          id: "priv_ant_sers",
+          name: "蚂蚁集团 SERs 股份",
+          raw: equity.antSERs,
+          notes: `持股数量: ${equity.antSERs.shares} 股`,
+          category: "private",
+          type: "options"
+        });
+      }
     }
     if (equity.antIntlOptions !== undefined) {
+      const antIntlVal = getAssetValue(equity.antIntlOptions);
+      if (antIntlVal !== undefined) {
+        privateAssetItems.push({
+          id: "priv_ant_intl_options",
+          name: "蚂蚁国际授予期权",
+          value: antIntlVal,
+          category: "private",
+          type: "options"
+        });
+      } else if (equity.antIntlOptions && typeof equity.antIntlOptions === 'object' && equity.antIntlOptions.shares !== undefined) {
+        privateAssetItems.push({
+          id: "priv_ant_intl_options",
+          name: "蚂蚁国际授予期权",
+          raw: equity.antIntlOptions,
+          notes: `持股数量: ${equity.antIntlOptions.shares} 股`,
+          category: "private",
+          type: "options"
+        });
+      }
+    }
+  } else if (equity !== undefined) {
+    const directVal = getAssetValue(equity);
+    if (directVal !== undefined) {
       privateAssetItems.push({
-        id: "priv_ant_intl_options",
-        name: "蚂蚁国际授予期权",
-        value: Number(equity.antIntlOptions),
+        id: "priv_equity_direct",
+        name: "未上市股份/期权授权",
+        value: directVal,
         category: "private",
         type: "options"
       });
     }
-  } else if (equity !== undefined && !isNaN(Number(equity))) {
-    privateAssetItems.push({
-      id: "priv_equity_direct",
-      name: "未上市股份/期权授权",
-      value: Number(equity),
-      category: "private",
-      type: "options"
-    });
   }
 
   if (privateAssetItems.length > 0) {
@@ -170,10 +250,11 @@ export function deriveTerminalStatePatchFromProfile(profile: any): Partial<Termi
   const passionAssets = profile.assetsExtra?.passionAssets || profile.passionAssets;
   if (Array.isArray(passionAssets)) {
     passionAssets.forEach((item: any, idx: number) => {
+      const pVal = getAssetValue(item);
       fixedAssetItems.push({
         id: `fixed_passion_asset_${idx}`,
         name: item.type || item.name || `另类/兴趣资产 #${idx + 1}`,
-        value: Number(item.value || item.amount || 0),
+        value: pVal !== undefined ? pVal : 0,
         category: "fixed",
         type: "passion",
         liquidity: item.liquidity || "low"

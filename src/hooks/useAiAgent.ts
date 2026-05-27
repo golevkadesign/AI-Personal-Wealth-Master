@@ -307,16 +307,7 @@ export function useAiAgent({ setIsSynthesizing }: any) {
                                return updated ? nextData : prevData;
                            });
                        }
-                       if (false) {
-                          commitData((prevData: any) => ({
-                              ...prevData,
-                              distributions: {
-                                  ...prevData.distributions,
-                                  publicHoldings: parsed.data.externalData.livePortfolio
-                              },
-                              _liveSources: ['longbridge']
-                          }));
-                      }
+
                       if (parsed.data.updatedProfile && Object.keys(parsed.data.updatedProfile).length > 0) {
                           setChatHistory(prev => {
                              const newHist = [...prev];
@@ -420,16 +411,7 @@ export function useAiAgent({ setIsSynthesizing }: any) {
                return updated ? nextData : prevData;
            });
        }
-       if (false) {
-          commitData((prevData: any) => ({
-              ...prevData,
-              distributions: {
-                  ...prevData.distributions,
-                  publicHoldings: bffData.externalData.livePortfolio
-              },
-              _liveSources: ['longbridge']
-          }));
-      }
+
 
       if (bffData.isQuickReply) {
          setChatHistory(prev => {
