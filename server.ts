@@ -20,31 +20,30 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  // Rate Limiting (Simple In-Memory)
-  const rateLimitMap = new Map<string, { count: number, resetTime: number }>();
-  
-  // Clean up expired entries every 10 minutes to prevent memory leak
-  setInterval(() => {
-    const now = Date.now();
-    for (const [ip, record] of rateLimitMap.entries()) {
-      if (now > record.resetTime) {
-         rateLimitMap.delete(ip);
+  // Rate Limiting Utility (Simple In-Memory)
+  const createRateLimitMiddleware = (limit: number, windowMs: number) => {
+    const rateLimitMap = new Map<string, { count: number, resetTime: number }>();
+    
+    // Clean up expired entries to prevent memory leak
+    setInterval(() => {
+      const now = Date.now();
+      for (const [ip, record] of rateLimitMap.entries()) {
+        if (now > record.resetTime) {
+           rateLimitMap.delete(ip);
+        }
       }
-    }
-  }, 10 * 60 * 1000).unref?.();
+    }, windowMs).unref?.();
 
-  app.use("/api/chat", (req, res, next) => {
+    return (req: express.Request, res: express.Response, next: express.NextFunction) => {
       const ip = req.ip || req.socket.remoteAddress || 'unknown';
       const now = Date.now();
       let record = rateLimitMap.get(ip);
       
-      // Reset every 10 minutes
       if (!record || now > record.resetTime) {
-          record = { count: 0, resetTime: now + 10 * 60 * 1000 };
+          record = { count: 0, resetTime: now + windowMs };
       }
       
-      // Limit to 50 requests per 10 minutes per IP
-      if (record.count >= 50) {
+      if (record.count >= limit) {
           res.status(429).json({ error: "Too many requests. Please try again later." });
           return;
       }
@@ -52,7 +51,12 @@ async function startServer() {
       record.count++;
       rateLimitMap.set(ip, record);
       next();
-  });
+    };
+  };
+
+  // Apply Rate Limiters
+  app.use("/api/chat", createRateLimitMiddleware(50, 10 * 60 * 1000));
+  app.use("/api/portfolio-review", createRateLimitMiddleware(20, 10 * 60 * 1000));
 
   const corsOptions = {
     origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {

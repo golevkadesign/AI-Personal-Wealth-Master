@@ -14,6 +14,7 @@ export function PortfolioReviewDrawer({ isOpen, onClose }: PortfolioReviewDrawer
   const analyzePortfolioReviewSession = useWealthStore(state => state.analyzePortfolioReviewSession);
   const portfolioReviewMemory = useWealthStore(state => state.portfolioReviewMemory);
   const savePortfolioReviewMemoryFromSession = useWealthStore(state => state.savePortfolioReviewMemoryFromSession);
+  const updatePortfolioReviewSession = useWealthStore(state => state.updatePortfolioReviewSession);
 
   // Find the currently active session
   const activeSession = portfolioReviewSessions.find(s => s.id === activeSessionId);
@@ -35,28 +36,26 @@ export function PortfolioReviewDrawer({ isOpen, onClose }: PortfolioReviewDrawer
     allowCrypto?: '是' | '否' | '';
   }) => {
     if (!activeSession) return;
-    if (!activeSession.reviewParams) {
-      activeSession.reviewParams = {};
-    }
-    
+    const nextParams = {
+      ...(activeSession.reviewParams || {}),
+      ...updates
+    };
+
+    updatePortfolioReviewSession(activeSession.id, { reviewParams: nextParams });
+
     if (updates.riskPreference !== undefined) {
-      activeSession.reviewParams.riskPreference = updates.riskPreference;
       setRiskPreference(updates.riskPreference);
     }
     if (updates.maxDrawdownTolerance !== undefined) {
-      activeSession.reviewParams.maxDrawdownTolerance = updates.maxDrawdownTolerance;
       setMaxDrawdownTolerance(updates.maxDrawdownTolerance);
     }
     if (updates.allowMargin !== undefined) {
-      activeSession.reviewParams.allowMargin = updates.allowMargin;
       setAllowMargin(updates.allowMargin);
     }
     if (updates.allowOptions !== undefined) {
-      activeSession.reviewParams.allowOptions = updates.allowOptions;
       setAllowOptions(updates.allowOptions);
     }
     if (updates.allowCrypto !== undefined) {
-      activeSession.reviewParams.allowCrypto = updates.allowCrypto;
       setAllowCrypto(updates.allowCrypto);
     }
   };
@@ -939,13 +938,22 @@ export function PortfolioReviewDrawer({ isOpen, onClose }: PortfolioReviewDrawer
               <div className="w-full sm:w-auto shrink-0">
                 <button
                   disabled={activeSession.status === 'analyzing'}
-                  onClick={() => analyzePortfolioReviewSession(activeSession.id, {
-                    riskPreference,
-                    maxDrawdownTolerance,
-                    allowMargin: allowMargin === '是' ? true : allowMargin === '否' ? false : undefined,
-                    allowOptions: allowOptions === '是' ? true : allowOptions === '否' ? false : undefined,
-                    allowCrypto: allowCrypto === '是' ? true : allowCrypto === '否' ? false : undefined,
-                  })}
+                  onClick={() => {
+                    const rp = activeSession.reviewParams || {};
+                    const pRiskPreference = rp.riskPreference || riskPreference;
+                    const pMaxDrawdownTolerance = rp.maxDrawdownTolerance || maxDrawdownTolerance;
+                    const pAllowMargin = rp.allowMargin === '是' ? true : rp.allowMargin === '否' ? false : (allowMargin === '是' ? true : allowMargin === '否' ? false : undefined);
+                    const pAllowOptions = rp.allowOptions === '是' ? true : rp.allowOptions === '否' ? false : (allowOptions === '是' ? true : allowOptions === '否' ? false : undefined);
+                    const pAllowCrypto = rp.allowCrypto === '是' ? true : rp.allowCrypto === '否' ? false : (allowCrypto === '是' ? true : allowCrypto === '否' ? false : undefined);
+
+                    analyzePortfolioReviewSession(activeSession.id, {
+                      riskPreference: pRiskPreference,
+                      maxDrawdownTolerance: pMaxDrawdownTolerance,
+                      allowMargin: pAllowMargin,
+                      allowOptions: pAllowOptions,
+                      allowCrypto: pAllowCrypto,
+                    });
+                  }}
                   className="w-full sm:w-auto px-5 py-2.5 bg-[#C9B284]/10 hover:bg-[#C9B284]/20 border border-[#C9B284]/30 text-[#C9B284] disabled:opacity-50 disabled:cursor-not-allowed text-xs font-mono tracking-wider font-semibold uppercase rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5"
                 >
                   {activeSession.status === 'analyzing' ? (

@@ -17,6 +17,12 @@ export function diffPortfolioSnapshots(
   previous: PortfolioReviewSnapshot | undefined,
   current: PortfolioReviewSnapshot
 ): PositionDelta[] {
+  // 首次复盘只建立基准，不做“新建仓/加仓/减仓/清仓”判断。
+  // If previous is undefined or previous.flattenedHoldings is empty, we don't treat assets as new_position, but return an empty array [] representing baseline setup.
+  if (!previous || !previous.flattenedHoldings || previous.flattenedHoldings.length === 0) {
+    return [];
+  }
+
   const deltas: PositionDelta[] = [];
   const prevHoldings = previous?.flattenedHoldings || [];
   const curHoldings = current.flattenedHoldings || [];
