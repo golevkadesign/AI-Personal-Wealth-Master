@@ -24,7 +24,7 @@ function fileToBase64(file: File): Promise<{ mimeType: string, data: string, nam
 
 export const Drawer = ({ isDrawerOpen, setIsDrawerOpen, setIsSynthesizing }: any) => {
   const { t } = useTranslation();
-  const { data } = useWealthStore();
+  const { data, commitData } = useWealthStore();
   const [showDrawerClearConfirm, setShowDrawerClearConfirm] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -43,6 +43,78 @@ export const Drawer = ({ isDrawerOpen, setIsDrawerOpen, setIsSynthesizing }: any
     handleRegenerate,
     handleAiSubmit,
   } = useAiAgent({ setIsSynthesizing });
+
+  const handleApplySuggestedState = (patch: any, sourceChatIndex?: number) => {
+    if (!patch || typeof patch !== 'object') return;
+    
+    const allowedKeys = [
+      'metrics',
+      'distributions',
+      'goal',
+      'insights'
+    ];
+    
+    const filteredPatch: any = {};
+    for (const key of allowedKeys) {
+      if (patch[key] !== undefined) {
+        if (key === 'distributions') {
+          const dist = patch[key];
+          if (dist && typeof dist === 'object') {
+            const allowedDistKeys = [
+              'liquidity',
+              'expenses',
+              'privateAssets',
+              'fixedAssets',
+              'options'
+            ];
+            const filteredDist: any = {};
+            for (const dKey of allowedDistKeys) {
+              if (dist[dKey] !== undefined) {
+                filteredDist[dKey] = dist[dKey];
+              }
+            }
+            filteredPatch.distributions = filteredDist;
+          }
+        } else {
+          filteredPatch[key] = patch[key];
+        }
+      }
+    }
+
+    if (filteredPatch.distributions) {
+      delete (filteredPatch.distributions as any).publicHoldings;
+    }
+    delete (filteredPatch as any).publicHoldingAccounts;
+    delete (filteredPatch as any)._liveSources;
+    delete (filteredPatch as any)._liveValuationVersion;
+    delete (filteredPatch as any)._liveFetchedAt;
+
+    commitData((prev: any) => ({
+      ...prev,
+      ...filteredPatch,
+      metrics: { ...prev.metrics, ...(filteredPatch.metrics || {}) },
+      distributions: {
+        ...prev.distributions,
+        ...(filteredPatch.distributions || {}),
+        publicHoldings: prev.distributions?.publicHoldings || []
+      },
+      goal: filteredPatch.goal !== undefined ? filteredPatch.goal : prev.goal,
+      insights: filteredPatch.insights !== undefined ? filteredPatch.insights : prev.insights
+    }));
+
+    if (sourceChatIndex !== undefined) {
+      setChatHistory((prevHistory: any[]) => {
+        const newHistory = [...prevHistory];
+        if (newHistory[sourceChatIndex]) {
+          newHistory[sourceChatIndex] = {
+            ...newHistory[sourceChatIndex],
+            suggestedStateApplied: true
+          };
+        }
+        return newHistory;
+      });
+    }
+  };
 
   const handlePaste = async (e: React.ClipboardEvent) => {
     if (e.clipboardData.files && e.clipboardData.files.length > 0) {
@@ -150,13 +222,25 @@ export const Drawer = ({ isDrawerOpen, setIsDrawerOpen, setIsSynthesizing }: any
               msgs.push({ role: 'user', content: c.user || '', attachments: c.attachments });
            }
            if (c.ai || (i === chatHistory.length - 1 && isLoading) || c.thinking) {
-              msgs.push({ role: 'assistant', content: c.ai || '', thinking: c.thinking, hasMemoryUpdate: c.hasMemoryUpdate, _liveSources: data?._liveSources, timeTaken: c.timeTaken, debugData: (c as any).debugData });
+              msgs.push({ 
+                role: 'assistant', 
+                content: c.ai || '', 
+                thinking: c.thinking, 
+                hasMemoryUpdate: c.hasMemoryUpdate, 
+                _liveSources: data?._liveSources, 
+                timeTaken: c.timeTaken, 
+                debugData: (c as any).debugData,
+                aiSuggestedState: c.aiSuggestedState,
+                suggestedStateApplied: c.suggestedStateApplied,
+                sourceChatIndex: i
+              });
            }
            return msgs;
         }), [chatHistory, isLoading, data?._liveSources])} 
         isTyping={isLoading} 
         onRegenerate={chatHistory.length > 0 ? handleRegenerate : undefined}
         onQuickPrompt={(prompt: string) => handleAiSubmit(prompt)}
+        onApplySuggestedState={handleApplySuggestedState}
       />
 
       <div className="absolute bottom-0 left-0 right-0 z-40 px-4 sm:px-6 pb-6 pt-10 bg-gradient-to-t from-background via-background/95 to-transparent pointer-events-none">

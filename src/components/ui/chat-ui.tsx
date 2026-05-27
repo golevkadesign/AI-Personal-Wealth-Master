@@ -57,13 +57,26 @@ const LiveTimer = () => {
   );
 };
 
-export const ChatList = React.memo(function ChatList({ messages, isTyping, onRegenerate, onQuickPrompt }: { messages: any[], isTyping: boolean, onRegenerate?: () => void, onQuickPrompt?: (p: string) => void }) {
+export const ChatList = React.memo(function ChatList({ 
+  messages, 
+  isTyping, 
+  onRegenerate, 
+  onQuickPrompt,
+  onApplySuggestedState
+}: { 
+  messages: any[], 
+  isTyping: boolean, 
+  onRegenerate?: () => void, 
+  onQuickPrompt?: (p: string) => void,
+  onApplySuggestedState?: (patch: any, sourceChatIndex?: number) => void
+}) {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const chatEndRef = React.useRef<HTMLDivElement>(null);
   const [expandedThinking, setExpandedThinking] = React.useState<Record<number, boolean>>({});
   const [expandedUserMsg, setExpandedUserMsg] = React.useState<Record<number, boolean>>({});
   const [copiedIndex, setCopiedIndex] = React.useState<number | null>(null);
   const [fullScreenCode, setFullScreenCode] = React.useState<{ code: string, language: string } | null>(null);
+  const [showSuggestedJson, setShowSuggestedJson] = React.useState<Record<number, boolean>>({});
   
   React.useEffect(() => {
     if (!isTyping && messages.length > 0) {
@@ -232,6 +245,130 @@ export const ChatList = React.memo(function ChatList({ messages, isTyping, onReg
                         <Markdown components={markdownComponents}>
                           {msg.content}
                         </Markdown>
+
+                        {msg.aiSuggestedState && (
+                          <div className="mt-4 p-4 bg-[#0B0D0F]/70 border border-[#C9B284]/20 rounded-xl space-y-3">
+                            <div className="flex items-center justify-between gap-2 border-b border-[#C9B284]/10 pb-2">
+                              <div>
+                                <h4 className="text-xs font-bold text-[#C9B284] flex items-center gap-1.5 font-sans">
+                                  <Sparkles className="w-3.5 h-3.5 text-[#C9B284]" />
+                                  AI 建议资产状态更新
+                                </h4>
+                                <p className="text-[10px] text-[#8C8370]/80 mt-0.5">
+                                  这些内容尚未写入 Dashboard，需你确认后才会应用。
+                                </p>
+                              </div>
+                              {msg.suggestedStateApplied ? (
+                                <span className="text-[10px] font-mono bg-emerald-950/30 text-emerald-400 border border-emerald-900/30 px-2 py-0.5 rounded flex items-center gap-1">
+                                  <Check className="w-3 h-3" /> 已应用到 Dashboard
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-mono bg-amber-950/20 text-amber-400 border border-amber-900/20 px-2 py-0.5 rounded">
+                                  待确认
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Details of metrics and distributions */}
+                            <div className="space-y-2 text-[11px] text-[#A39167]">
+                              {msg.aiSuggestedState.metrics && Object.keys(msg.aiSuggestedState.metrics).length > 0 && (
+                                <div className="flex gap-2 items-start">
+                                  <span className="font-mono text-[10px] bg-white/5 px-1.5 py-0.5 rounded text-dash-tertiary shrink-0">Metrics</span>
+                                  <div className="flex-1 flex flex-wrap gap-1.5">
+                                    {Object.keys(msg.aiSuggestedState.metrics).map(mKey => {
+                                      let name = mKey;
+                                      if (mKey === 'netWorth') name = '净资产';
+                                      else if (mKey === 'liquidity') name = '流动资产';
+                                      else if (mKey === 'fcf') name = '自由现金流';
+                                      else if (mKey === 'safetyRatio') name = '安全保障系数';
+                                      return (
+                                        <span key={mKey} className="bg-[#1A1D20] px-2 py-0.5 rounded border border-white/5 text-[#E7D7B0]">
+                                          {name}
+                                        </span>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+
+                              {msg.aiSuggestedState.distributions && Object.keys(msg.aiSuggestedState.distributions).length > 0 && (
+                                <div className="flex gap-2 items-start">
+                                  <span className="font-mono text-[10px] bg-white/5 px-1.5 py-0.5 rounded text-dash-tertiary shrink-0">Distributions</span>
+                                  <div className="flex-1 flex flex-wrap gap-1.5">
+                                    {Object.keys(msg.aiSuggestedState.distributions).map(dKey => {
+                                      let name = dKey;
+                                      if (dKey === 'liquidity') name = '流动性分布';
+                                      else if (dKey === 'expenses') name = '开支列表';
+                                      else if (dKey === 'privateAssets') name = '非公开资产';
+                                      else if (dKey === 'fixedAssets') name = '另类固定资产';
+                                      else if (dKey === 'options') name = '期权额度';
+                                      return (
+                                        <span key={dKey} className="bg-[#1A1D20] px-2 py-0.5 rounded border border-white/5 text-[#E7D7B0]">
+                                          {name}
+                                        </span>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+
+                              {msg.aiSuggestedState.goal && (
+                                <div className="flex gap-2 items-start">
+                                  <span className="font-mono text-[10px] bg-white/5 px-1.5 py-0.5 rounded text-dash-tertiary shrink-0">Goal</span>
+                                  <span className="bg-[#1A1D20] px-2 py-0.5 rounded border border-white/5 text-[#E7D7B0] truncate max-w-xs">
+                                    财富目标: {msg.aiSuggestedState.goal.name || '更新'}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* View complete JSON collapsible */}
+                            <div className="pt-1">
+                              <button
+                                onClick={() => setShowSuggestedJson(prev => ({ ...prev, [i]: !prev[i] }))}
+                                className="text-[10px] text-[#8C8370] hover:text-[#C9B284] font-mono flex items-center gap-1 transition-colors"
+                              >
+                                <span>{showSuggestedJson[i] ? '▲ 隐藏完整 JSON' : '▼ 查看完整 JSON'}</span>
+                              </button>
+                              {showSuggestedJson[i] && (
+                                <pre className="mt-2 p-2 bg-[#050607] border border-white/5 rounded-lg text-[10px] font-mono text-emerald-500 max-h-48 overflow-y-auto custom-scroll w-full whitespace-pre-wrap break-words">
+                                  {JSON.stringify(msg.aiSuggestedState, null, 2)}
+                                </pre>
+                              )}
+                            </div>
+
+                            {/* Action apply button */}
+                            <div className="pt-2 flex justify-end">
+                              <button
+                                onClick={() => {
+                                  if (onApplySuggestedState && !msg.suggestedStateApplied) {
+                                    onApplySuggestedState(msg.aiSuggestedState, msg.sourceChatIndex);
+                                  }
+                                }}
+                                disabled={msg.suggestedStateApplied}
+                                className={cn(
+                                  "px-4 py-2 rounded-lg text-xs font-mono tracking-wide font-semibold border transition-all flex items-center gap-1.5 cursor-pointer",
+                                  msg.suggestedStateApplied
+                                    ? "bg-[#1A1D20] border-zinc-800 text-zinc-500 cursor-not-allowed"
+                                    : "bg-[#C9B284]/10 hover:bg-[#C9B284]/20 border-[#C9B284]/30 text-[#C9B284] hover:text-white"
+                                )}
+                              >
+                                {msg.suggestedStateApplied ? (
+                                  <>
+                                    <Check className="w-3.5 h-3.5" />
+                                    已应用
+                                  </>
+                                ) : (
+                                  <>
+                                    <Sparkles className="w-3.5 h-3.5" />
+                                    应用到 Dashboard
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
                         {msg.content && (
                            <div className="mt-6 pt-4 border-t border-[#C9B284]/10 flex flex-col gap-3 font-sans">
                              {/* Metric Badges Info */}

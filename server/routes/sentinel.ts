@@ -129,6 +129,48 @@ ${temporalContext}`;
 
     res.json({ success: true, triggered: jsonResult.triggered, reason: jsonResult.reason });
   } catch (error: any) {
+    const errText = error?.message || String(error);
+    const errStatus = error?.status || error?.code || (error?.response?.status);
+    const isQuotaExceeded = errText.includes("RESOURCE_EXHAUSTED") || 
+                            errText.includes("429") || 
+                            errText.includes("exceeded its monthly spending cap") || 
+                            errText.includes("Quota exceeded") ||
+                            errStatus === 429;
+
+    if (isQuotaExceeded) {
+       console.warn("[Sentinel] Quota Exceeded detected (RESOURCE_EXHAUSTED / 429). Gracefully degrading into offline backup warning interface...");
+       
+       const budgetAlertUI = {
+         type: "Box",
+         props: { 
+           bg: "danger-muted", 
+           border: "danger", 
+           padding: "lg", 
+           className: "rounded-2xl flex flex-col gap-4 shadow-xl border-dashed animate-in fade-in" 
+         },
+         children: [
+           { type: "Badge", props: { intent: "warning", text: "Sentinel 守护警告 (API 降级)" } },
+           { type: "Typography", props: { variant: "h3-serif", color: "danger", text: "系统检测到 AI 额度已被耗尽" } },
+           { type: "Typography", props: { variant: "body", color: "text-muted", text: "由于项目本月已超出 Google AI Studio 消费上限 (RESOURCE_EXHAUSTED)，Sentinel 暂时启动了本地备用安全防线。您也可以在系统的 'Settings' 侧边栏中配置您自备的 Gemini API 密钥来恢复完整高级感知与实时量化推荐。" } },
+           { type: "ActionButton", props: { variant: "primary", label: "⚙️ 立即打开设置配置私有 Key", actionIntent: "请帮我介绍一下如何在终端的 Settings 中更安全地存储与管理我个人的 Gemini API Key 金融资产保护机制" } }
+         ]
+       };
+
+       const sseData = `data: ${JSON.stringify({ type: 'alert', payload: budgetAlertUI })}\n\n`;
+       clients.forEach(client => {
+         try {
+           client.write(sseData);
+         } catch (err) {}
+       });
+
+       return res.json({ 
+         success: true, 
+         triggered: true, 
+         quotaExceeded: true,
+         reason: "API quota exceeded. Gracefully degraded into user-level warning card." 
+       });
+    }
+
     console.error("Sentinel scan error:", error);
     res.json({ triggered: false, reason: "Error evaluating risk: " + error.message });
   }

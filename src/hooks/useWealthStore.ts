@@ -443,10 +443,72 @@ export const useWealthStore = create<WealthState>((set, get) => ({
           const meta = response.data.meta || {};
           
           set((state) => {
+              const allPositions: any[] = [];
+              newData.forEach((account: any) => {
+                if (Array.isArray(account.positions)) {
+                  account.positions.forEach((pos: any) => {
+                    allPositions.push({
+                      ...pos,
+                      accountId: account.accountId,
+                      accountName: account.accountName
+                    });
+                  });
+                }
+              });
+
+              const groupedPositions: Record<string, any[]> = {};
+              allPositions.forEach(p => {
+                if (!p.symbol) return;
+                if (!groupedPositions[p.symbol]) {
+                  groupedPositions[p.symbol] = [];
+                }
+                groupedPositions[p.symbol].push(p);
+              });
+
+              const legacyPublicHoldings: any[] = [];
+              Object.entries(groupedPositions).forEach(([symbol, posList]) => {
+                const firstPos = posList[0];
+                const totalQuantity = posList.reduce((sum, p) => sum + (Number(p.quantity) || 0), 0);
+                
+                let totalCost = 0;
+                posList.forEach(p => {
+                  const qty = Number(p.quantity) || 0;
+                  const price = Number(p.costPrice) || 0;
+                  totalCost += qty * price;
+                });
+                const costPrice = totalQuantity > 0 ? (totalCost / totalQuantity) : (Number(firstPos.costPrice) || 0);
+                const totalMktVal = posList.reduce((sum, p) => sum + getSafeMktVal(p), 0);
+                
+                const breakdown = posList.map(p => ({
+                  accountId: p.accountId,
+                  accountName: p.accountName,
+                  quantity: Number(p.quantity || 0),
+                  marketValue: getSafeMktVal(p)
+                }));
+                
+                legacyPublicHoldings.push({
+                  symbol,
+                  name: firstPos.name || symbol,
+                  quantity: totalQuantity,
+                  costPrice,
+                  marketValue: totalMktVal,
+                  value: totalMktVal,
+                  currency: firstPos.currency || 'USD',
+                  accountBreakdown: breakdown
+                });
+              });
+
               const prevData = state.data;
               const nextData = {
                   ...prevData,
-                  publicHoldingAccounts: newData
+                  publicHoldingAccounts: newData,
+                  distributions: {
+                      ...prevData.distributions,
+                      publicHoldings: legacyPublicHoldings
+                  },
+                  _liveSources: ['longbridge'],
+                  _liveValuationVersion: LIVE_VALUATION_VERSION,
+                  _liveFetchedAt: Date.now()
               };
               
               if (state.user?.uid) {
@@ -466,7 +528,10 @@ export const useWealthStore = create<WealthState>((set, get) => ({
                   data: nextData,
                   publicHoldingAccountsSyncStatus: syncStatus,
                   publicHoldingAccountsLastSyncAt: Date.now(),
-                  publicHoldingAccountsError: syncError
+                  publicHoldingAccountsError: syncError,
+                  publicHoldingsSyncStatus: syncStatus,
+                  publicHoldingsLastSyncAt: Date.now(),
+                  publicHoldingsError: syncError
               };
           });
       } else {

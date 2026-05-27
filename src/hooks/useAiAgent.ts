@@ -8,6 +8,8 @@ import { useWealthStore } from './useWealthStore';
 import { normalizeSDUISchema } from '../lib/sdui-normalizer';
 import { filterAiWritableStatePatch } from '../lib/ai-state-permissions';
 import { parseSseBuffer } from '../lib/sse-parser';
+import { deriveTerminalStatePatchFromProfile } from '../lib/profile-to-terminal-state';
+import { LIVE_VALUATION_VERSION } from '../types/terminal';
 
 export function useAiAgent({ setIsSynthesizing }: any) {
   const { user, data, commitData } = useWealthStore();
@@ -18,7 +20,7 @@ export function useAiAgent({ setIsSynthesizing }: any) {
   const abortControllerRef = useRef<AbortController | null>(null);
   const isChatLoaded = useRef(false);
 
-  const [chatHistory, setChatHistory] = useState<{ user: string, ai: string, attachments: Attachment[], thinking?: string, isThinkingExpanded?: boolean, hasMemoryUpdate?: boolean, _liveSources?: string[], timeTaken?: number, debugData?: any, aiSuggestedState?: any }[]>([]);
+  const [chatHistory, setChatHistory] = useState<{ user: string, ai: string, attachments: Attachment[], thinking?: string, isThinkingExpanded?: boolean, hasMemoryUpdate?: boolean, _liveSources?: string[], timeTaken?: number, debugData?: any, aiSuggestedState?: any, suggestedStateApplied?: boolean }[]>([]);
 
   useEffect(() => {
     const handleClearChat = () => {
@@ -279,7 +281,33 @@ export function useAiAgent({ setIsSynthesizing }: any) {
                    } else if (parsed.type === 'partial_result') {
                       bffData = { ...bffData, ...parsed.data };
                       // Eagerly merge Live Portfolio to bypass AI latency and ensure badge
-                      if (parsed.data.externalData?.livePortfolio && parsed.data.externalData.livePortfolio.length > 0) {
+                      const extData = parsed.data.externalData;
+                       if (extData) {
+                           commitData((prevData: any) => {
+                               const nextData = { ...prevData };
+                               let updated = false;
+
+                               if (Array.isArray(extData.livePortfolioAccounts) && extData.livePortfolioAccounts.length > 0) {
+                                   nextData.publicHoldingAccounts = extData.livePortfolioAccounts;
+                                   nextData._liveSources = ['longbridge'];
+                                   nextData._liveValuationVersion = LIVE_VALUATION_VERSION;
+                                   nextData._liveFetchedAt = Date.now();
+                                   updated = true;
+                               }
+
+                               if (Array.isArray(extData.livePortfolio) && extData.livePortfolio.length > 0) {
+                                   nextData.distributions = {
+                                       ...prevData.distributions,
+                                       publicHoldings: extData.livePortfolio
+                                   };
+                                   nextData._liveSources = ['longbridge'];
+                                   updated = true;
+                               }
+
+                               return updated ? nextData : prevData;
+                           });
+                       }
+                       if (false) {
                           commitData((prevData: any) => ({
                               ...prevData,
                               distributions: {
@@ -344,15 +372,55 @@ export function useAiAgent({ setIsSynthesizing }: any) {
                       const { handleFirestoreError, OperationType } = await import('../lib/firebase');
                       handleFirestoreError(e, OperationType.WRITE, `userProfiles/${user.uid}`);
                   }
-                  commitData((prev: any) => ({ ...prev, userProfile: bffData.updatedProfile }));
               }
+              
+              const profilePatch = deriveTerminalStatePatchFromProfile(bffData.updatedProfile);
+              commitData((prev: any) => ({
+                 ...prev,
+                 ...profilePatch,
+                 userProfile: bffData.updatedProfile,
+                 metrics: { ...prev.metrics, ...(profilePatch.metrics || {}) },
+                 distributions: {
+                   ...prev.distributions,
+                   ...(profilePatch.distributions || {}),
+                   publicHoldings: prev.distributions?.publicHoldings || []
+                 },
+                 goal: profilePatch.goal || prev.goal,
+                 userPersona: profilePatch.userPersona || prev.userPersona
+              }));
           } catch(e) {
               console.error("Failed to commit profile updates:", e);
           }
       }
       
       // 1.6 Eagerly merge Live Portfolio to bypass AI latency and ensure badge
-      if (bffData.externalData?.livePortfolio && bffData.externalData.livePortfolio.length > 0) {
+      const extDataFinal = bffData.externalData;
+       if (extDataFinal) {
+           commitData((prevData: any) => {
+               const nextData = { ...prevData };
+               let updated = false;
+
+               if (Array.isArray(extDataFinal.livePortfolioAccounts) && extDataFinal.livePortfolioAccounts.length > 0) {
+                   nextData.publicHoldingAccounts = extDataFinal.livePortfolioAccounts;
+                   nextData._liveSources = ['longbridge'];
+                   nextData._liveValuationVersion = LIVE_VALUATION_VERSION;
+                   nextData._liveFetchedAt = Date.now();
+                   updated = true;
+               }
+
+               if (Array.isArray(extDataFinal.livePortfolio) && extDataFinal.livePortfolio.length > 0) {
+                   nextData.distributions = {
+                       ...prevData.distributions,
+                       publicHoldings: extDataFinal.livePortfolio
+                   };
+                   nextData._liveSources = ['longbridge'];
+                   updated = true;
+               }
+
+               return updated ? nextData : prevData;
+           });
+       }
+       if (false) {
           commitData((prevData: any) => ({
               ...prevData,
               distributions: {

@@ -139,22 +139,22 @@ export function useTerminalSync() {
     };
   }, [setUser, setData, setLoadingAuth, persistenceMode]);
 
-  const fetchLongbridge = useWealthStore(state => state.fetchLongbridge);
+  const fetchLongbridgeAccountPortfolios = useWealthStore(state => state.fetchLongbridgeAccountPortfolios);
 
   useEffect(() => {
     let intervalId: any;
 
     if (user && !loadingAuth) {
-      if (process.env.NODE_ENV !== 'production') console.log('[useTerminalSync] Automount fetchLongbridge Triggered');
+      if (process.env.NODE_ENV !== 'production') console.log('[useTerminalSync] Automount fetchLongbridgeAccountPortfolios Triggered');
       // Execute the initial fetch async to offload the hook immediately
-      setTimeout(() => fetchLongbridge(), 0);
-      intervalId = setInterval(() => fetchLongbridge(), 60 * 1000);
+      setTimeout(() => fetchLongbridgeAccountPortfolios(), 0);
+      intervalId = setInterval(() => fetchLongbridgeAccountPortfolios(), 60 * 1000);
     }
 
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, [user, loadingAuth, fetchLongbridge]);
+  }, [user, loadingAuth, fetchLongbridgeAccountPortfolios]);
 
   return { user, loadingAuth, data, commitData };
 }

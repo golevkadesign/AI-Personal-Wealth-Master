@@ -18,14 +18,43 @@ export interface DataProvider {
 const CACHE_TTL = 5 * 60 * 1000;
 const cache = new Map<string, { timestamp: number, data: any }>();
 
+export function flattenSymbolsFromAccountPortfolios(livePortfolioAccounts: any[]): string[] {
+    if (!Array.isArray(livePortfolioAccounts)) return [];
+    const symbols = new Set<string>();
+    livePortfolioAccounts.forEach(account => {
+        if (account && Array.isArray(account.positions)) {
+            account.positions.forEach((pos: any) => {
+                if (pos && pos.symbol) {
+                    symbols.add(pos.symbol);
+                }
+            });
+        }
+    });
+    return Array.from(symbols);
+}
+
 class MarketDataProvider implements DataProvider {
     name = "MarketData";
     
     async fetch({ message, contextData, extractedTickers }: DataProviderParams) {
         let symbolsToFetch = extractedTickers || [];
         if (!symbolsToFetch || symbolsToFetch.length === 0) {
-            const allText = message + JSON.stringify(contextData?.distributions?.publicHoldings || []);
-            symbolsToFetch = extractTickers(allText);
+            const liveAccounts = contextData?.livePortfolioAccounts || contextData?.publicHoldingAccounts;
+            const acctSymbols = flattenSymbolsFromAccountPortfolios(liveAccounts);
+            if (acctSymbols.length > 0) {
+                symbolsToFetch = acctSymbols;
+            } else {
+                const publicHoldings = contextData?.distributions?.publicHoldings;
+                if (Array.isArray(publicHoldings) && publicHoldings.length > 0) {
+                    const extFromHoldings = publicHoldings.map((h: any) => h.symbol).filter(Boolean);
+                    if (extFromHoldings.length > 0) {
+                        symbolsToFetch = extFromHoldings;
+                    }
+                }
+            }
+            if (symbolsToFetch.length === 0) {
+                symbolsToFetch = extractTickers(message);
+            }
         }
         
         if (symbolsToFetch.length === 0) return { source: this.name, payload: null };
@@ -70,8 +99,10 @@ export async function hydrateContext(message: string, contextData: any, settings
     );
     
     const hydratedData: any = { marketData: {} };
-    if (contextData?.livePortfolioAccounts) {
-        hydratedData.livePortfolioAccounts = contextData.livePortfolioAccounts;
+    const liveAccounts = contextData?.livePortfolioAccounts || contextData?.publicHoldingAccounts;
+    if (liveAccounts) {
+        hydratedData.livePortfolioAccounts = liveAccounts;
+        hydratedData.publicHoldingAccounts = liveAccounts;
     }
     const sources: string[] = [];
     

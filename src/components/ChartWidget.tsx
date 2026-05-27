@@ -30,9 +30,10 @@ interface ChartWidgetProps {
   isReloading?: boolean;
   badge?: React.ReactNode;
   onChartClick?: (params: any) => void;
+  className?: string;
 }
 
-export function ChartWidget({ title, type, dataLength, insight, option, delay = 0, chartHeight = '250px', children, status, onReload, showReload, reloadLabel = '刷新实盘', isReloading, badge, onChartClick }: ChartWidgetProps) {
+export function ChartWidget({ title, type, dataLength, insight, option, delay = 0, chartHeight = '250px', children, status, onReload, showReload, reloadLabel = '刷新实盘', isReloading, badge, onChartClick, className }: ChartWidgetProps) {
   // If status is provided, use it, else derive from dataLength
   const currentStatus = status || (dataLength > 0 ? 'success' : 'empty');
   
@@ -43,7 +44,7 @@ export function ChartWidget({ title, type, dataLength, insight, option, delay = 
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: "spring", stiffness: 400, damping: 25, delay: delay }}
-      className="arbitra-panel arbitra-panel-hover rounded-2xl p-6 sm:p-8 flex flex-col relative overflow-hidden h-full group"
+      className={`arbitra-panel arbitra-panel-hover rounded-2xl p-6 sm:p-8 flex flex-col relative overflow-hidden group ${className || 'h-full'}`}
     >
       <h3 className="arbitra-text-secondary text-[11px] arbitra-text-mono font-semibold mb-6 flex justify-between items-start z-10 shrink-0 uppercase tracking-widest">
         <span className="flex items-center gap-2">{title}</span>
