@@ -7,6 +7,10 @@ import { mergeWith, isArray, debounce } from 'lodash-es';
 import { setDoc, doc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, isFirestoreQuotaExceeded } from '../lib/firebase';
 import { DEFAULT_DASHBOARD_SCHEMA } from '../lib/default-schema';
+import { PortfolioReviewSession, PortfolioReviewMemory } from '../types/portfolio-review';
+import { createPortfolioReviewSnapshot } from '../lib/portfolio-review/snapshot';
+import { diffPortfolioSnapshots } from '../lib/portfolio-review/diff';
+
 
 export const EMPTY_STATE: TerminalState = {
   userPersona: { tags: [], description: "唤起总监生成您的个人资产画像模型" },
@@ -105,6 +109,15 @@ interface WealthState {
   publicHoldingAccountsSyncStatus: 'idle' | 'loading' | 'success' | 'empty' | 'error';
   publicHoldingAccountsError?: string;
   publicHoldingAccountsLastSyncAt?: number;
+  portfolioReviewSessions: PortfolioReviewSession[];
+  activePortfolioReviewSessionId?: string;
+  createPortfolioReviewSession: () => PortfolioReviewSession | null;
+  setActivePortfolioReviewSession: (id: string | undefined) => void;
+  updatePortfolioReviewSession: (id: string, patch: Partial<PortfolioReviewSession>) => void;
+  clearPortfolioReviewSessions: () => void;
+  analyzePortfolioReviewSession: (id: string, userRiskPolicy?: any) => Promise<void>;
+  portfolioReviewMemory?: PortfolioReviewMemory;
+  savePortfolioReviewMemoryFromSession: (sessionId: string, riskPreferenceObserved?: string) => void;
 }
 
 const syncToCloud = (uid: string, data: any) => {
@@ -121,6 +134,9 @@ export const useWealthStore = create<WealthState>((set, get) => ({
   loadingAuth: true,
   persistenceMode: 'disabled', // default to disabled to protect quota
   agentMemorySnapshots: [],
+  portfolioReviewSessions: [],
+  activePortfolioReviewSessionId: undefined,
+  portfolioReviewMemory: undefined,
   setPersistenceMode: (mode) => set({ persistenceMode: mode }),
   saveCloudCheckpoint: () => {
       const { user, data } = get();
@@ -140,7 +156,41 @@ export const useWealthStore = create<WealthState>((set, get) => ({
   setLanguage: (lang) => set({ language: lang }),
   selectedHolding: null,
   setSelectedHolding: (holding) => set({ selectedHolding: holding }),
-  setUser: (user) => set({ user }),
+  setUser: (user) => {
+    if (user) {
+      let sessions = [];
+      let mem: PortfolioReviewMemory | undefined = undefined;
+      try {
+        const stored = localStorage.getItem(`ai_terminal_portfolio_reviews_${user.uid}`);
+        if (stored) {
+          sessions = JSON.parse(stored);
+        }
+      } catch (e) {
+        console.error("Failed to load portfolio review sessions", e);
+      }
+      try {
+        const storedMem = localStorage.getItem(`ai_terminal_portfolio_review_memory_${user.uid}`);
+        if (storedMem) {
+          mem = JSON.parse(storedMem);
+        }
+      } catch (e) {
+        console.error("Failed to load portfolio review memory", e);
+      }
+      set({ 
+        user, 
+        portfolioReviewSessions: sessions, 
+        activePortfolioReviewSessionId: sessions[0]?.id,
+        portfolioReviewMemory: mem
+      });
+    } else {
+      set({ 
+        user, 
+        portfolioReviewSessions: [], 
+        activePortfolioReviewSessionId: undefined,
+        portfolioReviewMemory: undefined
+      });
+    }
+  },
   setLoadingAuth: (loadingAuth) => set({ loadingAuth }),
   setData: (newData, options) => set((state) => {
     const shouldPreserve = options?.preserveLiveData !== false;
@@ -167,6 +217,9 @@ export const useWealthStore = create<WealthState>((set, get) => ({
     set({ 
       data: JSON.parse(JSON.stringify(EMPTY_STATE)), 
       agentMemorySnapshots: [], 
+      portfolioReviewSessions: [],
+      activePortfolioReviewSessionId: undefined,
+      portfolioReviewMemory: undefined,
       selectedHolding: null,
       publicHoldingsSyncStatus: 'empty', 
       publicHoldingsError: undefined, 
@@ -182,6 +235,8 @@ export const useWealthStore = create<WealthState>((set, get) => ({
         localStorage.removeItem(`ai_terminal_snapshots_${user.uid}`);
         localStorage.removeItem(`ai_terminal_position_snapshots_${user.uid}`);
         localStorage.removeItem(`ai_terminal_chat_${user.uid}`);
+        localStorage.removeItem(`ai_terminal_portfolio_reviews_${user.uid}`);
+        localStorage.removeItem(`ai_terminal_portfolio_review_memory_${user.uid}`);
         
         if (persistenceMode !== 'disabled') {
             debouncedSyncToCloud(user.uid, { appData: JSON.parse(JSON.stringify(EMPTY_STATE)), userProfile: EMPTY_STATE.userProfile });
@@ -427,5 +482,212 @@ export const useWealthStore = create<WealthState>((set, get) => ({
         publicHoldingAccountsError: err?.message || String(err)
       });
     }
+  },
+  createPortfolioReviewSession: () => {
+    const { data, portfolioReviewSessions, user } = get();
+    if (!user) return null;
+
+    // 1. 从 state.data.publicHoldingAccounts 或 state.data.distributions.publicHoldingAccounts 获取多账户持仓数据。
+    let accountPortfolios: AccountPortfolio[] = data.publicHoldingAccounts || (data.distributions as any)?.publicHoldingAccounts || [];
+
+    // 2. 如果没有多账户数据，但存在 distributions.publicHoldings，则允许生成 low confidence 的 fallback snapshot。
+    let source: 'longbridge' | 'screenshot' | 'manual' | 'mixed' = 'longbridge';
+    if (accountPortfolios.length === 0) {
+      const publicHoldings = data.distributions?.publicHoldings || [];
+      if (publicHoldings.length > 0) {
+        source = 'manual';
+        accountPortfolios = [{
+          accountId: 'fallback_manual_account',
+          accountName: '手动/单账户持仓 (旧兼容模式)',
+          positions: publicHoldings.map((h: any) => ({
+            symbol: h.symbol,
+            name: h.name || h.symbol,
+            quantity: h.quantity,
+            costPrice: h.costPrice,
+            currentPrice: h.currentPrice || h.lastPrice || 0,
+            marketValue: h.marketValue || (h.quantity * (h.currentPrice || h.lastPrice || 0)),
+            currency: h.currency || 'USD',
+            accountId: 'fallback_manual_account',
+            accountName: '手动/单账户持仓 (旧兼容模式)'
+          })),
+          meta: {
+            positionCount: publicHoldings.length,
+            generatedAt: Date.now()
+          }
+        }];
+      }
+    }
+
+    // 3. previousSnapshot 来源：
+    //    - 优先使用 portfolioReviewSessions[0].currentSnapshot；
+    //    - 如果没有历史 session，则 previousSnapshot 为 undefined。
+    const previousSnapshot = portfolioReviewSessions && portfolioReviewSessions.length > 0
+      ? portfolioReviewSessions[0].currentSnapshot
+      : undefined;
+
+    // 4. 使用 createPortfolioReviewSnapshot 生成 currentSnapshot。
+    const currentSnapshot = createPortfolioReviewSnapshot({
+      accountPortfolios,
+      source
+    });
+
+    // 5. 使用 diffPortfolioSnapshots(previousSnapshot, currentSnapshot) 生成 deltas。
+    const deltas = diffPortfolioSnapshots(previousSnapshot, currentSnapshot);
+
+    // 6. 创建 PortfolioReviewSession：
+    //    - id 使用 review_${Date.now()}
+    //    - status = 'draft'
+    //    - createdAt = Date.now()
+    const newSession: PortfolioReviewSession = {
+      id: `review_${Date.now()}`,
+      createdAt: Date.now(),
+      currentSnapshot,
+      previousSnapshot,
+      deltas,
+      status: 'draft'
+    };
+
+    // 7. 插入 portfolioReviewSessions 头部，最多保留 20 条。
+    const updatedSessions = [newSession, ...(portfolioReviewSessions || [])].slice(0, 20);
+
+    // 8. 设置 activePortfolioReviewSessionId。
+    set({
+      portfolioReviewSessions: updatedSessions,
+      activePortfolioReviewSessionId: newSession.id
+    });
+
+    // 9. 持久化到 localStorage：
+    //    - key: ai_terminal_portfolio_reviews_${uid}
+    localStorage.setItem(`ai_terminal_portfolio_reviews_${user.uid}`, JSON.stringify(updatedSessions));
+
+    // 10. 不要写入 userProfile。
+    // 11. 不要写入 agentMemorySnapshots。
+    // 12. 不要调用 AI。
+    return newSession;
+  },
+  setActivePortfolioReviewSession: (id) => set({ activePortfolioReviewSessionId: id }),
+  updatePortfolioReviewSession: (id, patch) => {
+    const { portfolioReviewSessions, user } = get();
+    const updated = portfolioReviewSessions.map(s => s.id === id ? { ...s, ...patch } : s);
+    set({ portfolioReviewSessions: updated });
+    if (user?.uid) {
+      localStorage.setItem(`ai_terminal_portfolio_reviews_${user.uid}`, JSON.stringify(updated));
+    }
+  },
+  clearPortfolioReviewSessions: () => {
+    const { user } = get();
+    set({ portfolioReviewSessions: [], activePortfolioReviewSessionId: undefined });
+    if (user?.uid) {
+      localStorage.removeItem(`ai_terminal_portfolio_reviews_${user.uid}`);
+    }
+  },
+  analyzePortfolioReviewSession: async (id, userRiskPolicy?: any) => {
+    const { portfolioReviewSessions, user, updatePortfolioReviewSession, portfolioReviewMemory } = get();
+    if (!user) return;
+    
+    const session = portfolioReviewSessions.find(s => s.id === id);
+    if (!session) return;
+    
+    // 1. Change status to 'analyzing'
+    updatePortfolioReviewSession(id, { status: 'analyzing', error: undefined });
+    
+    try {
+      const settings = getSettings();
+      const customApiKey = localStorage.getItem('custom_gemini_api_key') || undefined;
+
+      // Find previous session report chronologically prior to this session
+      const otherSessions = portfolioReviewSessions.filter(
+        s => s.id !== id && s.report && s.createdAt < session.createdAt
+      );
+      otherSessions.sort((a, b) => b.createdAt - a.createdAt);
+      const prevSession = otherSessions[0];
+
+      const previousReviewSummary = prevSession ? {
+        id: prevSession.id,
+        createdAt: prevSession.createdAt,
+        summary: prevSession.report?.summary,
+        actionPlan: prevSession.report?.actionPlan,
+        avoidActions: prevSession.report?.portfolioDiagnosis?.avoidActions
+      } : null;
+      
+      const response = await axios.post('/api/portfolio-review/analyze', {
+        session,
+        settings,
+        userRiskPolicy: userRiskPolicy || {},
+        customApiKey,
+        reviewMemory: portfolioReviewMemory || null,
+        previousReviewSummary
+      });
+      
+      if (response.data && response.data.success) {
+        updatePortfolioReviewSession(id, {
+          status: 'ready',
+          report: response.data.report,
+          error: undefined
+        });
+      } else {
+        updatePortfolioReviewSession(id, {
+          status: 'error',
+          error: response.data?.error || '分析失败：服务器返回了无效数据。'
+        });
+      }
+    } catch (err: any) {
+      console.error('[Portfolio Review Analyze] Error: ', err);
+      updatePortfolioReviewSession(id, {
+        status: 'error',
+        error: err?.response?.data?.error || err?.message || String(err)
+      });
+    }
+  },
+  savePortfolioReviewMemoryFromSession: (sessionId: string, riskPreferenceObserved?: string) => {
+    const { portfolioReviewSessions, user } = get();
+    if (!user) return;
+    
+    const session = portfolioReviewSessions.find(s => s.id === sessionId);
+    if (!session || !session.report) return;
+
+    const report = session.report;
+
+    // 1. recurringMistakes from avoidActions
+    const recurringMistakes = [...(report.portfolioDiagnosis?.avoidActions || [])];
+
+    // 2. lastActionItems: shortTerm and midTerm priority high/medium
+    const allShort = report.actionPlan?.shortTerm || [];
+    const allMid = report.actionPlan?.midTerm || [];
+    const lastActionItems = [...allShort, ...allMid].filter(
+      item => item.priority === 'high' || item.priority === 'medium'
+    );
+
+    // 3. nextReviewFocus from nextReviewNeeds
+    const nextReviewFocus = [...(report.nextReviewNeeds || [])];
+
+    // 4. behavioralPatterns extracted from summary and avoidActions without nested AI calls
+    const summarySentences = (report.summary || '')
+      .split(/[。！？\.]/)
+      .map(s => s.trim())
+      .filter(s => s.length > 5)
+      .slice(0, 2);
+    
+    const behavioralPatterns = [
+      ...summarySentences,
+      ...(report.portfolioDiagnosis?.avoidActions || []).map(act => `规避动作：${act}`)
+    ];
+
+    const memory: PortfolioReviewMemory = {
+      lastReviewId: session.id,
+      updatedAt: Date.now(),
+      behavioralPatterns,
+      recurringMistakes,
+      lastActionItems,
+      nextReviewFocus,
+      riskPreferenceObserved
+    };
+
+    set({ portfolioReviewMemory: memory });
+
+    localStorage.setItem(
+      `ai_terminal_portfolio_review_memory_${user.uid}`,
+      JSON.stringify(memory)
+    );
   }
 }));

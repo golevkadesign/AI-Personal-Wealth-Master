@@ -11,6 +11,7 @@ import { sentinelRouter } from "./server/routes/sentinel";
 import { sandboxRouter } from "./server/routes/sandbox";
 import { quantRouter } from "./server/routes/quant";
 import longbridgeRouter from "./server/routes/longbridge";
+import portfolioReviewRouter from "./server/routes/portfolio-review";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -73,6 +74,7 @@ async function startServer() {
   app.use("/api/sandbox", sandboxRouter);
   app.use("/api/quant", quantRouter);
   app.use("/api/v1/wealth/longbridge", longbridgeRouter);
+  app.use("/api/portfolio-review", portfolioReviewRouter);
 
   // Health check
   app.get("/api/health", (req, res) => {

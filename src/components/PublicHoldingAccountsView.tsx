@@ -36,6 +36,20 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
 }) => {
   const [isRefreshing, setIsRefreshing] = React.useState(false);
   const fetchLongbridgeAccountPortfolios = useWealthStore(state => state.fetchLongbridgeAccountPortfolios);
+  const createPortfolioReviewSession = useWealthStore(state => state.createPortfolioReviewSession);
+  const [reviewError, setReviewError] = React.useState<string | null>(null);
+
+  const handleCreateReview = () => {
+    setReviewError(null);
+    const session = createPortfolioReviewSession();
+    if (!session) {
+      setReviewError("当前没有可复盘的持仓数据，请先同步持仓。");
+      setTimeout(() => setReviewError(null), 4000);
+    } else {
+      console.log("[PortfolioReview] Session created:", session);
+      window.dispatchEvent(new CustomEvent('open-portfolio-review', { detail: { sessionId: session.id } }));
+    }
+  };
 
   const handleReload = async () => {
     setIsRefreshing(true);
@@ -65,7 +79,26 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
       insight={globalData?.insights?.public || ""}
       delay={delay}
       chartHeight={chartHeight || "auto"}
-      badge={<span className="text-[10px] text-[#A39167] font-mono font-semibold tracking-wider">{t('dashboard.allocationAnalysis')} (多账户)</span>}
+      badge={
+        <div className="flex items-center gap-3 relative mr-1">
+          {reviewError && (
+            <div className="absolute right-0 top-full mt-2 z-50 bg-[#1A0B0B] border border-rose-500/30 text-rose-300 text-[10px] px-3 py-1.5 rounded-lg shadow-xl whitespace-nowrap animate-in fade-in slide-in-from-top-1 duration-200">
+              {reviewError}
+            </div>
+          )}
+          <button
+            onClick={handleCreateReview}
+            className="border border-[#C9B284]/25 hover:border-[#C9B284]/50 bg-[#16181A]/80 hover:bg-[#C9B284]/10 text-[#C9B284] px-2.5 py-1 text-[10px] font-mono rounded-[8px] transition-all cursor-pointer flex items-center gap-1.5 shadow-sm shrink-0 font-medium"
+            title="基于当前多账户持仓创建复盘快照并对比上次记录"
+          >
+            <span>📊</span>
+            <span>生成本轮持仓复盘</span>
+          </button>
+          <span className="hidden sm:inline-block text-[10px] text-[#A39167] font-mono font-semibold tracking-wider">
+            {t('dashboard.allocationAnalysis')} (多账户)
+          </span>
+        </div>
+      }
       status={widgetStatus}
       onReload={handleReload}
       showReload={true}

@@ -28,6 +28,7 @@ import { GoalTracker } from './components/GoalTracker';
 import { DashboardGrid } from './components/DashboardGrid';
 
 import { PositionIntelligenceDrawer } from './components/PositionIntelligenceDrawer';
+import { PortfolioReviewDrawer } from './components/PortfolioReviewDrawer';
 import { ComponentRegistry, SDUIRenderer } from './lib/sdui-registry';
 
 import { useSDUIEventStore } from './hooks/useSDUIEventStore';
@@ -63,9 +64,24 @@ export default function App() {
   const [showProfileReport, setShowProfileReport] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
+  const [showPortfolioReviewDrawer, setShowPortfolioReviewDrawer] = useState(false);
 
   const lastEvent = useSDUIEventStore(state => state.lastEvent);
   const clearEvent = useSDUIEventStore(state => state.clearEvent);
+
+  useEffect(() => {
+    const handleOpenReview = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail?.sessionId) {
+        useWealthStore.getState().setActivePortfolioReviewSession(customEvent.detail.sessionId);
+      }
+      setShowPortfolioReviewDrawer(true);
+    };
+    window.addEventListener('open-portfolio-review', handleOpenReview);
+    return () => {
+      window.removeEventListener('open-portfolio-review', handleOpenReview);
+    };
+  }, []);
 
   useEffect(() => {
     if (lastEvent?.type === 'CHART_CLICK' && lastEvent.payload) {
@@ -315,6 +331,11 @@ export default function App() {
         isOpen={!!selectedHolding} 
         holding={selectedHolding} 
         onClose={() => setSelectedHolding(null)} 
+      />
+
+      <PortfolioReviewDrawer 
+        isOpen={showPortfolioReviewDrawer} 
+        onClose={() => setShowPortfolioReviewDrawer(false)} 
       />
     </div>
   );

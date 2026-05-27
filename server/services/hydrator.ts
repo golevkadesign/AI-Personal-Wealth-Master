@@ -2,8 +2,6 @@ import { getRealTimeQuotes } from "./marketData";
 import { extractTickers } from "./utils";
 import { analyzeStock } from "./quantEngine";
 
-import * as crypto from 'crypto';
-
 interface DataProviderParams {
     message: string;
     contextData: any;
