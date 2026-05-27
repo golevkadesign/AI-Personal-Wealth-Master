@@ -54,10 +54,7 @@ async function startServer() {
     };
   };
 
-  // Apply Rate Limiters
-  app.use("/api/chat", createRateLimitMiddleware(50, 10 * 60 * 1000));
-  app.use("/api/portfolio-review", createRateLimitMiddleware(20, 10 * 60 * 1000));
-
+  // Apply CORS
   const corsOptions = {
     origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
         if (!origin || origin.includes('localhost') || origin.includes('.run.app') || origin.includes('google.com')) {
@@ -68,9 +65,20 @@ async function startServer() {
     }
   };
   app.use(cors(corsOptions));
+
+  // 1. Mount /api/portfolio-review with specific 20req/10m rate limiting and 1MB JSON body limit
+  const chatRateLimit = createRateLimitMiddleware(50, 10 * 60 * 1000);
+  const portfolioReviewRateLimit = createRateLimitMiddleware(20, 10 * 60 * 1000);
+
+  app.use("/api/portfolio-review", portfolioReviewRateLimit, express.json({ limit: "1mb" }), portfolioReviewRouter);
+
+  // 2. Apply chat rate limiter before parsing heavy loads
+  app.use("/api/chat", chatRateLimit);
+
+  // 3. Global body parser with 50mb limit for chat and other endpoints
   app.use(express.json({ limit: "50mb" }));
 
-  // API Configuration
+  // API Configuration (other than portfolio-review)
   app.use("/api/chat", chatRouter);
   app.use("/api/plan", planRouter);
   app.use("/api/profile", profileRouter);
@@ -78,7 +86,6 @@ async function startServer() {
   app.use("/api/sandbox", sandboxRouter);
   app.use("/api/quant", quantRouter);
   app.use("/api/v1/wealth/longbridge", longbridgeRouter);
-  app.use("/api/portfolio-review", portfolioReviewRouter);
 
   // Health check
   app.get("/api/health", (req, res) => {

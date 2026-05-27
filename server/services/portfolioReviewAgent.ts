@@ -163,7 +163,12 @@ ${previousSnapshot ? JSON.stringify({
   }) : '【无历史对比快照：属于首次建档，无对比动作】'}
 
 【持仓异动 Delta 对冲结果 (deltas)】
-${deltas.length > 0 ? JSON.stringify(deltas) : '【没有发生任何持仓或股票持有数量变动（unchanged）】'}
+${deltas.length > 0 
+  ? JSON.stringify(deltas) 
+  : (!previousSnapshot 
+      ? '【首次复盘建档：无历史快照，无法判断新建仓/加仓/减仓/清仓动作。本轮仅作为基准快照。】' 
+      : '【与上一轮快照相比，未检测到可靠的持仓数量变化。】'
+    )}
 
 【上期历史复盘与记忆交叉核对 / Historical Review Memory Correlation】
 ${reviewMemory ? `- 上次复盘引入的重点防御行动细节（Review Memory）:
