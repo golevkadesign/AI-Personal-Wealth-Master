@@ -204,7 +204,15 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
     const dirClass = direction === 'col' ? 'flex-col' : 'flex-row';
     const justifyClass = `justify-${justify}`;
     const alignClass = `items-${align}`;
-    const gapClass = `gap-${gap}`;
+    const gapMap: Record<number | string, string> = {
+      2: 'gap-2',
+      3: 'gap-3',
+      4: 'gap-4',
+      5: 'gap-5',
+      6: 'gap-6',
+      8: 'gap-8'
+    };
+    const gapClass = gapMap[gap as keyof typeof gapMap] || 'gap-4';
     return (
       <div className={`flex ${dirClass} ${justifyClass} ${alignClass} ${gapClass} ${className}`}>
         {children}

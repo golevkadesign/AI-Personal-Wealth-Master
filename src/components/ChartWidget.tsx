@@ -52,25 +52,25 @@ export function ChartWidget({ title, type, dataLength, insight, option, delay = 
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: "spring", stiffness: 400, damping: 25, delay: delay }}
-      className={`arbitra-panel arbitra-panel-hover rounded-2xl p-6 sm:p-8 flex flex-col relative overflow-hidden group ${sizeClassMap[size || 'md']} ${className || 'h-full'}`}
+      className={`arbitra-panel arbitra-panel-hover rounded-2xl p-6 sm:p-8 flex flex-col relative overflow-hidden group min-w-[260px] sm:min-w-[300px] max-w-full ${sizeClassMap[size || 'md']} ${className || 'h-full'}`}
     >
-      <h3 className="arbitra-text-secondary text-[11px] arbitra-text-mono font-semibold mb-6 flex justify-between items-start z-10 shrink-0 uppercase tracking-widest">
-        <span className="flex items-center gap-2">{title}</span>
-        <div className="flex items-center gap-2">
+      <h3 className="arbitra-text-secondary text-[11px] arbitra-text-mono font-semibold mb-6 flex justify-between items-start z-10 shrink-0 uppercase tracking-widest gap-2 min-w-0">
+        <span className="flex items-center gap-2 min-w-0 truncate">{title}</span>
+        <div className="flex items-center gap-2 shrink-0">
           {showReload && onReload && (
             <button
               onClick={() => onReload()}
               disabled={isReloading}
-              className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity border border-[#C9B284]/25 hover:border-[#C9B284]/50 bg-[#16181A] hover:bg-[#C9B284]/10 text-[#C9B284] px-2.5 py-1 font-semibold text-[10px] rounded-[8px] transition-all cursor-pointer flex items-center gap-1 shadow-sm font-sans"
+              className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity border border-[#C9B284]/25 hover:border-[#C9B284]/50 bg-[#16181A] hover:bg-[#C9B284]/10 text-[#C9B284] px-2.5 py-1 font-semibold text-[10px] rounded-[8px] transition-all cursor-pointer flex items-center gap-1 shadow-sm font-sans whitespace-nowrap shrink-0"
               title={reloadLabel}
             >
               <RefreshCw className={`w-3 h-3 ${isReloading ? 'animate-spin' : ''}`} />
-              <span>{reloadLabel}</span>
+              <span className="whitespace-nowrap">{reloadLabel}</span>
             </button>
           )}
-          {badge && <div>{badge}</div>}
+          {badge && <div className="shrink-0">{badge}</div>}
           <button
-             className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity border border-[#C9B284]/25 hover:border-[#C9B284]/50 bg-[#16181A] hover:bg-[#C9B284]/10 text-[#C9B284] px-2.5 py-1 font-semibold text-[10px] rounded-[8px] transition-all cursor-pointer flex items-center gap-1 shadow-sm font-sans"
+             className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity border border-[#C9B284]/25 hover:border-[#C9B284]/50 bg-[#16181A] hover:bg-[#C9B284]/10 text-[#C9B284] px-2.5 py-1 font-semibold text-[10px] rounded-[8px] transition-all cursor-pointer flex items-center gap-1 shadow-sm font-sans whitespace-nowrap shrink-0"
              onClick={() => {
                const roleName = title === '公开市场持仓视图' ? '首席组合策略师' : '数据分析专家';
                useInteractionStore.getState().openCopilot(title as string, { insight }, roleName);
@@ -78,7 +78,7 @@ export function ChartWidget({ title, type, dataLength, insight, option, delay = 
              title="专家探讨"
              aria-label="专家探讨"
           >
-             <span>✨</span><span>专家探讨</span>
+             <span>✨</span><span className="whitespace-nowrap">专家探讨</span>
           </button>
         </div>
       </h3>
