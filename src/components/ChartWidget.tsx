@@ -31,9 +31,17 @@ interface ChartWidgetProps {
   badge?: React.ReactNode;
   onChartClick?: (params: any) => void;
   className?: string;
+  size?: 'sm' | 'md' | 'lg' | 'auto';
 }
 
-export function ChartWidget({ title, type, dataLength, insight, option, delay = 0, chartHeight = '250px', children, status, onReload, showReload, reloadLabel = '刷新实盘', isReloading, badge, onChartClick, className }: ChartWidgetProps) {
+const sizeClassMap = {
+  sm: 'min-h-[280px]',
+  md: 'min-h-[340px]',
+  lg: 'min-h-[420px]',
+  auto: 'min-h-[280px]'
+};
+
+export function ChartWidget({ title, type, dataLength, insight, option, delay = 0, chartHeight = '250px', children, status, onReload, showReload, reloadLabel = '刷新实盘', isReloading, badge, onChartClick, className, size }: ChartWidgetProps) {
   // If status is provided, use it, else derive from dataLength
   const currentStatus = status || (dataLength > 0 ? 'success' : 'empty');
   
@@ -44,7 +52,7 @@ export function ChartWidget({ title, type, dataLength, insight, option, delay = 
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: "spring", stiffness: 400, damping: 25, delay: delay }}
-      className={`arbitra-panel arbitra-panel-hover rounded-2xl p-6 sm:p-8 flex flex-col relative overflow-hidden group ${className || 'h-full'}`}
+      className={`arbitra-panel arbitra-panel-hover rounded-2xl p-6 sm:p-8 flex flex-col relative overflow-hidden group ${sizeClassMap[size || 'md']} ${className || 'h-full'}`}
     >
       <h3 className="arbitra-text-secondary text-[11px] arbitra-text-mono font-semibold mb-6 flex justify-between items-start z-10 shrink-0 uppercase tracking-widest">
         <span className="flex items-center gap-2">{title}</span>
@@ -76,7 +84,7 @@ export function ChartWidget({ title, type, dataLength, insight, option, delay = 
       </h3>
       
       {currentStatus === 'loading' && (
-         <div className="flex-1 flex flex-col items-center justify-center min-h-[200px] gap-4">
+         <div className="flex-1 flex flex-col items-center justify-center min-h-[220px] gap-4">
              <div className="w-10 h-10 rounded-[12px] bg-surface flex items-center justify-center border border-dash-subtle shadow-inner">
                  <div className="w-4 h-4 rounded-full border border-dash-primary/30 border-t-dash-primary animate-spin" />
              </div>
@@ -86,7 +94,7 @@ export function ChartWidget({ title, type, dataLength, insight, option, delay = 
       )}
 
       {currentStatus === 'empty' && (
-         <div className="flex-1 flex flex-col items-center justify-center min-h-[200px] text-dash-tertiary">
+         <div className="flex-1 flex flex-col items-center justify-center min-h-[220px] text-dash-tertiary">
            <PieChart className="w-8 h-8 mb-3 opacity-30 arbitra-text-gold" />
            <p className="arbitra-text-mono text-[10px] tracking-[0.2em] arbitra-text-tertiary uppercase mb-1">等待上下文</p>
            <span className="text-xs arbitra-text-secondary font-medium">暂无数据</span>
@@ -94,7 +102,7 @@ export function ChartWidget({ title, type, dataLength, insight, option, delay = 
       )}
 
       {currentStatus === 'error' && (
-         <div className="flex-1 flex flex-col items-center justify-center min-h-[200px] gap-3">
+         <div className="flex-1 flex flex-col items-center justify-center min-h-[220px] gap-3">
             <div className="w-10 h-10 rounded-[12px] bg-rose-500/10 flex items-center justify-center border border-rose-500/20 shadow-inner mb-2">
                  <RefreshCw className="w-4 h-4 text-rose-500" />
             </div>

@@ -4,7 +4,7 @@ export const DEFAULT_DASHBOARD_SCHEMA: SDUIComponent[] = [
   {
     id: "metrics-grid",
     type: "Grid",
-    props: { columns: 4, gap: 6, className: "mb-8" },
+    props: { preset: 'metrics', gap: 6, className: "mb-8" },
     children: [
       { id: "m1", type: "MetricCard", props: { title: "总净资产 (Net Worth)", dataKey: "netWorth", isLongSubText: true } },
       { id: "m2", type: "MetricCard", props: { title: "可用现金池 (Liquidity)", dataKey: "liquidity", isLongSubText: true } },
@@ -15,7 +15,7 @@ export const DEFAULT_DASHBOARD_SCHEMA: SDUIComponent[] = [
   {
     id: "charts-grid",
     type: "Grid",
-    props: { columns: 2, gap: 6, className: "mb-8 lg:grid-cols-2 2xl:grid-cols-3" },
+    props: { preset: 'charts', gap: 6, className: "mb-8" },
     children: [
       { id: "c1", type: "DynamicChart", props: { title: "流动资金池", chartType: "liquidity", layoutSize: "md", delay: 0.1 } },
       { id: "c2", type: "DynamicChart", props: { title: "公开市场持仓视图", chartType: "publicHoldings", layoutSize: "lg", delay: 0.2 } },

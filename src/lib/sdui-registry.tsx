@@ -49,15 +49,36 @@ const paddingMap: Record<string, string> = {
 };
 
 export const ComponentRegistry: Record<string, React.FC<any>> = {
-  Grid: ({ columns = 1, gap = 6, className = "", children }) => {
-    // Handling dynamic grid cols can be tricky with Tailwind if not purged correctly,
-    // but typically `grid-cols-1`, `md:grid-cols-2`, `md:grid-cols-3` are common or we can map it
-    const colClass = columns === 4 ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-4" : 
-                     columns === 2 ? "grid-cols-1 md:grid-cols-2" : 
-                     columns === 3 ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : "grid-cols-1";
+  Grid: ({ columns = 1, gap = 6, preset, className = "", children }) => {
+    const visibleChildren = React.Children.toArray(children).filter(Boolean);
+    if (visibleChildren.length === 0) {
+      return null;
+    }
+
+    const gapMap: Record<number, string> = {
+      4: 'gap-4',
+      5: 'gap-5',
+      6: 'gap-6',
+      7: 'gap-7',
+      8: 'gap-8'
+    };
+    const gapClass = gapMap[gap] || 'gap-6';
+
+    let layoutClass = "";
+    if (preset) {
+      layoutClass = preset === 'metrics' ? DASHBOARD_LAYOUT.grid.metrics :
+                    preset === 'charts' ? DASHBOARD_LAYOUT.grid.charts :
+                    preset === 'sections' ? DASHBOARD_LAYOUT.grid.sections : '';
+    } else {
+      const colClass = columns === 4 ? "grid-cols-1 sm:grid-cols-2 xl:grid-cols-4" : 
+                       columns === 3 ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3" :
+                       columns === 2 ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1";
+      layoutClass = `${colClass} ${gapClass}`;
+    }
+
     return (
-      <div className={`grid ${colClass} gap-${gap} ${className}`}>
-        {children}
+      <div className={`grid ${layoutClass} ${className}`}>
+        {visibleChildren}
       </div>
     );
   },
@@ -79,13 +100,14 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
     return <Card title={title} value={valueStr} subValue={subValue} isLongSubText={isLongSubText} />;
   },
   DynamicChart: ({ title, chartType, chartHeight, layoutSize, delay, globalData }) => {
+    const { t } = useTranslation();
+    const dispatchEvent = useSDUIEventStore.getState().dispatch;
+    const { selectedHolding, setSelectedHolding } = globalData || {};
+
     const visibility = getChartVisibility(globalData, chartType);
     if (!visibility.visible) {
       return null;
     }
-    const dispatchEvent = useSDUIEventStore.getState().dispatch;
-    const { t } = useTranslation();
-    const { selectedHolding, setSelectedHolding } = globalData || {};
     const distData = globalData?.distributions?.[chartType] || [];
 
     let resolvedHeight = chartHeight;
@@ -154,6 +176,7 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
         type={chartType}
         option={option}
         chartHeight={resolvedHeight}
+        size={layoutSize || 'md'}
         delay={delay}
         insight={globalData?.insights?.[insightKey] || ""}
         dataLength={distData.length}
