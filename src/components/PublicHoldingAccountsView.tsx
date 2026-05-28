@@ -36,20 +36,6 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
 }) => {
   const [isRefreshing, setIsRefreshing] = React.useState(false);
   const fetchLongbridgeAccountPortfolios = useWealthStore(state => state.fetchLongbridgeAccountPortfolios);
-  const createPortfolioReviewSession = useWealthStore(state => state.createPortfolioReviewSession);
-  const [reviewError, setReviewError] = React.useState<string | null>(null);
-
-  const handleCreateReview = () => {
-    setReviewError(null);
-    const session = createPortfolioReviewSession();
-    if (!session) {
-      setReviewError("当前没有可复盘的持仓数据，请先同步持仓。");
-      setTimeout(() => setReviewError(null), 4000);
-    } else {
-      console.log("[PortfolioReview] Session created:", session);
-      window.dispatchEvent(new CustomEvent('open-portfolio-review', { detail: { sessionId: session.id } }));
-    }
-  };
 
   const handleReload = async () => {
     setIsRefreshing(true);
@@ -73,6 +59,54 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
 
   return (
     <div className="space-y-6">
+      {/* Unified Multi-Account Group Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-5 sm:p-6 bg-[#16181A] border border-white/[0.03] rounded-2xl">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-sm md:text-base font-bold text-[#E7D7B0] tracking-tight">多账户公开市场持仓</h2>
+            {/* Unified Status Badge */}
+            {isRefreshing || syncStatus === 'loading' ? (
+              <span className="text-[10px] bg-amber-950/40 text-amber-400 border border-amber-900/30 px-2.5 py-0.5 rounded-[4px] font-mono font-medium select-none">
+                同步中...
+              </span>
+            ) : syncStatus === 'error' || accountPortfolios.some(a => a.meta?.error) ? (
+              <span className="text-[10px] bg-rose-950/40 text-rose-400 border border-rose-900/30 px-2.5 py-0.5 rounded-[4px] font-mono font-medium select-none">
+                部分异常
+              </span>
+            ) : !hasData || syncStatus === 'empty' ? (
+              <span className="text-[10px] bg-zinc-800/40 text-zinc-400 border border-zinc-700/30 px-2.5 py-0.5 rounded-[4px] font-mono font-medium select-none">
+                暂无持仓
+              </span>
+            ) : (
+              <span className="text-[10px] bg-emerald-950/40 text-emerald-400 border border-emerald-900/30 px-2.5 py-0.5 rounded-[4px] font-mono font-medium select-none">
+                已同步
+              </span>
+            )}
+          </div>
+          <p className="text-[11px] text-zinc-400 select-none">按券商账户拆分展示，不做跨账户合并</p>
+        </div>
+
+        {/* Global Action Section */}
+        <div className="flex items-center gap-3 self-end sm:self-center">
+          <button
+            onClick={handleReload}
+            disabled={isRefreshing}
+            className="border border-[#C9B284]/25 hover:border-[#C9B284]/50 disabled:border-[#C9B284]/12 bg-[#16181A]/80 hover:bg-[#C9B284]/10 disabled:bg-transparent text-[#C9B284] disabled:text-[#C9B284]/40 px-3 py-1.5 text-[11px] font-mono rounded-[8px] transition-all cursor-pointer flex items-center gap-1.5 shadow-sm font-medium select-none"
+          >
+            <span>🔄</span>
+            <span>{isRefreshing ? '同步中...' : '刷新实盘'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Global Insight for Public Holdings if available */}
+      {globalData?.insights?.public && (
+        <div className="p-4 bg-[#1C1812] border border-[#C9B284]/10 rounded-xl relative overflow-hidden">
+          <div className="absolute right-3 top-3 text-[10px] font-mono text-[#A39167]/30 uppercase tracking-widest font-bold select-none">INSIGHT</div>
+          <p className="text-xs text-[#DECBA2] leading-relaxed pr-16">{globalData.insights.public}</p>
+        </div>
+      )}
+
       {accountPortfolios.map((account, accIdx) => {
         const positions = account.positions || [];
         const sortedArr = [...positions].sort((a, b) => getHoldingMarketValue(b) - getHoldingMarketValue(a));
@@ -131,27 +165,15 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
           }
         };
 
-        const isFirst = accIdx === 0;
-
         const cardBadge = (
           <div className="flex items-center gap-3 relative mr-1">
-            {isFirst && reviewError && (
-              <div className="absolute right-0 top-full mt-2 z-50 bg-[#1A0B0B] border border-rose-500/30 text-rose-300 text-[10px] px-3 py-1.5 rounded-lg shadow-xl whitespace-nowrap animate-in fade-in slide-in-from-top-1 duration-200">
-                {reviewError}
-              </div>
+            {account.meta?.error && (
+              <span className="text-[10px] bg-rose-950/40 text-rose-400 border border-rose-900/30 px-2.5 py-0.5 rounded-[4px] font-mono font-medium">
+                同步异常
+              </span>
             )}
-            {isFirst && (
-              <button
-                onClick={handleCreateReview}
-                className="border border-[#C9B284]/25 hover:border-[#C9B284]/50 bg-[#16181A]/80 hover:bg-[#C9B284]/10 text-[#C9B284] px-2.5 py-1 text-[10px] font-mono rounded-[8px] transition-all cursor-pointer flex items-center gap-1.5 shadow-sm shrink-0 font-medium"
-                title="基于当前多账户持仓创建复盘快照并对比上次记录"
-              >
-                <span>📊</span>
-                <span>生成本轮持仓复盘</span>
-              </button>
-            )}
-            <span className="hidden sm:inline-block text-[10px] text-[#A39167] font-mono font-semibold tracking-wider">
-              {account.accountName || '证券账户'}
+            <span className="text-[10px] text-[#A39167] font-mono font-semibold tracking-wider">
+              {account.accountName || account.accountId || '证券账户'}
             </span>
           </div>
         );
@@ -170,15 +192,15 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
             title={cardTitle}
             type={chartType}
             dataLength={positions.length}
-            insight={isFirst ? (globalData?.insights?.public || "") : ""}
+            insight=""
             delay={delay}
             chartHeight="auto"
             className="h-auto"
             badge={cardBadge}
             status={account.meta?.error ? 'error' : 'success'}
-            onReload={handleReload}
-            showReload={isFirst}
-            isReloading={isRefreshing}
+            onReload={undefined}
+            showReload={false}
+            isReloading={false}
           >
             {/* Synchronization alert banner specifically visible on this account */}
             {account.meta?.error && (

@@ -29,11 +29,26 @@ export const PublicHoldingsView: React.FC<PublicHoldingsViewProps> = ({
 }) => {
   const [isRefreshing, setIsRefreshing] = React.useState(false);
   const fetchLongbridge = useWealthStore(state => state.fetchLongbridge);
+  const fetchLongbridgeAccountPortfolios = useWealthStore(state => state.fetchLongbridgeAccountPortfolios);
 
   const handleReload = async () => {
     setIsRefreshing(true);
     try {
-      await fetchLongbridge();
+      let hasAccounts = false;
+      try {
+        await fetchLongbridgeAccountPortfolios();
+        const state = useWealthStore.getState();
+        const accounts = state.data.publicHoldingAccounts || (state.data.distributions as any)?.publicHoldingAccounts || [];
+        if (accounts.length > 0) {
+          hasAccounts = true;
+        }
+      } catch (err) {
+        console.error("fetchLongbridgeAccountPortfolios failed, falling back to fetchLongbridge:", err);
+      }
+
+      if (!hasAccounts) {
+        await fetchLongbridge();
+      }
     } finally {
       setIsRefreshing(false);
     }
