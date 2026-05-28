@@ -16,15 +16,15 @@ export const EMPTY_STATE: TerminalState = {
   userPersona: { tags: [], description: "唤起总监生成您的个人资产画像模型" },
   userProfile: {},
   metrics: { 
-    netWorth: 0, 
-    liquidity: 0, 
-    safetyRatio: 0, 
-    safetyRatioSummary: '当前流动性支撑乘数',
-    fcf: 0,
-    fcfSummary: '测算月结余'
+    netWorth: undefined, 
+    liquidity: undefined, 
+    safetyRatio: undefined, 
+    safetyRatioSummary: undefined,
+    fcf: undefined,
+    fcfSummary: undefined
   },
   distributions: { liquidity: [], expenses: [], privateAssets: [], publicHoldings: [], fixedAssets: [], options: [] },
-  goal: { name: '等待设定目标', current: 0, target: 1, index: 0 },
+  goal: { name: '等待设定目标', current: undefined, target: undefined, index: undefined },
   insights: { global: "等待数据注入...", private: "暂无非公开资产数据" },
   lifeStrategiesShort: [],
   lifeStrategiesLong: [],

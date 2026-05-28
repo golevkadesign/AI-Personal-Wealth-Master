@@ -10,6 +10,8 @@ import { useSDUIEventStore } from '../hooks/useSDUIEventStore';
 import { useTranslation } from '../hooks/useTranslation';
 import { PublicHoldingsView } from '../components/PublicHoldingsView';
 import { PublicHoldingAccountsView } from '../components/PublicHoldingAccountsView';
+import { getMetricVisibility, getChartVisibility } from './dashboard-visibility';
+import { DASHBOARD_LAYOUT } from './dashboard-layout';
 
 const bgMap: Record<string, string> = {
   'surface-base': 'bg-dash-surface',
@@ -60,6 +62,10 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
     );
   },
   MetricCard: ({ title, dataKey, isLongSubText, globalData }) => {
+    const visibility = getMetricVisibility(globalData, dataKey);
+    if (!visibility.visible) {
+      return null;
+    }
     const metrics = globalData?.metrics || {};
     const valueNum = metrics[dataKey];
     let currency = 'USD';
@@ -72,11 +78,26 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
     const subValue = metrics[`${dataKey}Summary`] || '';
     return <Card title={title} value={valueStr} subValue={subValue} isLongSubText={isLongSubText} />;
   },
-  DynamicChart: ({ title, chartType, chartHeight, delay, globalData }) => {
+  DynamicChart: ({ title, chartType, chartHeight, layoutSize, delay, globalData }) => {
+    const visibility = getChartVisibility(globalData, chartType);
+    if (!visibility.visible) {
+      return null;
+    }
     const dispatchEvent = useSDUIEventStore.getState().dispatch;
     const { t } = useTranslation();
     const { selectedHolding, setSelectedHolding } = globalData || {};
     const distData = globalData?.distributions?.[chartType] || [];
+
+    let resolvedHeight = chartHeight;
+    if (!resolvedHeight && layoutSize) {
+      const layoutSetting = DASHBOARD_LAYOUT.chart[layoutSize as keyof typeof DASHBOARD_LAYOUT.chart];
+      if (layoutSetting) {
+        resolvedHeight = layoutSetting.chartHeight;
+      }
+    }
+    if (!resolvedHeight) {
+      resolvedHeight = '240px';
+    }
 
     if (chartType === 'publicHoldings') {
       const publicHoldingAccounts = globalData?.publicHoldingAccounts || [];
@@ -89,7 +110,7 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
             syncStatus={globalData?.publicHoldingAccountsSyncStatus || 'idle'}
             syncError={globalData?.publicHoldingAccountsError}
             lastSyncAt={globalData?.publicHoldingAccountsLastSyncAt}
-            chartHeight={chartHeight}
+            chartHeight={resolvedHeight}
             delay={delay}
             selectedHolding={selectedHolding}
             setSelectedHolding={setSelectedHolding}
@@ -104,7 +125,7 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
           chartType={chartType}
           distData={distData}
           globalData={globalData}
-          chartHeight={chartHeight}
+          chartHeight={resolvedHeight}
           delay={delay}
           selectedHolding={selectedHolding}
           setSelectedHolding={setSelectedHolding}
@@ -132,7 +153,7 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
         title={title}
         type={chartType}
         option={option}
-        chartHeight={chartHeight}
+        chartHeight={resolvedHeight}
         delay={delay}
         insight={globalData?.insights?.[insightKey] || ""}
         dataLength={distData.length}

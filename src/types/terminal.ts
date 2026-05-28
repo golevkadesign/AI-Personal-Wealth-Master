@@ -10,14 +10,14 @@ export interface UserProfile {
 }
 
 export interface Metrics {
-  netWorth: number;
+  netWorth?: number;
   netWorthSummary?: string;
-  liquidity: number;
+  liquidity?: number;
   liquiditySummary?: string;
-  safetyRatio: number;
-  safetyRatioSummary: string;
-  fcf: number;
-  fcfSummary: string;
+  safetyRatio?: number;
+  safetyRatioSummary?: string;
+  fcf?: number;
+  fcfSummary?: string;
 }
 
 export interface PublicHolding {
@@ -61,9 +61,9 @@ export interface Distributions {
 
 export interface Goal {
   name: string;
-  current: number;
-  target: number;
-  index: number;
+  current?: number;
+  target?: number;
+  index?: number;
 }
 
 export interface Insights {
