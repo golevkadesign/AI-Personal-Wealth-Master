@@ -99,7 +99,7 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
     const subValue = metrics[`${dataKey}Summary`] || '';
     return <Card title={title} value={valueStr} subValue={subValue} isLongSubText={isLongSubText} />;
   },
-  DynamicChart: ({ title, chartType, chartHeight, layoutSize, delay, globalData }) => {
+  DynamicChart: ({ title, chartType, chartHeight, layoutSize, delay, globalData, layoutSpan }) => {
     const { t } = useTranslation();
     const dispatchEvent = useSDUIEventStore.getState().dispatch;
     const { selectedHolding, setSelectedHolding } = globalData || {};
@@ -121,10 +121,12 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
       resolvedHeight = '240px';
     }
 
+    let renderContent: React.ReactElement | null = null;
+
     if (chartType === 'publicHoldings') {
       const publicHoldingAccounts = globalData?.publicHoldingAccounts || [];
       if (publicHoldingAccounts.length > 0) {
-        return (
+        renderContent = (
           <PublicHoldingAccountsView
             title={title}
             chartType={chartType}
@@ -140,48 +142,62 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
             globalData={globalData}
           />
         );
+      } else {
+        renderContent = (
+          <PublicHoldingsView
+            title={title}
+            chartType={chartType}
+            distData={distData}
+            globalData={globalData}
+            chartHeight={resolvedHeight}
+            delay={delay}
+            selectedHolding={selectedHolding}
+            setSelectedHolding={setSelectedHolding}
+            t={t}
+          />
+        );
       }
-      return (
-        <PublicHoldingsView
+    } else {
+      // Default chart renderer for normal widgets: liquidity, expenses, options, etc.
+      let option = {};
+      const chartContextData = { ...globalData, distributions: { ...globalData?.distributions, [chartType]: distData } };
+      
+      if (chartType === 'liquidity') option = getDonutOption(chartContextData, t);
+      else if (chartType === 'expenses') option = getExpenseOption(chartContextData, t);
+      else if (chartType === 'privateAssets') option = getWaterfallOption(chartContextData, t);
+      else if (chartType === 'publicHoldings') option = getHoldingsOption(chartContextData, t);
+      else if (chartType === 'options') option = getOptionsOption(chartContextData, t);
+
+      let insightKey = 'global';
+      if (chartType === 'publicHoldings' || chartType === 'options') insightKey = 'public';
+      if (chartType === 'privateAssets') insightKey = 'private';
+
+      renderContent = (
+        <ChartWidget
           title={title}
-          chartType={chartType}
-          distData={distData}
-          globalData={globalData}
+          type={chartType}
+          option={option}
           chartHeight={resolvedHeight}
+          size={layoutSize || 'md'}
           delay={delay}
-          selectedHolding={selectedHolding}
-          setSelectedHolding={setSelectedHolding}
-          t={t}
+          insight={globalData?.insights?.[insightKey] || ""}
+          dataLength={distData.length}
+          onChartClick={(params) => dispatchEvent('CHART_CLICK', params)}
         />
       );
     }
 
-    // Default chart renderer for normal widgets: liquidity, expenses, options, etc.
-    let option = {};
-    const chartContextData = { ...globalData, distributions: { ...globalData?.distributions, [chartType]: distData } };
-    
-    if (chartType === 'liquidity') option = getDonutOption(chartContextData, t);
-    else if (chartType === 'expenses') option = getExpenseOption(chartContextData, t);
-    else if (chartType === 'privateAssets') option = getWaterfallOption(chartContextData, t);
-    else if (chartType === 'publicHoldings') option = getHoldingsOption(chartContextData, t);
-    else if (chartType === 'options') option = getOptionsOption(chartContextData, t);
-
-    let insightKey = 'global';
-    if (chartType === 'publicHoldings' || chartType === 'options') insightKey = 'public';
-    if (chartType === 'privateAssets') insightKey = 'private';
+    const spanClassMap: Record<string, string> = {
+      normal: '',
+      wide: 'xl:col-span-2 2xl:col-span-2',
+      full: 'col-span-1 xl:col-span-2 2xl:col-span-3'
+    };
+    const spanClass = spanClassMap[layoutSpan as string] || '';
 
     return (
-      <ChartWidget
-        title={title}
-        type={chartType}
-        option={option}
-        chartHeight={resolvedHeight}
-        size={layoutSize || 'md'}
-        delay={delay}
-        insight={globalData?.insights?.[insightKey] || ""}
-        dataLength={distData.length}
-        onChartClick={(params) => dispatchEvent('CHART_CLICK', params)}
-      />
+      <div className={spanClass}>
+        {renderContent}
+      </div>
     );
   },
   Flex: ({ direction = 'row', justify = 'start', align = 'stretch', gap = 4, className = '', children }) => {

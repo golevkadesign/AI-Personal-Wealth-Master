@@ -3,6 +3,33 @@ import { X, Settings, Loader2, RefreshCw, Wallet, Cpu, LineChart, Shield, CheckC
 import { getSettings, saveSettings as persistSettings, AppSettings } from '../lib/settings';
 import { useTranslation } from '../hooks/useTranslation';
 
+function buildModelOptions(currentValue: string | undefined, defaults: string[], available: string[]): string[] {
+  const result: string[] = [];
+  const trimmedVal = currentValue?.trim();
+  if (trimmedVal) {
+    result.push(trimmedVal);
+  }
+  defaults.forEach(d => {
+    const trimmed = d?.trim();
+    if (trimmed) result.push(trimmed);
+  });
+  available.forEach(a => {
+    const trimmed = a?.trim();
+    if (trimmed) result.push(trimmed);
+  });
+  return Array.from(new Set(result));
+}
+
+function getModelLabel(m: string, currentValue: string | undefined, defaultModel: string): string {
+  if (m === currentValue) {
+    return `${m} (当前)`;
+  }
+  if (m === defaultModel) {
+    return `${m} (默认可选)`;
+  }
+  return m;
+}
+
 export const SettingsModal = ({ isOpen, onClose, onClearData }: { isOpen: boolean, onClose: () => void, onClearData?: () => void }) => {
   const { t } = useTranslation();
   const [settings, setSettings] = useState<AppSettings>(getSettings());
@@ -34,7 +61,45 @@ export const SettingsModal = ({ isOpen, onClose, onClearData }: { isOpen: boolea
   }, [isOpen]);
 
   const handleSave = () => {
-    persistSettings(settings);
+    const normalizedSettings = { ...settings };
+    
+    // Trim all model fields safely
+    normalizedSettings.geminiFastModel = (normalizedSettings.geminiFastModel || '').trim();
+    normalizedSettings.geminiAdvancedModel = (normalizedSettings.geminiAdvancedModel || '').trim();
+    normalizedSettings.openaiFastModel = (normalizedSettings.openaiFastModel || '').trim();
+    normalizedSettings.openaiAdvancedModel = (normalizedSettings.openaiAdvancedModel || '').trim();
+
+    // Fallback if empty
+    if (normalizedSettings.provider === 'gemini') {
+      if (!normalizedSettings.geminiFastModel) {
+        normalizedSettings.geminiFastModel = 'gemini-3-flash-preview';
+      }
+      if (!normalizedSettings.geminiAdvancedModel) {
+        normalizedSettings.geminiAdvancedModel = 'gemini-3.1-pro-preview';
+      }
+    } else if (normalizedSettings.provider === 'openai') {
+      if (!normalizedSettings.openaiFastModel) {
+        normalizedSettings.openaiFastModel = 'gpt-4o-mini';
+      }
+      if (!normalizedSettings.openaiAdvancedModel) {
+        normalizedSettings.openaiAdvancedModel = 'gpt-4o';
+      }
+    }
+
+    persistSettings(normalizedSettings);
+
+    // Development only console.debug post-save check to ensure state was saved successfully
+    if (process.env.NODE_ENV !== 'production') {
+      const saved = getSettings();
+      console.debug("[SettingsSave] Saved provider/models verification:", {
+        provider: saved.provider,
+        geminiFastModel: saved.geminiFastModel,
+        geminiAdvancedModel: saved.geminiAdvancedModel,
+        openaiFastModel: saved.openaiFastModel,
+        openaiAdvancedModel: saved.openaiAdvancedModel
+      });
+    }
+
     setShowSavedToast(true);
     setTimeout(() => {
       onClose();
@@ -195,13 +260,9 @@ export const SettingsModal = ({ isOpen, onClose, onClearData }: { isOpen: boolea
                         onChange={(e) => setSettings({...settings, geminiFastModel: e.target.value})}
                         className="w-full bg-[#121419] border border-[#1A1D20] text-[#E7D7B0] text-[13px] rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#C9B284]/50 transition-colors font-mono"
                       >
-                        {Array.from(new Set([
-                          'gemini-3-flash-preview',
-                          'gemini-2.5-flash',
-                          ...availableGeminiModels
-                        ])).map(m => (
+                        {buildModelOptions(settings.geminiFastModel, ['gemini-3-flash-preview', 'gemini-2.5-flash'], availableGeminiModels).map(m => (
                           <option key={m} value={m}>
-                            {m} {m === 'gemini-3-flash-preview' ? '(默认)' : ''}
+                            {getModelLabel(m, settings.geminiFastModel, 'gemini-3-flash-preview')}
                           </option>
                         ))}
                       </select>
@@ -211,13 +272,9 @@ export const SettingsModal = ({ isOpen, onClose, onClearData }: { isOpen: boolea
                         onChange={(e) => setSettings({...settings, openaiFastModel: e.target.value})}
                         className="w-full bg-[#121419] border border-[#1A1D20] text-[#E7D7B0] text-[13px] rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#C9B284]/50 transition-colors font-mono"
                       >
-                        {Array.from(new Set([
-                          'gpt-4o-mini',
-                          'gpt-3.5-turbo',
-                          ...availableOpenAIModels
-                        ])).map(m => (
+                        {buildModelOptions(settings.openaiFastModel, ['gpt-4o-mini', 'gpt-3.5-turbo'], availableOpenAIModels).map(m => (
                           <option key={m} value={m}>
-                            {m} {m === 'gpt-4o-mini' ? '(默认)' : ''}
+                            {getModelLabel(m, settings.openaiFastModel, 'gpt-4o-mini')}
                           </option>
                         ))}
                       </select>
@@ -233,13 +290,9 @@ export const SettingsModal = ({ isOpen, onClose, onClearData }: { isOpen: boolea
                         onChange={(e) => setSettings({...settings, geminiAdvancedModel: e.target.value})}
                         className="w-full bg-[#121419] border border-[#1A1D20] text-[#E7D7B0] text-[13px] rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#C9B284]/50 transition-colors font-mono"
                       >
-                        {Array.from(new Set([
-                          'gemini-3.1-pro-preview',
-                          'gemini-2.5-pro',
-                          ...availableGeminiModels
-                        ])).map(m => (
+                        {buildModelOptions(settings.geminiAdvancedModel, ['gemini-3.1-pro-preview', 'gemini-2.5-pro'], availableGeminiModels).map(m => (
                           <option key={m} value={m}>
-                            {m} {m === 'gemini-3.1-pro-preview' ? '(默认)' : ''}
+                            {getModelLabel(m, settings.geminiAdvancedModel, 'gemini-3.1-pro-preview')}
                           </option>
                         ))}
                       </select>
@@ -249,14 +302,9 @@ export const SettingsModal = ({ isOpen, onClose, onClearData }: { isOpen: boolea
                         onChange={(e) => setSettings({...settings, openaiAdvancedModel: e.target.value})}
                         className="w-full bg-[#121419] border border-[#1A1D20] text-[#E7D7B0] text-[13px] rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#C9B284]/50 transition-colors font-mono"
                       >
-                        {Array.from(new Set([
-                          'gpt-4o',
-                          'o3-mini',
-                          'o1-preview',
-                          ...availableOpenAIModels
-                        ])).map(m => (
+                        {buildModelOptions(settings.openaiAdvancedModel, ['gpt-4o', 'o3-mini', 'o1-preview'], availableOpenAIModels).map(m => (
                           <option key={m} value={m}>
-                            {m} {m === 'gpt-4o' ? '(默认)' : ''}
+                            {getModelLabel(m, settings.openaiAdvancedModel, 'gpt-4o')}
                           </option>
                         ))}
                       </select>

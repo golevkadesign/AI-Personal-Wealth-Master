@@ -97,6 +97,8 @@ export interface AccountPosition {
   costPrice: number;
   currentPrice?: number;
   marketValue?: number;
+  value?: number;
+  _staleQuote?: boolean;
   currency?: string;
   valuationSource?: string;
   accountId: string;
@@ -111,6 +113,9 @@ export interface AccountPortfolio {
     positionCount: number;
     quoteCoverage?: number;
     missingQuoteSymbols?: string[];
+    valuationCoverage?: number;
+    missingValuationSymbols?: string[];
+    estimatedValuationSymbols?: string[];
     generatedAt: number;
     error?: string;
   };
