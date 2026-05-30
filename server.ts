@@ -12,6 +12,7 @@ import { sandboxRouter } from "./server/routes/sandbox";
 import { quantRouter } from "./server/routes/quant";
 import longbridgeRouter from "./server/routes/longbridge";
 import portfolioReviewRouter from "./server/routes/portfolio-review";
+import marketContextRouter from "./server/routes/market-context";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -69,6 +70,7 @@ async function startServer() {
   // 1. Mount /api/portfolio-review with specific 20req/10m rate limiting and 1MB JSON body limit
   const chatRateLimit = createRateLimitMiddleware(50, 10 * 60 * 1000);
   const portfolioReviewRateLimit = createRateLimitMiddleware(20, 10 * 60 * 1000);
+  const marketContextRateLimit = createRateLimitMiddleware(60, 10 * 60 * 1000);
 
   app.use("/api/portfolio-review", portfolioReviewRateLimit, express.json({ limit: "1mb" }), portfolioReviewRouter);
 
@@ -86,6 +88,7 @@ async function startServer() {
   app.use("/api/sandbox", sandboxRouter);
   app.use("/api/quant", quantRouter);
   app.use("/api/v1/wealth/longbridge", longbridgeRouter);
+  app.use("/api/market-context", marketContextRateLimit, marketContextRouter);
 
   // Health check
   app.get("/api/health", (req, res) => {
