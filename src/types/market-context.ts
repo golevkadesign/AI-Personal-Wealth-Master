@@ -94,6 +94,28 @@ export interface CrossAssetSignal {
   suggestedQuestions: string[];
 }
 
+export interface MarketMacroEnhancement {
+  id: string;
+  label: string;
+  category:
+    | 'macro'
+    | 'rates'
+    | 'inflation'
+    | 'growth'
+    | 'commodity'
+    | 'sentiment'
+    | 'unknown';
+  source: 'fred' | 'alpha_vantage';
+  value?: number;
+  unit?: string;
+  asOf?: number;
+  change1M?: number;
+  change3M?: number;
+  dataQuality: 'high' | 'medium' | 'low';
+  interpretation?: string;
+  warnings?: string[];
+}
+
 export interface MarketContext {
   generatedAt: number;
   asOf?: number;
@@ -107,4 +129,5 @@ export interface MarketContext {
   crossAssetSignals: CrossAssetSignal[];
 
   warnings: string[];
+  macroEnhancements?: MarketMacroEnhancement[];
 }

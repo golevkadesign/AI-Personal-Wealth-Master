@@ -30,6 +30,8 @@ export interface SecretAppSettings {
   longbridgeAppSecret?: string;
   longbridgeKey?: string;
   longbridgeAccounts?: LongbridgeAccount[];
+  fredApiKey?: string;
+  alphaVantageApiKey?: string;
 }
 
 export interface AppSettings extends PublicAppSettings, SecretAppSettings {}
@@ -42,6 +44,8 @@ export const defaultSettings: AppSettings = {
   longbridgeAppSecret: '',
   longbridgeKey: '',
   longbridgeAccounts: [],
+  fredApiKey: '',
+  alphaVantageApiKey: '',
   geminiFastModel: 'gemini-3-flash-preview',
   geminiAdvancedModel: 'gemini-3.1-pro-preview',
   openaiFastModel: 'gpt-4o-mini',
@@ -121,6 +125,8 @@ export const getSecretSettingsUnsafe = (): SecretAppSettings => {
     longbridgeAppSecret: defaultSettings.longbridgeAppSecret,
     longbridgeKey: defaultSettings.longbridgeKey,
     longbridgeAccounts: defaultSettings.longbridgeAccounts,
+    fredApiKey: defaultSettings.fredApiKey,
+    alphaVantageApiKey: defaultSettings.alphaVantageApiKey,
   };
   if (typeof window === 'undefined') return defaultSecret;
   const storedSec = localStorage.getItem('arbitra_secret_settings');
@@ -134,7 +140,7 @@ export const getSecretSettingsUnsafe = (): SecretAppSettings => {
   if (storedFull) {
     try {
       const full = JSON.parse(storedFull);
-      const secretKeys = ['geminiKey', 'openaiKey', 'longbridgeAppKey', 'longbridgeAppSecret', 'longbridgeKey', 'longbridgeAccounts'];
+      const secretKeys = ['geminiKey', 'openaiKey', 'longbridgeAppKey', 'longbridgeAppSecret', 'longbridgeKey', 'longbridgeAccounts', 'fredApiKey', 'alphaVantageApiKey'];
       const hasSecrets = secretKeys.some(key => full[key] !== undefined && full[key] !== '');
       
       if (hasSecrets) {
@@ -145,6 +151,8 @@ export const getSecretSettingsUnsafe = (): SecretAppSettings => {
           longbridgeAppSecret: full.longbridgeAppSecret ?? defaultSecret.longbridgeAppSecret,
           longbridgeKey: full.longbridgeKey ?? defaultSecret.longbridgeKey,
           longbridgeAccounts: full.longbridgeAccounts ?? defaultSecret.longbridgeAccounts,
+          fredApiKey: full.fredApiKey ?? defaultSecret.fredApiKey,
+          alphaVantageApiKey: full.alphaVantageApiKey ?? defaultSecret.alphaVantageApiKey,
         };
 
         // 1. Write the found secrets to arbitra_secret_settings
@@ -184,6 +192,8 @@ export const saveSecretSettingsUnsafe = (settings: SecretAppSettings) => {
       longbridgeAppSecret: settings.longbridgeAppSecret,
       longbridgeKey: settings.longbridgeKey,
       longbridgeAccounts: settings.longbridgeAccounts,
+      fredApiKey: settings.fredApiKey,
+      alphaVantageApiKey: settings.alphaVantageApiKey,
     };
     localStorage.setItem('arbitra_secret_settings', JSON.stringify(secToSave));
     

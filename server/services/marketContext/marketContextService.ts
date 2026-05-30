@@ -9,6 +9,8 @@ import {
   getLatestClose,
   getLatestAsOf
 } from './analytics';
+import { fetchFredEnhancements } from './fredAdapter';
+import { fetchAlphaVantageEnhancements } from './alphaVantageAdapter';
 
 /**
  * Concurrency limiting async helper pool
@@ -41,10 +43,8 @@ async function asyncPool<T, R>(
   return Promise.all(results);
 }
 
-let marketContextCache: {
-  timestamp: number;
-  data: MarketContext;
-} | null = null;
+// Convert cache to a robust Map to avoid key leakage and cache cross-contamination
+const marketContextCacheMap = new Map<string, { timestamp: number; data: MarketContext }>();
 
 const MARKET_CONTEXT_CACHE_TTL = 15 * 60 * 1000;
 
@@ -52,14 +52,19 @@ export async function buildMarketContext(options?: {
   universe?: MarketUniverseInstrument[];
   timeoutMs?: number;
   forceRefresh?: boolean;
+  fredApiKey?: string;
+  alphaVantageApiKey?: string;
 }): Promise<MarketContext> {
   const universe = options?.universe || DEFAULT_MARKET_UNIVERSE;
   const timeoutMs = options?.timeoutMs ?? 5000;
   const forceRefresh = !!options?.forceRefresh;
 
+  const cacheKey = `${options?.fredApiKey ? 'fred:on' : 'fred:off'}|${options?.alphaVantageApiKey ? 'av:on' : 'av:off'}`;
+
   // Utilize cache if valid and no force refresh requested
-  if (!forceRefresh && marketContextCache && (Date.now() - marketContextCache.timestamp < MARKET_CONTEXT_CACHE_TTL)) {
-    return marketContextCache.data;
+  const cached = marketContextCacheMap.get(cacheKey);
+  if (!forceRefresh && cached && (Date.now() - cached.timestamp < MARKET_CONTEXT_CACHE_TTL)) {
+    return cached.data;
   }
 
   try {
@@ -126,23 +131,53 @@ export async function buildMarketContext(options?: {
       warnings
     });
 
-    // Update the cache
-    marketContextCache = {
+    // Parallel fetch enhancements if requested securely
+    const [fredEnhancements, alphaEnhancements] = await Promise.all([
+      fetchFredEnhancements(options?.fredApiKey).catch(err => {
+        console.warn('[market-context-service] Error fetching FRED enhancements:', err);
+        return [];
+      }),
+      fetchAlphaVantageEnhancements(options?.alphaVantageApiKey).catch(err => {
+        console.warn('[market-context-service] Error fetching Alpha Vantage enhancements:', err);
+        return [];
+      })
+    ]);
+
+    const macroEnhancements = [...fredEnhancements, ...alphaEnhancements];
+    if (macroEnhancements.length > 0) {
+      context.macroEnhancements = macroEnhancements;
+    }
+
+    if (fredEnhancements.length > 0) {
+      context.sourceSummary.push('FRED macro series');
+    } else if (options?.fredApiKey && options.fredApiKey.trim() !== '') {
+      context.warnings.push('FRED enhancement requested but no usable series returned.');
+    }
+
+    if (alphaEnhancements.length > 0) {
+      context.sourceSummary.push('Alpha Vantage macro/commodity series');
+    } else if (options?.alphaVantageApiKey && options.alphaVantageApiKey.trim() !== '') {
+      context.warnings.push('Alpha Vantage enhancement requested but no usable series returned.');
+    }
+
+    // Update the cache Map safely
+    marketContextCacheMap.set(cacheKey, {
       timestamp: Date.now(),
       data: context
-    };
+    });
 
     return context;
   } catch (globalError: any) {
     console.error('[market-context-service] Global failure in buildMarketContext:', globalError);
-    if (marketContextCache) {
+    const cached = marketContextCacheMap.get(cacheKey);
+    if (cached) {
       // Return previous cache but append failure warning
       const updatedWarnings = Array.from(new Set([
-        ...(marketContextCache.data.warnings || []),
+        ...(cached.data.warnings || []),
         '本轮市场上下文刷新失败，返回上一轮缓存数据。'
       ]));
       return {
-        ...marketContextCache.data,
+        ...cached.data,
         warnings: updatedWarnings
       };
     }

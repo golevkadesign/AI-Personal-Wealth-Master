@@ -414,6 +414,41 @@ export const SettingsModal = ({ isOpen, onClose, onClearData }: { isOpen: boolea
                   ))}
                 </div>
 
+                {/* Market Data Enhancement Keys */}
+                <div className="border-t border-[#1A1D20] pt-6 mt-6 space-y-4">
+                  <div>
+                    <h4 className="text-xs font-bold text-[#C9B284] uppercase tracking-wider">
+                      Market Data Enhancement Keys (可选增强源)
+                    </h4>
+                    <p className="text-[11px] text-[#8C8370] leading-relaxed mt-1">
+                      Optional. Used only to enrich delayed / historical Market Context. Stooq remains the default source.
+                    </p>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5 font-mono">
+                      <label className="text-[10px] text-[#8C8370] uppercase">FRED API Key</label>
+                      <input
+                        type="password"
+                        placeholder="Optional FRED API key"
+                        value={settings.fredApiKey || ''}
+                        onChange={e => setSettings({ ...settings, fredApiKey: e.target.value })}
+                        className="w-full bg-[#121419] border border-[#1A1D20] rounded-lg px-3 py-2 text-[13px] text-[#E7D7B0] focus:outline-none focus:border-[#C9B284]/50 transition-colors"
+                      />
+                    </div>
+                    <div className="space-y-1.5 font-mono">
+                      <label className="text-[10px] text-[#8C8370] uppercase">Alpha Vantage API Key</label>
+                      <input
+                        type="password"
+                        placeholder="Optional Alpha Vantage API key"
+                        value={settings.alphaVantageApiKey || ''}
+                        onChange={e => setSettings({ ...settings, alphaVantageApiKey: e.target.value })}
+                        className="w-full bg-[#121419] border border-[#1A1D20] rounded-lg px-3 py-2 text-[13px] text-[#E7D7B0] focus:outline-none focus:border-[#C9B284]/50 transition-colors"
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 <div className="flex justify-between items-center text-[11px] font-mono pt-4 border-t border-[#1A1D20]">
                    <div className="flex flex-col gap-1">
                       <span className="text-[#8C8370] uppercase">{t('settings.connectionStatus')}</span>

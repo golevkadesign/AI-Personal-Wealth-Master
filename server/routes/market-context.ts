@@ -6,7 +6,20 @@ const router = express.Router();
 router.get('/', async (req, res) => {
   try {
     const forceRefresh = req.query.force === '1' || req.query.force === 'true';
-    const data = await buildMarketContext({ forceRefresh });
+
+    const fredApiKey = typeof req.headers['x-fred-api-key'] === 'string'
+      ? req.headers['x-fred-api-key']
+      : undefined;
+
+    const alphaVantageApiKey = typeof req.headers['x-alpha-vantage-api-key'] === 'string'
+      ? req.headers['x-alpha-vantage-api-key']
+      : undefined;
+
+    const data = await buildMarketContext({ 
+      forceRefresh,
+      fredApiKey,
+      alphaVantageApiKey
+    });
 
     res.json({
       success: true,

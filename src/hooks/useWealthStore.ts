@@ -576,8 +576,20 @@ export const useWealthStore = create<WealthState>((set, get) => ({
     set({ marketContextStatus: 'loading', marketContextError: undefined });
 
     try {
+      const { getSecretSettingsUnsafe } = await import('../lib/settings');
+      const secrets = getSecretSettingsUnsafe();
+      const headers: Record<string, string> = {
+        'Accept': 'application/json'
+      };
+      if (secrets.fredApiKey) {
+        headers['x-fred-api-key'] = secrets.fredApiKey;
+      }
+      if (secrets.alphaVantageApiKey) {
+        headers['x-alpha-vantage-api-key'] = secrets.alphaVantageApiKey;
+      }
+
       const url = options?.forceRefresh ? '/api/market-context?force=1' : '/api/market-context';
-      const response = await fetch(url);
+      const response = await fetch(url, { headers });
       if (!response.ok) {
         throw new Error(`Failed to fetch market context: status ${response.status}`);
       }
