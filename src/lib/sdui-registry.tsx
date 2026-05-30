@@ -190,7 +190,7 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
     const spanClassMap: Record<string, string> = {
       normal: 'min-w-0 w-full',
       wide: 'col-span-1 xl:col-span-2 2xl:col-span-2 min-w-0 w-full',
-      full: 'col-span-1 xl:col-span-2 2xl:col-span-3 min-w-0 w-full'
+      full: 'col-span-full min-w-0 w-full'
     };
     const spanClass = spanClassMap[layoutSpan as string] || 'min-w-0 w-full';
 
