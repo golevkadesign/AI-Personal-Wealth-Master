@@ -256,6 +256,14 @@ export function PortfolioReviewDrawer({ isOpen, onClose }: PortfolioReviewDrawer
     }
   };
 
+  const displayedMarketContext =
+    activeSession?.marketContextSnapshot || data?.marketContext;
+
+  const displayedMarketContextCapturedAt =
+    activeSession?.marketContextCapturedAt || data?.marketContextLastFetchedAt;
+
+  const isUsingFrozenMarketContext = Boolean(activeSession?.marketContextSnapshot);
+
   return (
     <>
       {/* Backdrop overlay */}
@@ -460,8 +468,8 @@ export function PortfolioReviewDrawer({ isOpen, onClose }: PortfolioReviewDrawer
                         <Activity className="w-4 h-4 text-[#C9B284]" />
                         市场环境上下文 / Market Context
                       </h4>
-                      {activeSession && activeSession.marketContextSnapshot ? (() => {
-                        const capD = activeSession.marketContextCapturedAt ? new Date(activeSession.marketContextCapturedAt) : null;
+                      {isUsingFrozenMarketContext ? (() => {
+                        const capD = displayedMarketContextCapturedAt ? new Date(displayedMarketContextCapturedAt) : null;
                         const timeStr = capD ? `${String(capD.getHours()).padStart(2, '0')}:${String(capD.getMinutes()).padStart(2, '0')}` : '';
                         return (
                           <span className="inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded border border-emerald-500/10 bg-emerald-500/5 text-[9px] text-emerald-300 font-sans leading-none select-none" title="已冻结当时的市场环境数据，用于生成此次复盘报告">
@@ -480,20 +488,27 @@ export function PortfolioReviewDrawer({ isOpen, onClose }: PortfolioReviewDrawer
                     </div>
                     <p className="text-[10px] text-[#8C8370] truncate">延迟/历史市场数据，仅作为复盘背景，不作为交易执行报价</p>
                   </div>
-                  <button
-                    disabled={marketContextStatus === 'loading'}
-                    onClick={() => fetchMarketContext({ forceRefresh: true })}
-                    className={`px-3 py-1.5 border text-[10.5px] font-sans font-medium rounded-lg transition-all select-none self-start sm:self-auto cursor-pointer ${
-                      marketContextStatus === 'loading'
-                        ? 'bg-zinc-900 border-zinc-800 text-zinc-600 cursor-not-allowed'
-                        : 'bg-zinc-950/40 hover:bg-[#C9B284]/10 border-white/[0.08] hover:border-[#C9B284]/30 text-zinc-400 hover:text-white'
-                    }`}
-                  >
-                    {marketContextStatus === 'loading' ? '刷新中...' : '刷新市场'}
-                  </button>
+                  <div className="flex flex-col items-end">
+                    <button
+                      disabled={marketContextStatus === 'loading'}
+                      onClick={() => fetchMarketContext({ forceRefresh: true })}
+                      className={`px-3 py-1.5 border text-[10.5px] font-sans font-medium rounded-lg transition-all select-none self-start sm:self-auto cursor-pointer ${
+                        marketContextStatus === 'loading'
+                          ? 'bg-zinc-900 border-zinc-800 text-zinc-600 cursor-not-allowed'
+                          : 'bg-zinc-950/40 hover:bg-[#C9B284]/10 border-white/[0.08] hover:border-[#C9B284]/30 text-zinc-400 hover:text-white'
+                      }`}
+                    >
+                      {marketContextStatus === 'loading' ? '刷新中...' : '刷新市场'}
+                    </button>
+                    {isUsingFrozenMarketContext && (
+                      <span className="text-[9px] text-[#8C8370] text-right block mt-1 select-none leading-tight font-sans max-w-[200px]">
+                        刷新仅更新全局环境，不改变已冻结快照
+                      </span>
+                    )}
+                  </div>
                 </div>
 
-                {!data?.marketContext ? (
+                {!displayedMarketContext ? (
                   /* 无数据状态 */
                   <div className="py-6 flex flex-col items-center justify-center text-center space-y-2">
                     <BadgeInfo className="w-8 h-8 text-[#C9B284]/20" />
@@ -511,8 +526,8 @@ export function PortfolioReviewDrawer({ isOpen, onClose }: PortfolioReviewDrawer
                   /* 有数据状态 */
                   <div className="space-y-4">
                     {/* A. Regime Summary */}
-                    {data.marketContext.regime && (() => {
-                      const regimeInfo = formatMarketRegime(data.marketContext.regime);
+                    {displayedMarketContext.regime && (() => {
+                      const regimeInfo = formatMarketRegime(displayedMarketContext.regime);
                       return (
                         <div className="bg-[#121622] rounded-lg p-3 border border-[#C9B284]/5 space-y-2">
                           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.03] pb-1.5">
@@ -523,23 +538,23 @@ export function PortfolioReviewDrawer({ isOpen, onClose }: PortfolioReviewDrawer
                               <span className="text-[10.5px] text-[#E7D7B0]/90 font-sans">{regimeInfo.desc}</span>
                             </div>
                             <div className="text-[9.5px] text-[#8C8370] font-mono flex flex-wrap items-center gap-1.5 select-none">
-                              <span className="bg-white/5 px-1.5 py-0.5 rounded">freshness: {data.marketContext.freshness}</span>
-                              <span className="bg-white/5 px-1.5 py-0.5 rounded">quality: {data.marketContext.dataQuality}</span>
-                              {data.marketContextLastFetchedAt && (() => {
-                                const d = new Date(data.marketContextLastFetchedAt);
+                              <span className="bg-white/5 px-1.5 py-0.5 rounded">freshness: {displayedMarketContext.freshness}</span>
+                              <span className="bg-white/5 px-1.5 py-0.5 rounded">quality: {displayedMarketContext.dataQuality}</span>
+                              {displayedMarketContextCapturedAt && (() => {
+                                const d = new Date(displayedMarketContextCapturedAt);
                                 const hh = String(d.getHours()).padStart(2, '0');
                                 const mm = String(d.getMinutes()).padStart(2, '0');
                                 return <span>更新于 {hh}:{mm}</span>;
                               })()}
                             </div>
                           </div>
-                          <p className="text-[11px] text-[#C9B284] leading-relaxed font-sans whitespace-pre-wrap">{data.marketContext.regime.summary}</p>
+                          <p className="text-[11px] text-[#C9B284] leading-relaxed font-sans whitespace-pre-wrap">{displayedMarketContext.regime.summary}</p>
                         </div>
                       );
                     })()}
 
                     {/* B. Factor Grid */}
-                    {data.marketContext.regime && (
+                    {displayedMarketContext.regime && (
                       <div className="space-y-1.5">
                         <span className="text-[9.5px] text-[#8C8370] font-mono uppercase tracking-wider block">核心市场定价因子评估 / Factor Appraisal</span>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
@@ -547,52 +562,52 @@ export function PortfolioReviewDrawer({ isOpen, onClose }: PortfolioReviewDrawer
                           <div className="bg-black/20 border border-white/[0.04] p-2 rounded-lg flex flex-col justify-center min-w-0">
                             <span className="text-[9px] text-zinc-500">风险偏好 / Risk Bias</span>
                             <span className="text-[11.5px] font-mono font-bold text-[#C9B284] mt-0.5">
-                              {formatPressure(data.marketContext.regime.riskMode)}
+                              {formatPressure(displayedMarketContext.regime.riskMode)}
                             </span>
                           </div>
                           {/* 2. 利率压力 */}
                           <div className="bg-black/20 border border-white/[0.04] p-2 rounded-lg flex flex-col justify-center min-w-0">
                             <span className="text-[9px] text-zinc-500">利率压力 / USD Rate</span>
                             <span className={`text-[11.5px] font-mono font-bold mt-0.5 ${
-                              data.marketContext.regime.ratePressure === 'rising_rate_pressure' ? 'text-amber-400' : 'text-zinc-300'
+                              displayedMarketContext.regime.ratePressure === 'rising_rate_pressure' ? 'text-amber-400' : 'text-zinc-300'
                             }`}>
-                              {formatPressure(data.marketContext.regime.ratePressure)}
+                              {formatPressure(displayedMarketContext.regime.ratePressure)}
                             </span>
                           </div>
                           {/* 3. 美元压力 */}
                           <div className="bg-black/20 border border-white/[0.04] p-2 rounded-lg flex flex-col justify-center min-w-0">
                             <span className="text-[9px] text-zinc-500">美元压力 / Dollar Index</span>
                             <span className={`text-[11.5px] font-mono font-bold mt-0.5 ${
-                              data.marketContext.regime.dollarPressure === 'strong_usd' ? 'text-amber-400' : 'text-zinc-300'
+                              displayedMarketContext.regime.dollarPressure === 'strong_usd' ? 'text-amber-400' : 'text-zinc-300'
                             }`}>
-                              {formatPressure(data.marketContext.regime.dollarPressure)}
+                              {formatPressure(displayedMarketContext.regime.dollarPressure)}
                             </span>
                           </div>
                           {/* 4. 信用压力 */}
                           <div className="bg-black/20 border border-white/[0.04] p-2 rounded-lg flex flex-col justify-center min-w-0">
                             <span className="text-[9px] text-zinc-500">信用压力 / Credit Stress</span>
                             <span className={`text-[11.5px] font-mono font-bold mt-0.5 ${
-                              data.marketContext.regime.creditStress === 'elevated' ? 'text-amber-400' : 'text-zinc-300'
+                              displayedMarketContext.regime.creditStress === 'elevated' ? 'text-amber-400' : 'text-zinc-300'
                             }`}>
-                              {formatPressure(data.marketContext.regime.creditStress)}
+                              {formatPressure(displayedMarketContext.regime.creditStress)}
                             </span>
                           </div>
                           {/* 5. 商品冲击 */}
                           <div className="bg-black/20 border border-white/[0.04] p-2 rounded-lg flex flex-col justify-center min-w-0">
                             <span className="text-[9px] text-zinc-500">商品冲击 / Commodity Impulse</span>
                             <span className={`text-[11.5px] font-mono font-bold mt-0.5 ${
-                              data.marketContext.regime.commodityImpulse === 'inflationary' ? 'text-amber-400' : 'text-zinc-300'
+                              displayedMarketContext.regime.commodityImpulse === 'inflationary' ? 'text-amber-400' : 'text-zinc-300'
                             }`}>
-                              {formatPressure(data.marketContext.regime.commodityImpulse)}
+                              {formatPressure(displayedMarketContext.regime.commodityImpulse)}
                             </span>
                           </div>
                           {/* 6. 波动状态 */}
                           <div className="bg-black/20 border border-white/[0.04] p-2 rounded-lg flex flex-col justify-center min-w-0">
                             <span className="text-[9px] text-zinc-500">波动状态 / Volatility (VIX)</span>
                             <span className={`text-[11.5px] font-mono font-bold mt-0.5 ${
-                              data.marketContext.regime.volatilityState === 'stressed' ? 'text-amber-400' : 'text-zinc-300'
+                              displayedMarketContext.regime.volatilityState === 'stressed' ? 'text-amber-400' : 'text-zinc-300'
                             }`}>
-                              {formatPressure(data.marketContext.regime.volatilityState)}
+                              {formatPressure(displayedMarketContext.regime.volatilityState)}
                             </span>
                           </div>
                         </div>
@@ -602,13 +617,13 @@ export function PortfolioReviewDrawer({ isOpen, onClose }: PortfolioReviewDrawer
                     {/* C. Cross-Asset Signals */}
                     <div className="space-y-1.5">
                       <span className="text-[9.5px] text-[#8C8370] font-mono uppercase tracking-wider block">跨资产博弈信号 / Cross-Asset Signals</span>
-                      {!data.marketContext.crossAssetSignals || data.marketContext.crossAssetSignals.length === 0 ? (
+                      {!displayedMarketContext.crossAssetSignals || displayedMarketContext.crossAssetSignals.length === 0 ? (
                         <div className="text-[10.5px] text-zinc-500 italic bg-black/10 py-2 px-3 rounded-lg border border-white/[0.02]">
                           暂无明确跨资产背离信号
                         </div>
                       ) : (
                         <div className="space-y-2">
-                          {data.marketContext.crossAssetSignals.slice(0, 4).map((sig: any, sIdx: number) => (
+                          {displayedMarketContext.crossAssetSignals.slice(0, 4).map((sig: any, sIdx: number) => (
                             <div key={sIdx} className="bg-zinc-950/50 border border-white/[0.04] rounded-lg p-2.5 space-y-1.5">
                               <div className="flex flex-wrap items-center justify-between gap-2">
                                 <span className="text-white text-xs font-semibold">{sig.title}</span>
@@ -642,16 +657,16 @@ export function PortfolioReviewDrawer({ isOpen, onClose }: PortfolioReviewDrawer
 
                     {/* D. Warnings and Footer Static References */}
                     <div className="border-t border-white/[0.04] pt-2.5 flex flex-col gap-1.5">
-                      {data.marketContext.sourceSummary && data.marketContext.sourceSummary.length > 0 && (
+                      {displayedMarketContext.sourceSummary && displayedMarketContext.sourceSummary.length > 0 && (
                         <div className="text-[9px] text-[#8C8370] font-mono leading-none">
-                          来源: {data.marketContext.sourceSummary.join(' · ')}
+                          来源: {displayedMarketContext.sourceSummary.join(' · ')}
                         </div>
                       )}
                       
                       {/* Warnings */}
-                      {data.marketContext.warnings && data.marketContext.warnings.length > 0 && (
+                      {displayedMarketContext.warnings && displayedMarketContext.warnings.length > 0 && (
                         <div className="space-y-0.5">
-                          {data.marketContext.warnings.slice(0, 2).map((warn: string, wIdx: number) => (
+                          {displayedMarketContext.warnings.slice(0, 2).map((warn: string, wIdx: number) => (
                             <p key={wIdx} className="text-[9px] text-[#8C8370] leading-normal flex items-start gap-1">
                               <span className="text-[#C9B284]/70 select-none">•</span>
                               <span>{warn}</span>
