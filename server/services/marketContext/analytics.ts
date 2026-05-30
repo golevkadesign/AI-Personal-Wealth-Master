@@ -49,7 +49,8 @@ export function calculateMaxDrawdown(
   bars: StooqDailyBar[],
   lookbackTradingDays: number
 ): number | undefined {
-  if (bars.length < 2 || lookbackTradingDays < 1) return undefined;
+  if (bars.length < lookbackTradingDays) return undefined;
+  if (lookbackTradingDays < 2) return undefined;
 
   const subset = bars.slice(-lookbackTradingDays);
   if (subset.length === 0) return undefined;

@@ -7,6 +7,16 @@ export interface StooqDailyBar {
   volume?: number;
 }
 
+function parseStooqNumber(value: string | undefined): number | undefined {
+  if (value === undefined || value === null) return undefined;
+  const cleaned = value.trim();
+  if (cleaned === '' || cleaned.toLowerCase() === 'n/a') return undefined;
+  const noCommas = cleaned.replace(/,/g, '');
+  const num = Number(noCommas);
+  if (!Number.isFinite(num)) return undefined;
+  return num;
+}
+
 export async function fetchStooqDaily(
   stooqSymbol: string,
   options?: { timeoutMs?: number }
@@ -53,24 +63,24 @@ export async function fetchStooqDaily(
       if (cols.length < 5) continue; // Needs at least date/open/high/low/close
 
       const dateVal = cols[dateIdx !== -1 ? dateIdx : 0];
-      const openVal = parseFloat(cols[openIdx !== -1 ? openIdx : 1]);
-      const highVal = parseFloat(cols[highIdx !== -1 ? highIdx : 2]);
-      const lowVal = parseFloat(cols[lowIdx !== -1 ? lowIdx : 3]);
-      const closeVal = parseFloat(cols[closeIdx !== -1 ? closeIdx : 4]);
-      const volVal = volumeIdx !== -1 ? parseFloat(cols[volumeIdx]) : undefined;
+      const openVal = parseStooqNumber(cols[openIdx !== -1 ? openIdx : 1]);
+      const highVal = parseStooqNumber(cols[highIdx !== -1 ? highIdx : 2]);
+      const lowVal = parseStooqNumber(cols[lowIdx !== -1 ? lowIdx : 3]);
+      const closeVal = parseStooqNumber(cols[closeIdx !== -1 ? closeIdx : 4]);
+      const volVal = volumeIdx !== -1 ? parseStooqNumber(cols[volumeIdx]) : undefined;
 
       // Ensure Date and Close are valid
-      if (!dateVal || isNaN(closeVal)) {
+      if (!dateVal || closeVal === undefined) {
         continue;
       }
 
       bars.push({
         date: dateVal,
-        open: isNaN(openVal) ? undefined : openVal,
-        high: isNaN(highVal) ? undefined : highVal,
-        low: isNaN(lowVal) ? undefined : lowVal,
+        open: openVal,
+        high: highVal,
+        low: lowVal,
         close: closeVal,
-        volume: volVal !== undefined && isNaN(volVal) ? undefined : volVal,
+        volume: volVal,
       });
     }
 
