@@ -12,6 +12,36 @@ export function compactMarketContextForPrompt(marketContext: any, capturedAt?: n
     dataQuality: marketContext.dataQuality,
     sourceSummary: marketContext.sourceSummary || [],
     warnings: marketContext.warnings || [],
+    qualitySummary: marketContext.qualitySummary ? {
+      status: marketContext.qualitySummary.status,
+      confidence: marketContext.qualitySummary.confidence,
+      coverageRatio: marketContext.qualitySummary.coverageRatio,
+      instrumentCoverageRatio: marketContext.qualitySummary.instrumentCoverageRatio,
+      enhancementCoverageRatio: marketContext.qualitySummary.enhancementCoverageRatio,
+      sourceHealth: (marketContext.qualitySummary.sourceHealth || []).map((sh: any) => ({
+        source: sh.source,
+        status: sh.status,
+        expectedCount: sh.expectedCount,
+        successCount: sh.successCount,
+        warningCount: sh.warningCount,
+        notes: sh.notes
+      })),
+      summary: marketContext.qualitySummary.summary
+    } : undefined,
+    macroEnhancements: (marketContext.macroEnhancements || []).slice(0, 12).map((item: any) => ({
+      id: item.id,
+      label: item.label,
+      category: item.category,
+      source: item.source,
+      value: item.value,
+      unit: item.unit,
+      asOf: item.asOf ? new Date(item.asOf).toISOString() : undefined,
+      change1M: item.change1M,
+      change3M: item.change3M,
+      dataQuality: item.dataQuality,
+      interpretation: item.interpretation,
+      warnings: (item.warnings || []).slice(0, 2)
+    })),
     regime: marketContext.regime ? {
       riskMode: marketContext.regime.riskMode,
       ratePressure: marketContext.regime.ratePressure,

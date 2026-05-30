@@ -94,6 +94,38 @@ async function main() {
     console.log(`  - Volatility State : ${data.regime.volatilityState}`);
     console.log(`  - Summary          : ${data.regime.summary || 'None'}`);
 
+    if (data.qualitySummary) {
+      console.log(`\n• Unified Quality Summary:`);
+      console.log(`  - Status                  : ${safeText(data.qualitySummary.status)}`);
+      console.log(`  - Confidence              : ${safeText(data.qualitySummary.confidence)}`);
+      console.log(`  - Coverage Ratio          : ${formatPercent(data.qualitySummary.coverageRatio)}`);
+      console.log(`  - Instrument Coverage    : ${formatPercent(data.qualitySummary.instrumentCoverageRatio)}`);
+      console.log(`  - Enhancement Coverage  : ${data.qualitySummary.enhancementCoverageRatio !== undefined ? formatPercent(data.qualitySummary.enhancementCoverageRatio) : 'N/A'}`);
+      console.log(`  - Summary                 : ${safeText(data.qualitySummary.summary)}`);
+      
+      if (Array.isArray(data.qualitySummary.sourceHealth)) {
+        console.log(`  - Source Health Assessment:`);
+        data.qualitySummary.sourceHealth.forEach(sh => {
+          console.log(`    * ${safeText(sh.source).toUpperCase()}: status: ${sh.status} | success: ${sh.successCount || 0}/${sh.expectedCount || 0} | warnings: ${sh.warningCount || 0}`);
+        });
+      }
+    } else {
+      console.log(`\n• Unified Quality Summary: N/A (Missing)`);
+    }
+
+    const macroEnhancements = data.macroEnhancements || [];
+    console.log(`\n• Macro Enhancements (${macroEnhancements.length}):`);
+    if (macroEnhancements.length === 0) {
+      console.log(`  - No macro enhancements configured or returned.`);
+    } else {
+      macroEnhancements.slice(0, 8).forEach((item, index) => {
+        const valStr = item.value !== undefined && item.value !== null ? item.value.toFixed(2) : 'N/A';
+        const unitStr = item.unit || '';
+        const chg1MText = item.change1M !== undefined && item.change1M !== null ? `${item.change1M > 0 ? '+' : ''}${item.change1M.toFixed(2)}` : 'N/A';
+        console.log(`  [${index + 1}] Label: ${safeText(item.label).padEnd(20)} | Source: ${safeText(item.source).toUpperCase()} | Value: ${valStr}${unitStr} | Change1M: ${chg1MText}`);
+      });
+    }
+
     console.log(`\n• Coverage Statistics:`);
     console.log(`  - Instruments count   : ${instruments.length}`);
     if (Array.isArray(data.keyInstruments)) {

@@ -536,6 +536,36 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({
                             <div className="text-[#8C8370] text-[9px] uppercase tracking-widest">Signals</div>
                             <div className="mt-1 text-neutral-300">{marketContextSignals.length}</div>
                           </div>
+                          {marketContext?.qualitySummary && (
+                            <>
+                              <div>
+                                <div className="text-[#8C8370] text-[9px] uppercase tracking-widest">Quality Status</div>
+                                <div className={`mt-1 font-semibold ${
+                                  marketContext.qualitySummary.status === 'ready' ? 'text-emerald-400' :
+                                  marketContext.qualitySummary.status === 'degraded' ? 'text-amber-400' :
+                                  'text-rose-400'
+                                }`}>
+                                  {marketContext.qualitySummary.status.toUpperCase()}
+                                </div>
+                              </div>
+                              <div>
+                                <div className="text-[#8C8370] text-[9px] uppercase tracking-widest">Confidence</div>
+                                <div className={`mt-1 font-semibold ${
+                                  marketContext.qualitySummary.confidence === 'high' ? 'text-emerald-400' :
+                                  marketContext.qualitySummary.confidence === 'medium' ? 'text-amber-400' :
+                                  'text-rose-400'
+                                }`}>
+                                  {marketContext.qualitySummary.confidence.toUpperCase()}
+                                </div>
+                              </div>
+                              <div>
+                                <div className="text-[#8C8370] text-[9px] uppercase tracking-widest">Coverage</div>
+                                <div className="mt-1 text-neutral-300">
+                                  {Math.round((marketContext.qualitySummary.coverageRatio || 0) * 100)}%
+                                </div>
+                              </div>
+                            </>
+                          )}
                           <div className="col-span-2 sm:col-span-3">
                             <div className="text-[#8C8370] text-[9px] uppercase tracking-widest">Last Fetched</div>
                             <div className="mt-1 text-neutral-300">{formatTime(state?.marketContextLastFetchedAt)}</div>
@@ -605,6 +635,72 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({
                             </div>
                           )}
                         </div>
+
+                        {/* Source Health section */}
+                        {marketContext?.qualitySummary?.sourceHealth && (
+                          <div className="border-t border-[#1C2026] pt-3 mt-3">
+                            <div className="text-[10px] font-mono uppercase tracking-widest text-[#8C8370] font-semibold mb-2">
+                              Source Health Assessment ({marketContext.qualitySummary.sourceHealth.length})
+                            </div>
+                            <div className="space-y-1">
+                              {marketContext.qualitySummary.sourceHealth.map((sh: any, idx: number) => (
+                                <div key={idx} className="flex items-center justify-between text-[11px] font-mono bg-[#0B0D10]/20 border border-[#1C2026]/40 rounded px-2.5 py-1">
+                                  <span className="font-semibold text-neutral-200 uppercase">{sh.source}</span>
+                                  <div className="flex items-center gap-3">
+                                    <span className={`${
+                                      sh.status === 'ok' ? 'text-emerald-400' :
+                                      sh.status === 'partial' ? 'text-amber-400' :
+                                      sh.status === 'not_configured' ? 'text-zinc-500' :
+                                      'text-rose-400'
+                                    }`}>
+                                      {sh.status.toUpperCase()}
+                                    </span>
+                                    {sh.expectedCount !== undefined && sh.expectedCount > 0 && (
+                                      <span className="text-neutral-400 text-[10px]">
+                                        ({sh.successCount || 0}/{sh.expectedCount})
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Top Macro Enhancements snap */}
+                        {marketContext?.macroEnhancements && marketContext.macroEnhancements.length > 0 && (
+                          <div className="border-t border-[#1C2026] pt-3 mt-3">
+                            <div className="text-[10px] font-mono uppercase tracking-widest text-[#8C8370] font-semibold mb-2">
+                              Top Macro Enhancements ({marketContext.macroEnhancements.length})
+                            </div>
+                            <div className="space-y-1.5 custom-scrollbar max-h-[140px] overflow-y-auto">
+                              {marketContext.macroEnhancements.slice(0, 6).map((item: any, idx: number) => {
+                                const valStr = item.value !== undefined && item.value !== null ? item.value.toFixed(2) : 'N/A';
+                                let chg1MText = 'N/A';
+                                if (item.change1M !== undefined && item.change1M !== null) {
+                                  chg1MText = item.change1M.toFixed(2);
+                                  if (item.change1M > 0) chg1MText = `+${chg1MText}`;
+                                }
+                                return (
+                                  <div key={idx} className="flex flex-wrap items-center justify-between text-[11px] font-mono bg-[#0B0D10]/20 border border-[#1C2026]/40 rounded px-2.5 py-1 hover:bg-[#0B0D10]/40 transition-colors">
+                                    <div className="flex items-center gap-1.5 min-w-0 truncate">
+                                      <span className="font-semibold text-neutral-200 truncate">{item.label}</span>
+                                      <span className="text-[9px] text-zinc-500 font-mono">({item.source.toUpperCase()})</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 font-mono text-[10.5px]">
+                                      <span className="text-[#C9B284] font-medium">{valStr}{item.unit || ''}</span>
+                                      {chg1MText !== 'N/A' && (
+                                        <span className={chg1MText.startsWith('-') ? 'text-rose-400' : 'text-emerald-400'}>
+                                          (1M: {chg1MText})
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       {/* Summary lists mapping database states */}

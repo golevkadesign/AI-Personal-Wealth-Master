@@ -87,7 +87,9 @@ export const DashboardGrid: React.FC = () => {
       return marketContextError.length > 36 ? `${marketContextError.substring(0, 36)}...` : marketContextError;
     }
     if (data.marketContext) {
-      let text = `${data.marketContext.freshness} · Stooq delayed`;
+      const qsStatus = data.marketContext.qualitySummary?.status;
+      const statusText = qsStatus ? ` · ${qsStatus}` : '';
+      let text = `${data.marketContext.freshness} · Stooq delayed${statusText}`;
       if (data.marketContextLastFetchedAt) {
         const d = new Date(data.marketContextLastFetchedAt);
         const hh = String(d.getHours()).padStart(2, '0');

@@ -116,6 +116,26 @@ export interface MarketMacroEnhancement {
   warnings?: string[];
 }
 
+export interface MarketContextSourceHealth {
+  source: 'stooq' | 'fred' | 'alpha_vantage';
+  status: 'ok' | 'partial' | 'failed' | 'not_configured';
+  expectedCount?: number;
+  successCount?: number;
+  warningCount?: number;
+  lastUpdatedAt?: number;
+  notes?: string[];
+}
+
+export interface MarketContextQualitySummary {
+  status: 'ready' | 'degraded' | 'stale' | 'failed';
+  confidence: 'high' | 'medium' | 'low';
+  coverageRatio: number;
+  instrumentCoverageRatio: number;
+  enhancementCoverageRatio?: number;
+  sourceHealth: MarketContextSourceHealth[];
+  summary: string;
+}
+
 export interface MarketContext {
   generatedAt: number;
   asOf?: number;
@@ -130,4 +150,5 @@ export interface MarketContext {
 
   warnings: string[];
   macroEnhancements?: MarketMacroEnhancement[];
+  qualitySummary?: MarketContextQualitySummary;
 }

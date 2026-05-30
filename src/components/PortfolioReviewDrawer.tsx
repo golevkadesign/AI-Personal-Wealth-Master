@@ -553,6 +553,46 @@ export function PortfolioReviewDrawer({ isOpen, onClose }: PortfolioReviewDrawer
                       );
                     })()}
 
+                    {/* Quality Summary Optional Row */}
+                    {displayedMarketContext.qualitySummary && (
+                      <div className="bg-[#121622] rounded-lg p-3 border border-[#C9B284]/5 space-y-1.5 text-xs font-mono">
+                        <div className="flex items-center justify-between border-b border-white/[0.03] pb-1.5">
+                          <span className="text-[#8C8370] uppercase text-[9.5px]">数据源健康度 & 质量评分</span>
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded ${
+                            displayedMarketContext.qualitySummary.status === 'ready' ? 'text-emerald-400 bg-emerald-400/5' :
+                            displayedMarketContext.qualitySummary.status === 'degraded' ? 'text-amber-400 bg-amber-400/5' :
+                            'text-rose-400 bg-rose-400/5'
+                          }`}>
+                            {displayedMarketContext.qualitySummary.status.toUpperCase()} · {displayedMarketContext.qualitySummary.confidence.toUpperCase() || 'LOW'} CONFIDENCE
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-[11px] text-[#E7D7B0]/95 pt-0.5">
+                          <span>综合覆盖率: {Math.round(displayedMarketContext.qualitySummary.coverageRatio * 100)}%</span>
+                          <span>核心证券覆盖率: {Math.round(displayedMarketContext.qualitySummary.instrumentCoverageRatio * 100)}%</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5 pt-1 border-t border-white/[0.02] mt-1">
+                          {(displayedMarketContext.qualitySummary.sourceHealth || []).map((sh: any) => (
+                            <span 
+                              key={`sh-${sh.source}`}
+                              className={`px-1.5 py-0.5 rounded text-[9.5px] border ${
+                                sh.status === 'ok' ? 'text-emerald-400 border-emerald-500/10 bg-emerald-400/5' :
+                                sh.status === 'partial' ? 'text-amber-400 border-amber-500/10 bg-amber-400/5' :
+                                sh.status === 'not_configured' ? 'text-zinc-500 border-zinc-800 bg-zinc-950/20' :
+                                'text-rose-400 border-rose-500/10 bg-rose-400/5'
+                              }`}
+                            >
+                              {sh.source}: {sh.status} {sh.expectedCount ? `(${sh.successCount}/${sh.expectedCount})` : ''}
+                            </span>
+                          ))}
+                        </div>
+                        {displayedMarketContext.qualitySummary.summary && (
+                          <div className="text-[10.5px] text-[#8C8370] leading-relaxed font-sans pt-1">
+                            {displayedMarketContext.qualitySummary.summary}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {/* B. Factor Grid */}
                     {displayedMarketContext.regime && (
                       <div className="space-y-1.5">

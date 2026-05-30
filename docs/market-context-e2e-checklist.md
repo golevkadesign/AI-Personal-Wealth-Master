@@ -26,6 +26,9 @@
 - **验收要点：**
   - [ ] 输出包含 `📊 AI财富终端 - Market Context E2E 诊断报告` 字样；
   - [ ] `Success Status` 应为 `true`；
+  - [ ] `/api/market-context` 应当成功返回 `qualitySummary` 核心数据，并且 `qualitySummary.status` 为 `ready`, `degraded`, `stale`, `failed` 之一；
+  - [ ] `data.qualitySummary.sourceHealth` 应该在任何时候都返回包含 `stooq`, `fred`, `alpha_vantage` 三个核心源，并在未配置 FRED 或 Alpha Vantage Key 时将它们的 status 自动处理为 `not_configured`；
+  - [ ] 配置有效的 FRED 或 Alpha Vantage API key 后，`macroEnhancements` 或者是 `warnings` 能够被正确获取/说明，无 key 时两源数据质量状态正常识别，不崩溃；
   - [ ] `data.regime` 宏观指标段落展现完整（如 `Risk Mode`, `Rate Pressure`, `DollarPressure`, `Credit Stress`, `Commodity Impulse`, `Volatility State`，并且 `Summary` 有内容）；
   - [ ] `Source Summary` 必须包含类似 `"Stooq delayed/historical daily market data"` 等延迟/历史日线数据源说明；
   - [ ] `Warnings` 中至少有一条带有“不是实时交易执行报价”的相关澄清描述；
@@ -76,6 +79,7 @@
   - 在 `PortfolioReviewDrawer` 中输入提问或直接拉起 AI 生成复盘分析报告。
 - **验收要点：**
   - [ ] 观察 AI 生成的报告内容，涉及市场大势、资产表现引用时，应能引用已冻结的 Market Context 快照；
+  - [ ] **必须保证** AI 在面对 `failed` 或 `degraded` 的 market context 质量状态时，不得将其当作高置信行情进行推演，应客观提示用户市场数据可能不完整或缺失；
   - [ ] **严禁** 出现 AI 将其解释为“当下两分钟前发生的突发内卷政策”、“交易所实时 Level 2 盘中报价”等表述；
   - [ ] **严禁** 出现 AI 把它当作最新突发新闻进行煽动性或恐慌性投资引诱；
   - [ ] 生成报告的末尾，应遵循预设 Prompt 契约，若快照存在，则显式附加以下备注：
