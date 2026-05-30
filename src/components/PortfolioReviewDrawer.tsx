@@ -45,8 +45,32 @@ function formatPressure(value?: string) {
       return 'Risk-off / 偏弱';
     case 'neutral':
       return 'Neutral / 中性';
+    case 'unknown':
+      return 'Unknown / 数据不足';
+    case 'rising_rate_pressure':
+      return '利率上行压力';
+    case 'falling_rate_pressure':
+      return '利率下行压力';
+    case 'strong_usd':
+      return '强美元压力';
+    case 'weak_usd':
+      return '弱美元环境';
+    case 'elevated':
+      return '压力抬升';
+    case 'normal':
+      return '正常';
+    case 'inflationary':
+      return '通胀型冲击';
+    case 'disinflationary':
+      return '通缩/降温';
+    case 'mixed':
+      return '信号分化';
+    case 'calm':
+      return '低波动';
+    case 'stressed':
+      return '波动承压';
     default:
-      return value;
+      return value.replace(/_/g, ' ');
   }
 }
 
