@@ -237,7 +237,9 @@ export const useWealthStore = create<WealthState>((set, get) => ({
       publicHoldingsLastSyncAt: undefined,
       publicHoldingAccountsSyncStatus: 'empty',
       publicHoldingAccountsError: undefined,
-      publicHoldingAccountsLastSyncAt: undefined
+      publicHoldingAccountsLastSyncAt: undefined,
+      marketContextStatus: 'idle',
+      marketContextError: undefined
     });
 
     const { user, persistenceMode } = get();
@@ -585,11 +587,12 @@ export const useWealthStore = create<WealthState>((set, get) => ({
       }
 
       set((state) => {
-        const nextData = {
+        const rawNextData = {
           ...state.data,
           marketContext: payload.data,
           marketContextLastFetchedAt: Date.now()
         };
+        const nextData = normalizeDashboardSchema(rawNextData);
 
         if (state.user?.uid) {
           localStorage.setItem(`ai_terminal_data_${state.user.uid}`, JSON.stringify(nextData));
