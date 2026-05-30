@@ -1,6 +1,46 @@
 import { getUniversalAiClient } from "../utils/ai-universal";
 import type { PortfolioReviewSession, PortfolioReviewReport } from "../../src/types/portfolio-review";
 
+function compactMarketContextForPrompt(marketContext: any, capturedAt?: number) {
+  if (!marketContext) return null;
+  return {
+    capturedAt: capturedAt ? new Date(capturedAt).toISOString() : undefined,
+    freshness: marketContext.freshness,
+    dataQuality: marketContext.dataQuality,
+    sourceSummary: marketContext.sourceSummary || [],
+    warnings: marketContext.warnings || [],
+    regime: marketContext.regime ? {
+      riskMode: marketContext.regime.riskMode,
+      ratePressure: marketContext.regime.ratePressure,
+      dollarPressure: marketContext.regime.dollarPressure,
+      creditStress: marketContext.regime.creditStress,
+      commodityImpulse: marketContext.regime.commodityImpulse,
+      volatilityState: marketContext.regime.volatilityState,
+      summary: marketContext.regime.summary
+    } : null,
+    crossAssetSignals: (marketContext.crossAssetSignals || []).slice(0, 6).map((signal: any) => ({
+      title: signal.title,
+      severity: signal.severity,
+      affectedExposures: signal.affectedExposures || [],
+      interpretation: signal.interpretation,
+      evidence: (signal.evidence || []).slice(0, 3)
+    })),
+    keyInstruments: (marketContext.instruments || []).slice(0, 16).map((item: any) => ({
+      symbol: item.symbol,
+      label: item.label,
+      category: item.category,
+      close: item.close,
+      change1M: item.change1M,
+      change3M: item.change3M,
+      change6M: item.change6M,
+      volatility20D: item.volatility20D,
+      maxDrawdown3M: item.maxDrawdown3M,
+      dataQuality: item.dataQuality,
+      asOf: item.asOf ? new Date(item.asOf).toISOString() : undefined
+    }))
+  };
+}
+
 /**
  * Executes a highly specialized, professional AI-driven Portfolio Review analysis
  * that returns a structured, bulletproof PortfolioReviewReport JSON.
@@ -30,22 +70,51 @@ export async function analyzePortfolioReview(
   const missingFields = currentSnapshot?.missingFields || [];
   const warnings = currentSnapshot?.warnings || [];
 
+  const marketContext = session.marketContextSnapshot;
+  const hasMarketContext = Boolean(marketContext);
+  const marketContextCapturedAt = session.marketContextCapturedAt;
+
+  const compactMarketContext = hasMarketContext
+    ? compactMarketContextForPrompt(marketContext, marketContextCapturedAt)
+    : null;
+
+  const marketContextBoundaryNote = hasMarketContext
+    ? "（注：本轮接入延迟/历史市场上下文，但未接入实时新闻与交易执行级报价）"
+    : "（注：本轮未接入实时宏观与新闻数据）";
+
+  const marketContextInstruction = hasMarketContext
+    ? `
+【本轮已接入的市场上下文边界】
+1. 本轮包含创建复盘会话时冻结的 Market Context 快照。
+2. 该 Market Context 来源于延迟/历史市场数据，可用于判断 risk mode、利率压力、美元压力、信用压力、商品冲击、波动率状态与跨资产信号。
+3. 你可以在组合诊断、风险解释、触发条件设计中引用这些 marketContextSnapshot 信号。
+4. 但你必须明确：这不是实时新闻流，不是交易执行级报价，不是最新政策/财报/突发事件数据。
+5. 严禁把它表述为“实时行情显示”“最新新闻显示”“刚刚公布”“今日盘中已确认”等。
+6. 若引用 Market Context，必须用“本轮冻结的延迟/历史市场上下文显示/提示/暗示”这类表达。
+`
+    : `
+【本轮未接入市场上下文】
+1. 本轮没有输入实时宏观行情、外部新闻、政策变化、财报日历或市场环境快照。
+2. 如需评述市场或行业环境，只能使用条件假设表达。
+`;
+
   const systemInstruction = `你是一个顶级独立持仓复盘与个人财富风险管理 AI 专家。
 你的任务是根据用户的当前持仓快照、历史快照以及两者的持仓变化（Deltas），生成一份专业的、极具洞察力的结构化复盘诊断报告。
 
 【关键要求】
-1. 你的回复必须是且只能是符合 JSON 格式的字符串，且结构必须与要求的 PortfolioReviewReport 完全一致。不得输出 markdown 代码块（除JSON外），不得输出任何多余的问候语、闲聊或解释。
+1. 你的回复必须是且只能是符合 JSON 格式的字符串，且结构必须与要求的 PortfolioReviewReport 完全一致。不得输出 markdown 代码块（除JSON外），不得输出 any 多余的问候语、闲聊或解释。
 2. 每一个建议、诊股或行动，都必须严格遵守【真实性公约与严格事实边界】：
    - 事实、推理、建议彻底分离。
    - 严禁承诺任何未来投资收益，更不得提供任何类似于“必涨/必跌/稳赚/绝对翻倍”等误导性保底描述。
-   - 【严防事实幻觉与虚假外部数据依赖】：当前系统架构并没有接入实时的宏观指标、实时政策变动、实时新闻流、财报日历或指数环境。你绝对不得声称或伪装成已经核验了“最新二级市场行情”、“最新财政政策”、“近期行业新闻”或“最新财报数据”等外部动态并作出了本次复盘。
-   - 如需评述市场或行业环境，你必须使用明确的主观条件式表达（例如：“本轮未接入实时宏观行情与外部新闻资讯，以下仅基于静态持仓结构、历史变化快照和用户本轮指定的风控/风险参数”），且所有涉及未来动作触发条件的输出均应设计为假设性的条件触发逻辑（例如：“若后续市场整体进入 risk-off 状态”、“若该标的跌破用户设定观察位”），绝不要虚构和臆造具体的、不存在的最新大盘成交额、行业头条新闻、美联储降息决议、CPI 变动或某公司昨日公报。
+   - 【严防事实幻觉与虚假外部数据依赖】：当前系统架构并没有接入实时的宏观变动、实时新闻流、最新财报或盘中报价。你绝对不得声称或伪装成已经核验了“最新二级市场盘中行情”、“最新财政政策”、“近期行业头条新闻”或“最新财报数据”等外部动态并作出了本次复盘。
+   - ${hasMarketContext ? "由于接入了延迟/历史市场环境背景快照，你可以在诊断和建议中运用该快照包含的信息（如波动状态、跨资产信号和敏感敞口）。" : ""}如需评述市场或行业环境，你必须使用明确的主观条件式表达，且所有涉及未来动作触发条件的输出均应设计为假设性的条件触发逻辑（例如：“若后续市场整体进入 risk-off 状态”、“若该标的跌破用户设定观察位”），绝不要虚构和臆造具体的、不存在的最新大盘成交额、昨日头条新闻、美联储刚刚公布的降息决议、最新 CPI 指数或某公司突发公报。
    - 每个 Action Plan 的推荐行动项必须配有触发条件(triggerCondition)和失效/中止条件(invalidationCondition)。
-3. 先进行“整体资产组合维度”的分析，再针对“每个主要持仓（PositionReviews）”进行多角度评估，最后给出“在当前无实时宏观政策外部输入下，最不应该做的 3 件事”以及“短期/中期/长期行动计划”。
+3. 先进行“整体资产组合维度”的分析，再针对“每个主要持仓（PositionReviews）”进行多角度评估，最后给出“在当前的市场环境/数据输入边界下，最不应该做的 3 件事”以及“短期/中期/长期行动计划”。
 4. 绝不能编造本期或上期持仓中根本不存在的股票代码、数量、成本价或变动动作。
 5. 如果历史快照缺失（即 previousSnapshot 为空/未定义），你必须明确说明这是首次复盘，只能对当前静态资产架构进行全景分析，比对时属于首次建档，无对比动作。
 6. 如果当前快照的可信度（dataConfidence）为 'low'，你必须在报告 of 页面上的 summary 总体概述中明确说明：由于缺失必要的持仓基础数据字段，本次分析可能存在偏差，信息置信度较低。
-7. 【事实边界强制露出】：不管在什么情况下，在输出的 "summary" 字段最末尾，你都必须强制包含一句说明：“（注：本轮未接入实时宏观与新闻数据）”，以此将 AI 复盘的理性和事实性约束在当下真实的持仓快照边界中。
+7. 【事实边界强制露出】：不管在什么情况下，在输出的 "summary" 字段最末尾，你都必须强制包含一句说明：“${marketContextBoundaryNote}”，以此将 AI 复盘的理性和事实性约束在当下真实的持仓快照与指定的数据边界中。
+${marketContextInstruction}
 
 【前后两轮对冲比对核校与交易纪律评价指令】
 1. 如果存在【上期历史复盘与记忆交叉核对】信息：
@@ -58,7 +127,7 @@ export async function analyzePortfolioReview(
 
 【输出 JSON 数据模型 (PortfolioReviewReport)】
 {
-  "summary": "总体复盘概述，字数控制在 250 字左右。需阐明核心基调、风险分布、本轮相比上轮决策与纪律评价（若为首次说明本轮作为初始基准），以及复盘的核心关注点。末尾必须附带字样：“（注：本轮未接入实时宏观与新闻数据）”。",
+  "summary": "总体复盘概述，字数控制在 250 字左右。需阐明核心基调、风险分布、本轮相比上轮决策与纪律评价（若为首次说明本轮作为初始基准），以及复盘的核心关注点。末尾必须附带字样：“${marketContextBoundaryNote}”。",
   "portfolioDiagnosis": {
     "portfolioType": "例如：科技偏度集中型组合、防守型高股息组合 等",
     "topRisks": [
@@ -134,10 +203,10 @@ export async function analyzePortfolioReview(
 请对以下多账户持仓复盘会话（PortfolioReviewSession）进行严格专业分析：
 
 【重要事实边界限制（禁止突破）】
-1. 本次复盘请求中，我们【没有】为你输入任何实时的二级市场最新行情波动、实时政策法规变化、最新行业新闻、昨日公司的财报日历或外部宏观通胀、基准利率数据。
-2. 你绝对不得假装已经获取、核验或掌握了最新外部资讯，严厉禁止捏造当前的外部经济或市场头条。
-3. 如果你想指出宏观或市场背景，你必须使用明确的前提条件假设表达。如：“本轮未接入实时宏观行情与外部新闻资讯，以下仅基于静态持仓结构、历史变化快照和用户指定的风控边界进行沙箱逻辑分析”。
-4. 在你输出的 "summary" 的最末尾，必须强制加上“（注：本轮未接入实时宏观与新闻数据）”，以维护报告真实性。
+1. 本次复盘请求中，我们【没有】为你输入任何实时的、最新盘中行情波动、实时政策法规变化、最新行业新闻、昨日公司的财报日历。
+2. ${hasMarketContext ? "本轮输入包含冻结的延迟/历史 Market Context 快照，但绝非实时行情交易报价，不要编造你已获取了实时最新的外部新闻、突发地缘政策。" : "本轮复盘没有输入任何外部宏观环境、行业新闻或大盘指数环境。"}
+3. 你绝对不得假装已经获取、核验或掌握了最新外部资讯，严厉禁止捏造当前的外部经济或市场头条。
+4. 在你输出的 "summary" 的最末尾，必须强制加上“${marketContextBoundaryNote}”，以维护报告真实性。
 
 【本轮会话详情】
 - 会话 ID: ${session.id}
@@ -153,6 +222,9 @@ export async function analyzePortfolioReview(
 - 数据异常/清洗警告: ${JSON.stringify(warnings)}
 - 扁平化持仓池: ${JSON.stringify(currentSnapshot?.flattenedHoldings || [])}
 
+【本轮冻结市场上下文 Market Context Snapshot】
+${compactMarketContext ? JSON.stringify(compactMarketContext) : "【无 Market Context 快照：本轮仅基于持仓快照、历史变化和用户风险参数进行分析】"}
+
 【历史持仓快照 (previousSnapshot)】
 ${previousSnapshot ? JSON.stringify({
     accountCount: previousSnapshot.accountCount,
@@ -160,27 +232,27 @@ ${previousSnapshot ? JSON.stringify({
     totalMarketValue: previousSnapshot.totalMarketValue,
     source: previousSnapshot.source,
     flattenedHoldings: previousSnapshot.flattenedHoldings || []
-  }) : '【无历史对比快照：属于首次建档，无对比动作】'}
+  }) : "【无历史对比快照：属于首次建档，无对比动作】"}
 
 【持仓异动 Delta 对冲结果 (deltas)】
-${deltas.length > 0 
-  ? JSON.stringify(deltas) 
-  : (!previousSnapshot 
-      ? '【首次复盘建档：无历史快照，无法判断新建仓/加仓/减仓/清仓动作。本轮仅作为基准快照。】' 
-      : '【与上一轮快照相比，未检测到可靠的持仓数量变化。】'
+${deltas.length > 0
+  ? JSON.stringify(deltas)
+  : (!previousSnapshot
+      ? "【首次复盘建档：无历史快照，无法判断新建仓/加仓/减仓/清仓动作。本轮仅作为基准快照。】"
+      : "【与上一轮快照相比，未检测到可靠的持仓数量变化。】"
     )}
 
 【上期历史复盘与记忆交叉核对 / Historical Review Memory Correlation】
 ${reviewMemory ? `- 上次复盘引入的重点防御行动细节（Review Memory）:
   * 观察到的偏好/认知行为偏差: ${JSON.stringify(reviewMemory.behavioralPatterns || [])}
-  * 本地记录的常犯错误/规避动作: ${JSON.stringify(reviewMemory.recurringMistakes || [])}
+  * 本地记录 of 常犯错误/规避动作: ${JSON.stringify(reviewMemory.recurringMistakes || [])}
   * 遗留计划的高/中优先级行动项 (Last Action Items): ${JSON.stringify(reviewMemory.lastActionItems || [])}
-  * 上期设定的复盘补充需求与监控重点: ${JSON.stringify(reviewMemory.nextReviewFocus || [])}` : '- 【暂无本地已保存的复盘记忆：属于基础对冲建档首诊】'}
+  * 上期设定的复盘补充需求与监控重点: ${JSON.stringify(reviewMemory.nextReviewFocus || [])}` : "- 【暂无本地已保存的复盘记忆：属于基础对冲建档首诊】"}
 
 ${previousReviewSummary ? `- 上一期复盘会话诊断总结 (Previous Review Session Summary):
   * 会话 ID: ${previousReviewSummary.id}
   * 上期复盘诊断结论: ${previousReviewSummary.summary}
-  * 上期决策最需规避的 3 件事: ${JSON.stringify(previousReviewSummary.avoidActions || [])}` : '- 【暂无可以对应的上一期线上会话报告：当前正处于账户复盘的始祖初始基准阶段】'}
+  * 上期决策最需规避的 3 件事: ${JSON.stringify(previousReviewSummary.avoidActions || [])}` : "- 【暂无可以对应的上一期线上会话报告：当前正处于账户复盘的始祖初始基准阶段】"}
 
 【用户的财富画像与风险参数】
 ${JSON.stringify(userRiskPolicy || { riskPreference: 'moderate', maxDrawdownTolerance: '20%' })}
@@ -212,10 +284,16 @@ ${JSON.stringify(userRiskPolicy || { riskPreference: 'moderate', maxDrawdownTole
 
     try {
       const parsedReport: PortfolioReviewReport = JSON.parse(cleanedText);
-      
+
       // Post-sanitization safety checks to prevent TS or rendering issues
       if (!parsedReport.summary) {
-        parsedReport.summary = "AI 返回的结构化复盘摘要缺失，本报告仅保留可解析字段。请重新生成以获得完整结论。";
+        parsedReport.summary = `AI 返回的结构化复盘摘要缺失，本报告仅保留可解析字段。请重新生成以获得完整结论。${marketContextBoundaryNote}`;
+      } else {
+        let temp = parsedReport.summary
+          .replace(/（注：本轮未接入实时宏观与新闻数据）/g, '')
+          .replace(/（注：本轮接入延迟\\?\/历史市场上下文，但未接入实时新闻与交易执行级报价）/g, '')
+          .trim();
+        parsedReport.summary = `${temp} ${marketContextBoundaryNote}`;
       }
       if (!parsedReport.portfolioDiagnosis) {
         parsedReport.portfolioDiagnosis = {
