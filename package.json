@@ -9,7 +9,9 @@
     "build": "vite build && npx esbuild server.ts --platform=node --packages=external --bundle --format=esm --target=node22 --outfile=dist/server.js",
     "preview": "vite preview",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "check:market-context": "node scripts/check-market-context.mjs",
+    "check:market-context:force": "node scripts/check-market-context.mjs --force"
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.64",
