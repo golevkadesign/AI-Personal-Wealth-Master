@@ -1,6 +1,8 @@
 import { getRealTimeQuotes } from "./marketData";
 import { extractTickers } from "./utils";
 import { analyzeStock } from "./quantEngine";
+import { buildMarketContext } from "./marketContext";
+import { compactMarketContextForPrompt } from "./marketContext/promptContext";
 
 interface DataProviderParams {
     message: string;
@@ -84,10 +86,41 @@ class FirebaseStaticProvider implements DataProvider {
     }
 }
 
+class MarketContextProvider implements DataProvider {
+  name = "MarketContext";
+
+  async fetch({ contextData }: DataProviderParams) {
+    try {
+      const existing = contextData?.marketContext;
+      const existingCapturedAt = contextData?.marketContextLastFetchedAt;
+
+      if (existing) {
+        return {
+          source: `${this.name} (ClientCache)`,
+          payload: compactMarketContextForPrompt(existing, existingCapturedAt)
+        };
+      }
+
+      const context = await buildMarketContext();
+      return {
+        source: this.name,
+        payload: compactMarketContextForPrompt(context, context?.generatedAt)
+      };
+    } catch (error: any) {
+      console.warn("[MarketContextProvider] Failed:", error?.message || error);
+      return {
+        source: this.name,
+        payload: null
+      };
+    }
+  }
+}
+
 // Registry of providers to allow easy plug-and-play decoupling
 export const dataProviders: DataProvider[] = [
     new FirebaseStaticProvider(),
     new MarketDataProvider(),
+    new MarketContextProvider()
     ];
 
 export async function hydrateContext(message: string, contextData: any, settings: any, onProgress?: (msg: string) => void, userId?: string, extractedTickers: string[] = []) {
@@ -111,6 +144,8 @@ export async function hydrateContext(message: string, contextData: any, settings
             sources.push(res.source);
             if (res.source.startsWith("MarketData")) {
                 hydratedData.marketData = res.payload;
+            } else if (res.source.startsWith("MarketContext")) {
+                hydratedData.marketContext = res.payload;
             } else if (res.source.startsWith("LongbridgeLive")) {
                 hydratedData.livePortfolio = res.payload.livePortfolio;
             } else if (res.source.includes("FirebaseStatic")) {

@@ -144,7 +144,8 @@ chatRouter.post("/", async (req, res) => {
         externalData: { 
             marketData: hydratedData.marketData || {}, 
             livePortfolio: hydratedData.livePortfolio,
-            livePortfolioAccounts: hydratedData.livePortfolioAccounts
+            livePortfolioAccounts: hydratedData.livePortfolioAccounts,
+            marketContext: hydratedData.marketContext
         },
         updatedProfile: intentResult.updatedProfile
     });
@@ -180,7 +181,8 @@ chatRouter.post("/", async (req, res) => {
                externalData: { 
                    marketData: hydratedData.marketData || {}, 
                    livePortfolio: hydratedData.livePortfolio,
-                   livePortfolioAccounts: hydratedData.livePortfolioAccounts
+                   livePortfolioAccounts: hydratedData.livePortfolioAccounts,
+                   marketContext: hydratedData.marketContext
                }, 
                expertAnalysis, 
                updatedProfile: intentResult.updatedProfile 
@@ -238,7 +240,8 @@ chatRouter.post("/", async (req, res) => {
         externalData: { 
             marketData: hydratedData.marketData || {}, 
             livePortfolio: hydratedData.livePortfolio,
-            livePortfolioAccounts: hydratedData.livePortfolioAccounts
+            livePortfolioAccounts: hydratedData.livePortfolioAccounts,
+            marketContext: hydratedData.marketContext
         }, 
         expertAnalysis, 
         updatedProfile: intentResult.updatedProfile 

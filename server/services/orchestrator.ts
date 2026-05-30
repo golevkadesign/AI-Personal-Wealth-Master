@@ -1,10 +1,14 @@
 import { runAnalysisAgent } from "./agents";
 import { getUniversalAiClient } from "../utils/ai-universal";
 import { DEFAULT_PROMPTS } from "../../src/lib/defaultPrompts";
+import { compactMarketContextForPrompt } from "./marketContext/promptContext";
 
 function dehydrateExternalData(data: any) {
     if (!data) return data;
     const cleanData = JSON.parse(JSON.stringify(data));
+    if (cleanData.marketContext) {
+        cleanData.marketContext = compactMarketContextForPrompt(cleanData.marketContext, cleanData.marketContext.capturedAt);
+    }
     if (cleanData.livePortfolio) {
         cleanData.livePortfolio.forEach((pos: any) => {
             if (pos.quantSignals) {
@@ -171,13 +175,20 @@ export async function evaluateWealthStatus(userTier: string, message: string, hi
 
   const shouldRun = (moduleName: string) => targetModules.length === 0 || targetModules.includes(moduleName);
 
-  // 如果有市场数据（股票等），额外拉起市场分析Agent
-  if (shouldRun("Market Analysis") && ((externalData?.marketData && Object.keys(externalData.marketData).length > 0) ||
+  // 如果有市场数据（股票等）或 Market Context，额外拉起市场分析Agent
+  const hasHoldingsOrQuotes = (externalData?.marketData && Object.keys(externalData.marketData).length > 0) ||
       (externalData?.livePortfolio && externalData.livePortfolio.length > 0) ||
-      (externalData?.livePortfolioAccounts && externalData.livePortfolioAccounts.length > 0))) {
+      (externalData?.livePortfolioAccounts && externalData.livePortfolioAccounts.length > 0);
+  const hasMarketContext = Boolean(externalData?.marketContext);
+
+  if (shouldRun("Market Analysis") && (hasHoldingsOrQuotes || hasMarketContext)) {
     if (onProgress) onProgress(`⏳ [子节点派发] 请求外部数据交汇汇流，唤醒华尔街量化分析节点...`);
+    const marketQuery = !hasHoldingsOrQuotes
+      ? "请基于本轮延迟/历史 Market Context 评估市场环境、跨资产信号与组合潜在风险。不要声称拥有实时新闻或盘中交易报价。"
+      : "请帮我分析我持有的或提到的这些标的，同时结合本轮延迟/历史 Market Context，但不要将其表述为实时新闻或盘中报价。";
+
     agentTasks.push(
-      runAnalysisAgent(userTier, cleanExternalData, history, "Market Analysis", "请帮我分析我持有的或提到的这些标的", settings, attachments).then((res: any) => { 
+      runAnalysisAgent(userTier, cleanExternalData, history, "Market Analysis", marketQuery, settings, attachments).then((res: any) => { 
         agentResults['市场与标的分析'] = res; 
         if (onProgress) onProgress(`\n✅ **[阶段 3.x] [量化趋势推演完成]**\n${res}\n\n---\n`);
       }).catch(e => {
@@ -229,7 +240,15 @@ export async function streamSynthesis(userTier: string, message: string, externa
     }
   }
 
-  const authenticityPact = `【真实性公约】: 你是一个严格的专业财务终端。你必须优先使用下方 \`[实时市场行情 (MARKET_DATA)]\` 中的最新价格进行推演！如果某标的在 \`MARKET_DATA\` 中缺失，再参考 \`[LIVE_PORTFOLIO]\` 中附带的实时价格或市值/数量。严禁虚构任何数字。使用最新数据时请标注来源（如：“根据实时行情及持仓计算（$TSLA: 178.43）...”）。\n\n`;
+  const marketContextRAG = cleanExternalData?.marketContext || null;
+
+  const authenticityPact = `【真实性公约】: 你是一个严格的专业财务终端。你必须优先使用下方 \`[实时市场行情 (MARKET_DATA)]\` 中的最新价格进行推演！如果某标的在 \`MARKET_DATA\` 中缺失，再参考 \`[LIVE_PORTFOLIO]\` 中附带的实时价格或市值/数量。严禁虚构任何数字。使用最新数据时请标注来源。
+本轮的 \`MARKET_CONTEXT\` 是延迟/历史市场上下文，只能用于判断 regime (宏观状态与风险模式)、跨资产影响、行业板块表现和风险解释之目的。
+你必须遵循【严格双轨事实边界】：
+1. 标的价格、市值、仓位和数量等硬核资产事实来自 \`MARKET_DATA\`、\`LIVE_PORTFOLIO\` 和 \`LIVE_PORTFOLIO_ACCOUNTS\`。
+2. 任何情况下，\`MARKET_CONTEXT\` 均不可表述为“实时新闻”、“最新突发政策”、“盘中事实报价”或“刚刚发布的财报/经济数据”等动态资讯。
+3. 如果引用 \`MARKET_CONTEXT\`，你必须明确指出类似“根据本轮延迟/历史市场上下文提示...”。
+4. 绝不能用 \`MARKET_CONTEXT\` 倒推或捏造用户未提供或缺席的资产硬核实时价格与市值，不能为了“匹配”而幻觉创造数值。\n\n`;
 
   const template = settings?.agentPrompts?.orchestrator || DEFAULT_PROMPTS.orchestrator;
 
@@ -350,6 +369,8 @@ ${temporalContext}
     })
     .replace('{marketDataRAG}', () => JSON.stringify(externalData?.marketData || {}, null, 2))
     .replace('{agentResults}', () => JSON.stringify(dehydratedResults, null, 2))
+    + "\n\n【MARKET_CONTEXT / 延迟历史市场上下文】\n"
+    + JSON.stringify(marketContextRAG, null, 2)
     + "\n" + uiSummaryInstructions;
 
   try {

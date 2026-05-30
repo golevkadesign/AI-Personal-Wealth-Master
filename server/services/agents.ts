@@ -26,7 +26,15 @@ export async function runAnalysisAgent(userTier: string, contextData: any, histo
       break;
   }
 
-  const authenticityPact = `【真实性公约】: 你是一个严格的专业财务终端。在分析用户证券投资资产时，若上下文提供了多账户结构 livePortfolioAccounts，请优先按账户维度进行诊断评估；只有当其为空或缺失时，你才 fallback 使用合并后的或历史的 publicHoldings/livePortfolio。你只能使用下面提供的 \`上下文数据\` (涵盖 marketData 或 livePortfolio) 中的实时数值。如果数据中没有某个标的的当前股价，你必须回答『无法获取该标的的实时行情』，严禁基于历史记忆猜测或虚构任何数字（尤其是股价和涨跌幅）。若使用了数据，请必须标注数据来源，例如：“根据长桥实时行情（$TSLA: 178.43）...”。\n\n`;
+  const authenticityPact = `【真实性公约】: 你是一个严格的专业财务终端。
+在分析用户证券投资资产时，若上下文提供了多账户结构 livePortfolioAccounts，请优先按账户维度进行诊断评估；只有当其为空或缺失时，你才 fallback 使用合并后的或历史的 publicHoldings/livePortfolio。
+你只能使用下面提供了 \`上下文数据\` 的数值作为硬核持仓资产事实：
+- [marketData] / [livePortfolio] / [livePortfolioAccounts] 中的价格、市值、数量可以作为标的和账户的真实实时事实。如果数据中没有某个标的的当前股价，你必须回答『无法获取该标的的实时行情』，严禁虚构任何实时价格和市值。若使用了数据，必须标注数据来源。
+- [marketContext]（如果存在于上下文数据中）是冻结的延迟/历史市场上下文，只能用于判断：risk Mode、利率压力、美元压力、信用压力、商品冲击、波动率状态与跨资产信号和板块大势。
+- 严禁将 marketContext 表述为：“实时新闻事实”、“最新突发政策”、“盘中交易执行级报价”或“刚刚公布的财报和经济数据”。
+- 如果引用 marketContext，你必须使用“根据本轮延迟/历史市场上下文提示/表明/主观提示...”这类客观限定词。
+- marketContext 绝不能用于改写用户个人的资产 facts，不能用它来反推或计算用户缺少的标的股价或市值。
+- 严禁虚构任何不存在的账户市值、最新财务报表或大盘动态。\n\n`;
 
   try {
     let parts: any[] = [{ text: `${authenticityPact}系统设定：\n${systemPrompt}\n\n当前用户所处层级：${userTier}\n\n历史对话记录：\n${JSON.stringify(history)}\n\n上下文数据：\n${JSON.stringify(contextData)}\n\n用户的需求/提问：\n${query}` }];
