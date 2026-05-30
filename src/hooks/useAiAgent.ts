@@ -304,6 +304,12 @@ export function useAiAgent({ setIsSynthesizing }: any) {
                                    updated = true;
                                }
 
+                               if (extData.marketContext) {
+                                   nextData.marketContext = extData.marketContext;
+                                   nextData.marketContextLastFetchedAt = Date.now();
+                                   updated = true;
+                               }
+
                                return updated ? nextData : prevData;
                            });
                        }
@@ -390,6 +396,12 @@ export function useAiAgent({ setIsSynthesizing }: any) {
            commitData((prevData: any) => {
                const nextData = { ...prevData };
                let updated = false;
+
+               if (extDataFinal.marketContext) {
+                   nextData.marketContext = extDataFinal.marketContext;
+                   nextData.marketContextLastFetchedAt = Date.now();
+                   updated = true;
+               }
 
                if (Array.isArray(extDataFinal.livePortfolioAccounts) && extDataFinal.livePortfolioAccounts.length > 0) {
                    nextData.publicHoldingAccounts = extDataFinal.livePortfolioAccounts;

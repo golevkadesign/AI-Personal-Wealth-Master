@@ -29,7 +29,6 @@ export function filterAiWritableStatePatch(
     'lifeStrategiesShort',
     'lifeStrategiesLong',
     'dynamicWidgets',
-    'dashboardSchema',
     'agentMemorySnapshots'
   ];
 
