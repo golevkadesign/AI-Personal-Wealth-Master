@@ -37,18 +37,20 @@ export const DashboardGrid: React.FC = () => {
   const publicHoldingAccounts = data.publicHoldingAccounts || (data.distributions as any)?.publicHoldingAccounts || [];
   const publicHoldings = data.distributions?.publicHoldings || [];
 
-  const hasPublicHoldingAccounts = publicHoldingAccounts.length > 0;
-  const hasPublicHoldings = publicHoldings.length > 0;
+  const getSyncStatusText = () => {
+    if (publicHoldingAccountsSyncStatus === 'loading') return '同步中';
+    if (publicHoldingAccountsSyncStatus === 'success') return '已同步';
+    if (publicHoldingAccountsSyncStatus === 'error') return '同步异常';
+    return '等待数据';
+  };
 
-  let badgeText = "等待持仓数据";
-  let badgeColorClass = "bg-[#1A1D20] text-[#8C8370] border-zinc-800";
-  if (hasPublicHoldingAccounts) {
-    badgeText = "多账户实盘";
-    badgeColorClass = "bg-[#C9B284]/15 text-[#C9B284] border-[#C9B284]/20";
-  } else if (hasPublicHoldings) {
-    badgeText = "旧持仓兼容模式";
-    badgeColorClass = "bg-teal-950/20 text-teal-400 border-teal-900/30";
-  }
+  const getAccountsCountText = () => {
+    return publicHoldingAccounts.length > 0 ? `${publicHoldingAccounts.length} 个账户已连接` : '等待持仓账户';
+  };
+
+  const getAiAnalysisText = () => {
+    return data.dynamicWidgets && data.dynamicWidgets.length > 0 ? '本轮已生成洞察' : '空闲中';
+  };
 
   return (
     <div className="relative z-10 w-full mb-6 md:mb-10">
@@ -95,54 +97,89 @@ export const DashboardGrid: React.FC = () => {
           )}
         </AnimatePresence>
 
-        {/* Portfolio Review CTA */}
+        {/* 全局数据状态与操作条 */}
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-[#10141D] border border-[#C9B284]/15 rounded-2xl p-4 md:p-5 flex flex-col md:flex-row items-center justify-between gap-4 transition-all"
+          className="flex flex-col gap-2"
         >
-          <div className="flex items-start gap-4 w-full md:w-auto">
-            <div className="bg-[#1C1F22] border border-[#C9B284]/20 shadow-inner w-12 h-12 rounded-xl flex items-center justify-center relative shrink-0 overflow-hidden group">
-              <div className="absolute inset-0 bg-[#C9B284]/5 opacity-40"></div>
-              <Sparkles className="w-5 h-5 text-[#C9B284]" />
-            </div>
-            <div className="space-y-1.5 flex-1 min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-sm font-bold text-[#E7D7B0] tracking-wide font-sans">
-                  本轮持仓复盘 / Portfolio Review
-                </h3>
-                <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${badgeColorClass} select-none`}>
-                  {badgeText}
-                </span>
+          <div className="bg-[#111315]/80 backdrop-blur-sm border border-white/[0.04] rounded-xl px-4 py-3 md:min-h-[56px] md:py-2.5 flex flex-col md:flex-row md:items-center justify-between gap-3 min-w-0 shadow-sm">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2.5 min-w-0">
+              <div className="text-zinc-400 font-bold select-none text-[10px] md:text-xs tracking-wider uppercase flex items-center gap-1.5 shrink-0">
+                <div className="w-1.5 h-1.5 bg-[#C9B284] rounded-full animate-pulse" />
+                全局数据状态 / Operating Context
               </div>
-              <p className="text-xs text-[#8C8370] leading-relaxed max-w-2xl">
-                基于当前多账户持仓或公开市场持仓创建复盘快照，对比上次记录，并生成结构化行动计划。
-              </p>
-              {ctaError && (
-                <p className="text-xs text-rose-400 font-mono mt-1 animate-pulse">
-                  ⚠️ {ctaError}
-                </p>
-              )}
+              
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[10px] md:text-xs">
+                {/* 状态 1：系统状态 */}
+                <div className="flex items-center gap-1 text-zinc-500 shrink-0 select-none">
+                  <span>系统状态:</span>
+                  <div className="flex items-center gap-1.5 ml-1">
+                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                    <span className="text-zinc-300 font-medium font-sans">正常运行</span>
+                  </div>
+                </div>
+
+                {/* 状态 2：数据同步 */}
+                <div className="flex items-center gap-1 text-zinc-500 shrink-0 select-none">
+                  <span>数据同步:</span>
+                  <div className="flex items-center gap-1.5 ml-1">
+                    <span className={`w-1.5 h-1.5 rounded-full ${
+                      publicHoldingAccountsSyncStatus === 'loading' ? 'bg-amber-500 animate-spin' :
+                      publicHoldingAccountsSyncStatus === 'success' ? 'bg-emerald-500' :
+                      publicHoldingAccountsSyncStatus === 'error' ? 'bg-rose-500' : 'bg-zinc-500'
+                    }`} />
+                    <span className="text-zinc-300 font-medium font-sans">{getSyncStatusText()}</span>
+                  </div>
+                </div>
+
+                {/* 状态 3：持仓账户 */}
+                <div className="flex items-center gap-1 text-zinc-500 shrink-0 select-none">
+                  <span>持仓账户:</span>
+                  <div className="flex items-center gap-1.5 ml-1">
+                    <span className={`w-1.5 h-1.5 rounded-full ${publicHoldingAccounts.length > 0 ? 'bg-amber-500' : 'bg-zinc-500'}`} />
+                    <span className="text-zinc-300 font-medium font-sans">{getAccountsCountText()}</span>
+                  </div>
+                </div>
+
+                {/* 状态 4：AI分析状态 */}
+                <div className="flex items-center gap-1 text-zinc-500 shrink-0 select-none">
+                  <span>AI 分析状态:</span>
+                  <div className="flex items-center gap-1.5 ml-1">
+                    <span className={`w-1.5 h-1.5 rounded-full ${data.dynamicWidgets?.length ? 'bg-[#C9B284]' : 'bg-zinc-500'}`} />
+                    <span className="text-zinc-300 font-medium font-sans">{getAiAnalysisText()}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 shrink-0 self-start md:self-auto">
+              <button
+                onClick={() => {
+                  setCtaError(null);
+                  const session = createPortfolioReviewSession();
+                  if (session) {
+                    window.dispatchEvent(new CustomEvent('open-portfolio-review', { detail: { sessionId: session.id } }));
+                  } else {
+                    setCtaError("当前没有可复盘的持仓数据，请先同步券商账户或录入公开市场持仓。");
+                  }
+                }}
+                className="px-3.5 py-1.5 md:py-2 bg-[#C9B284]/10 hover:bg-[#C9B284]/25 border border-[#C9B284]/30 text-[#C9B284] hover:text-white text-[11px] md:text-xs font-sans font-medium rounded-lg transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>生成本轮持仓复盘</span>
+              </button>
             </div>
           </div>
-          
-          <div className="w-full md:w-auto shrink-0 flex justify-end">
-            <button
-              onClick={() => {
-                setCtaError(null);
-                const session = createPortfolioReviewSession();
-                if (session) {
-                  window.dispatchEvent(new CustomEvent('open-portfolio-review', { detail: { sessionId: session.id } }));
-                } else {
-                  setCtaError("当前没有可复盘的持仓数据，请先同步券商账户或录入公开市场持仓。");
-                }
-              }}
-              className="w-full md:w-auto px-5 py-2.5 bg-[#C9B284]/10 hover:bg-[#C9B284]/25 border border-[#C9B284]/30 text-[#C9B284] hover:text-white text-xs font-mono tracking-wider font-semibold uppercase rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5"
+          {ctaError && (
+            <motion.p 
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              className="text-xs text-rose-400 font-mono px-4 py-1.5 bg-rose-950/20 border border-rose-950/40 rounded-lg"
             >
-              <Sparkles className="w-4 h-4" />
-              生成本轮持仓复盘
-            </button>
-          </div>
+              ⚠️ {ctaError}
+            </motion.p>
+          )}
         </motion.div>
 
         {/* 核心仪表盘骨架 (Dashboard Schema) */}

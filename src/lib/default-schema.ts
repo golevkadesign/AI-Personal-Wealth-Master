@@ -13,15 +13,22 @@ export const DEFAULT_DASHBOARD_SCHEMA: SDUIComponent[] = [
     ]
   },
   {
-    id: "charts-grid",
+    id: "primary-public-market-section",
+    type: "Grid",
+    props: { preset: "sections", gap: 6, className: "mb-8" },
+    children: [
+      { id: "c2", type: "DynamicChart", props: { title: "多账户公开市场持仓", chartType: "publicHoldings", layoutSize: "lg", layoutSpan: "full", dashboardRole: "primary-section", delay: 0.2 } }
+    ]
+  },
+  {
+    id: "asset-structure-grid",
     type: "Grid",
     props: { preset: 'charts', gap: 6, className: "mb-8" },
     children: [
-      { id: "c1", type: "DynamicChart", props: { title: "流动资金池", chartType: "liquidity", layoutSize: "md", delay: 0.1 } },
-      { id: "c2", type: "DynamicChart", props: { title: "公开市场持仓视图", chartType: "publicHoldings", layoutSize: "lg", layoutSpan: "full", dashboardRole: "primary-section", delay: 0.2 } },
-      { id: "c3", type: "DynamicChart", props: { title: "衍生品及期权", chartType: "options", layoutSize: "md", delay: 0.3 } },
+      { id: "c1", type: "DynamicChart", props: { title: "流动资金池", chartType: "liquidity", layoutSize: "md", delay: 0.3 } },
       { id: "c4", type: "DynamicChart", props: { title: "非公开资产估值", chartType: "privateAssets", layoutSize: "md", delay: 0.4 } },
-      { id: "c5", type: "DynamicChart", props: { title: "开支结构分析", chartType: "expenses", layoutSize: "md", delay: 0.6 } }
+      { id: "c5", type: "DynamicChart", props: { title: "开支结构分析", chartType: "expenses", layoutSize: "md", delay: 0.5 } },
+      { id: "c3", type: "DynamicChart", props: { title: "衍生品及期权", chartType: "options", layoutSize: "md", delay: 0.6 } }
     ]
   }
 ];

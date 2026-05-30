@@ -254,7 +254,7 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
                   <span className="text-[11px] font-mono text-zinc-500">{t('charts.noData') || '该账户暂无可用资产或同步数据'}</span>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 min-[1180px]:grid-cols-[180px_minmax(0,1fr)] gap-5 items-center min-w-0 relative z-10">
+                <div className="grid grid-cols-1 min-[1180px]:grid-cols-[170px_minmax(0,1fr)] gap-5 items-center min-w-0 relative z-10">
                   {/* Left: Donut Chart */}
                   <div className="w-full flex items-center justify-center min-w-0 relative min-h-[160px]">
                     <div className="w-[150px] h-[150px] sm:w-[160px] sm:h-[160px] relative shrink-0">
@@ -270,7 +270,7 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
 
                   {/* Right: Interactive Holdings List */}
                   <div className="w-full min-w-0 overflow-hidden flex flex-col justify-start custom-scroll pr-1 pb-1">
-                    <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(92px,0.8fr)_minmax(52px,0.45fr)] gap-2 items-center text-[9px] font-mono font-bold tracking-widest text-[#8C8370] uppercase pb-2 border-b border-[#C9B284]/12 mb-2 px-3">
+                    <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(100px,0.85fr)_minmax(56px,0.45fr)] gap-2 items-center text-[9px] font-mono font-bold tracking-widest text-[#8C8370] uppercase pb-2 border-b border-[#C9B284]/12 mb-2 px-3">
                       <div className="min-w-0 truncate">{t('dashboard.instrument') || '标的'}</div>
                       <div className="min-w-0 text-right truncate">{t('dashboard.estValue') || '预估市值'}</div>
                       <div className="text-right whitespace-nowrap">{t('dashboard.ratio') || '占比'}</div>
@@ -294,7 +294,7 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
                               accountId: account.accountId,
                               accountName: account.accountName
                             })}
-                            className={`grid grid-cols-[minmax(0,1.4fr)_minmax(92px,0.8fr)_minmax(52px,0.45fr)] gap-2 items-center px-3 py-2 cursor-pointer rounded-xl transition-all border ${
+                            className={`grid grid-cols-[minmax(0,1.4fr)_minmax(100px,0.85fr)_minmax(56px,0.45fr)] gap-2 items-center px-3 py-2 cursor-pointer rounded-xl transition-all border ${
                               isSelected 
                                 ? 'bg-[#C9B284]/10 border-[#C9B284]/45 shadow-[0_2px_12px_rgba(201,178,132,0.12)] text-[#E7D7B0]' 
                                 : 'border-white/[0.02] hover:bg-white/5 text-slate-300'
