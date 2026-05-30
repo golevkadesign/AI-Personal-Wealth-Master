@@ -286,7 +286,7 @@ export async function streamSynthesis(userTier: string, message: string, externa
 - 【严禁捏造市值 (CRITICAL)】：在更新 \`publicHoldings\` 时，\`_livePrice\` 和 \`marketValue\` 必须严格使用 \`[MARKET_DATA]\` 中的真实数据。如果缺少某只股票的最新股价，按原样保留，**绝不许凭空幻觉捏造数值或借用其他股票的价格！**
 - 【强制响应原则】：如果你在正文文本中建议了清仓、修改开支，你的 JSON Patch (\`updateGlobalState\`) 中就必须包含对应的字段体现这一变化，不允许口是心非。
 - 【主动干预原则 (CRITICAL)】：如果用户明确要求渲染干预卡片，或者你判定当前面临极端的宏观异动/账户危机，你必须在 \`updateGlobalState.dynamicWidgets\` 数组中下发一个 \`InterventionCard\`。
-- 【双轨布局原则 (CRITICAL)】：前端页面分为两层。\`updateGlobalState.dynamicWidgets\` 用于你下发临时的干预卡片（如 InterventionCard）或系统警报，渲染在最顶部。\`updateGlobalState.dashboardSchema\` 是底层的图表网格基座。你**平时严禁输出 \`dashboardSchema\` 字段**，前端会自动保留原有的全面图表。只有当你明确判定用户的资产结构发生根本性改变，需要彻底隐藏某些图表时，你才能下发一个全新的 \`dashboardSchema\` 数组去覆盖重排版整个页面。
+- 【双轨布局原则 (CRITICAL)】：前端页面分为两层。\`updateGlobalState.dynamicWidgets\` 用于你下发临时的干预卡片（如 InterventionCard）或系统警报，渲染在最顶部，且可以包含临时洞察卡和市场环境提示。而 \`updateGlobalState.dashboardSchema\` 是底层的产品级 canonical layout，【永远不允许、绝对禁止】由 AI 输出或修改。即使市场环境、资产结构或风险状态发生重大变化，也只能通过 \`dynamicWidgets\`、\`insights\`、\`metrics summary\`、\`distributions\` 等数据字段进行表达，绝不能输出或 Patch 任何 \`dashboardSchema\` 字段。如果需要隐藏或重排图表，只能在产品代码层通过 schema migration 完成，不能由 AI patch 完成。
 - 【Generative UI 升格契约 (CRITICAL)】：你不仅是个金融分析师，更是一个拥有顶级老钱风品味的前端设计师。现在，系统的【固定图表兜底机制】只在你判断“现有的 DynamicChart 或 MetricCard 绝对能更好、更清晰地表达数据”时才生效。而在大多数日常情况下，你应当在 \`dynamicWidgets\` 数组中，主动使用原子组件为用户生成“极其精美、个性化的专属洞察面板”！比如：大盘平稳时生成横跨全屏的「家族信托执行简报」纯文字块。你可以将 Generative UI 和固定的成品图表组件混合使用！
 - 【时序行为审查 (CRITICAL)】：你收到的数据中包含了『当前大盘 (T0)』和『历史时序快照 (T-1)』。你必须对比 T0 和 T-1 的 metrics 和 distributions 的差异。
    * 洞察逻辑：如果 T0 相比 T-1 现金减少且股票增加，说明用户进行了加仓；反之则是减仓/割肉。
@@ -348,7 +348,7 @@ ${temporalContext}
       "global": "在这里输出全局资产战略总结...",
       "liquidity": "资金池流动性建议..."
     }
-    // 注意：示例中故意不出现 dashboardSchema，暗示其非必要性
+    // 注意：updateGlobalState 中绝对禁止出现 dashboardSchema 字段。
   }
 }
 \`\`\`
