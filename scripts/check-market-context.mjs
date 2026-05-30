@@ -1,5 +1,13 @@
 import process from 'node:process';
 
+function formatPercent(value) {
+  return Number.isFinite(value) ? `${value.toFixed(2)}%` : 'N/A';
+}
+
+function safeText(value, fallback = 'N/A') {
+  return value === undefined || value === null || value === '' ? fallback : String(value);
+}
+
 async function main() {
   const args = process.argv.slice(2);
   const isForce = args.includes('--force');
@@ -98,7 +106,11 @@ async function main() {
       console.log(`  - No instrument records available.`);
     } else {
       instruments.slice(0, 8).forEach((item, index) => {
-        console.log(`  [${index + 1}] Symbol: ${item.symbol.padEnd(8)} | Category: ${item.category.padEnd(8)} | Change3M: ${(item.change3M !== undefined && item.change3M !== null) ? (item.change3M * 100).toFixed(2) + '%' : 'N/A'.padEnd(6)} | Quality: ${item.dataQuality || 'N/A'}`);
+        const sym = safeText(item.symbol).padEnd(8);
+        const cat = safeText(item.category).padEnd(12);
+        const chg = formatPercent(item.change3M !== undefined && item.change3M !== null ? Number(item.change3M) : undefined);
+        const qual = safeText(item.dataQuality);
+        console.log(`  [${index + 1}] Symbol: ${sym} | Category: ${cat} | Change3M: ${chg.padEnd(6)} | Quality: ${qual}`);
       });
     }
 
