@@ -44,7 +44,7 @@ function isNegative(value: unknown, threshold = 0): boolean {
 
 export function inferRiskMode(
   instruments: MarketInstrumentSnapshot[],
-  volState: MarketRegime['volatilityState']
+  volatilityState?: MarketRegime['volatilityState']
 ): MarketRegime['riskMode'] {
   const spy = getInstrument(instruments, 'SPY');
   const qqq = getInstrument(instruments, 'QQQ');
@@ -55,6 +55,8 @@ export function inferRiskMode(
 
   const spy3M = spy?.change3M;
   const qqq3M = qqq?.change3M;
+
+  const volState = volatilityState || inferVolatilityState(instruments);
 
   if (volState === 'stressed') {
     return 'risk_off';
@@ -384,7 +386,7 @@ export function createMarketContext(params: {
       id: 'f_risk_appetite',
       label: '全球风险资产偏好',
       category: 'risk_appetite',
-      value: regime.riskMode === 'risk_on' ? 'positive' : regime.riskMode === 'risk_off' ? 'negative' : 'neutral',
+      value: regime.riskMode === 'risk_on' ? 'positive' : regime.riskMode === 'risk_off' ? 'negative' : regime.riskMode === 'neutral' ? 'neutral' : 'unknown',
       confidence: dataQuality,
       evidence: ['基于权益市场3M平均动能推导']
     },
@@ -392,7 +394,7 @@ export function createMarketContext(params: {
       id: 'f_rate_pressure',
       label: '十年期无风险利率压力',
       category: 'rate_pressure',
-      value: regime.ratePressure === 'rising_rate_pressure' ? 'negative' : regime.ratePressure === 'falling_rate_pressure' ? 'positive' : 'neutral',
+      value: regime.ratePressure === 'rising_rate_pressure' ? 'negative' : regime.ratePressure === 'falling_rate_pressure' ? 'positive' : regime.ratePressure === 'neutral' ? 'neutral' : 'unknown',
       confidence: dataQuality,
       evidence: ['基于长期国库券TLT动能及利息压力推导']
     },
@@ -400,9 +402,33 @@ export function createMarketContext(params: {
       id: 'f_dollar_pressure',
       label: '美元指数汇兑壁垒',
       category: 'dollar_pressure',
-      value: regime.dollarPressure === 'strong_usd' ? 'negative' : regime.dollarPressure === 'weak_usd' ? 'positive' : 'neutral',
+      value: regime.dollarPressure === 'strong_usd' ? 'negative' : regime.dollarPressure === 'weak_usd' ? 'positive' : regime.dollarPressure === 'neutral' ? 'neutral' : 'unknown',
       confidence: dataQuality,
       evidence: ['基于美元指数DXY近期外汇波幅测算']
+    },
+    {
+      id: 'f_credit_condition',
+      label: '全球信贷市场健康状况',
+      category: 'credit_condition',
+      value: regime.creditStress === 'elevated' ? 'negative' : regime.creditStress === 'normal' ? 'neutral' : 'unknown',
+      confidence: dataQuality,
+      evidence: ['基于高收益债(HYG)与高评级企业债(LQD)利差走势推导']
+    },
+    {
+      id: 'f_commodity_impulse',
+      label: '大宗商品通胀冲击脉冲',
+      category: 'commodity_impulse',
+      value: regime.commodityImpulse === 'inflationary' ? 'negative' : regime.commodityImpulse === 'disinflationary' ? 'positive' : regime.commodityImpulse === 'mixed' ? 'neutral' : 'unknown',
+      confidence: dataQuality,
+      evidence: ['基于原油(USO)与铜/黄金资源品趋势推导']
+    },
+    {
+      id: 'f_volatility',
+      label: '跨资产隐含与历史波动率',
+      category: 'volatility',
+      value: regime.volatilityState === 'stressed' ? 'negative' : regime.volatilityState === 'calm' ? 'positive' : regime.volatilityState === 'normal' ? 'neutral' : 'unknown',
+      confidence: dataQuality,
+      evidence: ['基于VIX恐慌指数或美股指数高阶波幅推导']
     }
   ];
 
