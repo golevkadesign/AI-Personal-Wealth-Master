@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import axios from 'axios';
 import { getSettings } from '../lib/settings';
 import { TerminalState, LIVE_VALUATION_VERSION, AccountPortfolio } from '../types/terminal';
+import { MarketContext } from '../types/market-context';
 import { sanitizeTerminalState } from '../lib/sanitizer';
 import { mergeWith, isArray, debounce } from 'lodash-es';
 import { setDoc, doc } from 'firebase/firestore';
@@ -33,6 +34,8 @@ export const EMPTY_STATE: TerminalState = {
   dashboardSchema: DEFAULT_DASHBOARD_SCHEMA,
   _dashboardSchemaVersion: DASHBOARD_SCHEMA_VERSION,
   historicalSnapshots: [],
+  marketContext: undefined,
+  marketContextLastFetchedAt: undefined,
 };
 
 const getSafeMktVal = (p: any): number => {
@@ -111,6 +114,9 @@ interface WealthState {
   publicHoldingAccountsSyncStatus: 'idle' | 'loading' | 'success' | 'empty' | 'error';
   publicHoldingAccountsError?: string;
   publicHoldingAccountsLastSyncAt?: number;
+  marketContextStatus: 'idle' | 'loading' | 'success' | 'error';
+  marketContextError?: string;
+  fetchMarketContext: (options?: { forceRefresh?: boolean }) => Promise<void>;
   portfolioReviewSessions: PortfolioReviewSession[];
   activePortfolioReviewSessionId?: string;
   createPortfolioReviewSession: () => PortfolioReviewSession | null;
@@ -154,6 +160,8 @@ export const useWealthStore = create<WealthState>((set, get) => ({
   publicHoldingAccountsSyncStatus: 'idle',
   publicHoldingAccountsError: undefined,
   publicHoldingAccountsLastSyncAt: undefined,
+  marketContextStatus: 'idle',
+  marketContextError: undefined,
   language: 'zh-CN',
   setLanguage: (lang) => set({ language: lang }),
   selectedHolding: null,
@@ -550,6 +558,54 @@ export const useWealthStore = create<WealthState>((set, get) => ({
       set({
         publicHoldingAccountsSyncStatus: 'error',
         publicHoldingAccountsError: err?.message || String(err)
+      });
+    }
+  },
+  fetchMarketContext: async (options) => {
+    const { data: stateData } = get();
+    const marketContext = stateData.marketContext;
+    const lastFetchedAt = stateData.marketContextLastFetchedAt;
+
+    if (!options?.forceRefresh && marketContext && lastFetchedAt && (Date.now() - lastFetchedAt < 15 * 60 * 1000)) {
+      set({ marketContextStatus: 'success', marketContextError: undefined });
+      return;
+    }
+
+    set({ marketContextStatus: 'loading', marketContextError: undefined });
+
+    try {
+      const url = options?.forceRefresh ? '/api/market-context?force=1' : '/api/market-context';
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch market context: status ${response.status}`);
+      }
+      const payload = await response.json();
+      if (payload.success !== true || !payload.data) {
+        throw new Error(payload.error || 'Invalid market context payload' + (payload.message ? `: ${payload.message}` : ''));
+      }
+
+      set((state) => {
+        const nextData = {
+          ...state.data,
+          marketContext: payload.data,
+          marketContextLastFetchedAt: Date.now()
+        };
+
+        if (state.user?.uid) {
+          localStorage.setItem(`ai_terminal_data_${state.user.uid}`, JSON.stringify(nextData));
+        }
+
+        return {
+          data: nextData,
+          marketContextStatus: 'success',
+          marketContextError: undefined
+        };
+      });
+    } catch (error: any) {
+      console.error('[fetchMarketContext] Failed:', error);
+      set({
+        marketContextStatus: 'error',
+        marketContextError: error.message || 'Failed to fetch market context'
       });
     }
   },

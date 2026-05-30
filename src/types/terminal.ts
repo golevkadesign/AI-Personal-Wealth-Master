@@ -1,3 +1,5 @@
+import { MarketContext } from './market-context';
+
 export const LIVE_VALUATION_VERSION = 3;
 
 export interface UserPersona {
@@ -151,5 +153,7 @@ export interface TerminalState {
   publicHoldingAccountsSyncStatus?: 'idle' | 'loading' | 'success' | 'empty' | 'error';
   publicHoldingAccountsError?: string;
   publicHoldingAccountsLastSyncAt?: number;
+  marketContext?: MarketContext;
+  marketContextLastFetchedAt?: number;
   [key: string]: any;
 }
