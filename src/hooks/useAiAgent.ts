@@ -11,6 +11,22 @@ import { parseSseBuffer } from '../lib/sse-parser';
 import { deriveTerminalStatePatchFromProfile } from '../lib/profile-to-terminal-state';
 import { LIVE_VALUATION_VERSION } from '../types/terminal';
 
+function normalizeMarketContextForStore(marketContext: any) {
+  if (!marketContext || typeof marketContext !== 'object') return marketContext;
+
+  const hasInstruments = Array.isArray(marketContext.instruments);
+  const hasKeyInstruments = Array.isArray(marketContext.keyInstruments);
+
+  if (!hasInstruments && hasKeyInstruments) {
+    return {
+      ...marketContext,
+      instruments: marketContext.keyInstruments
+    };
+  }
+
+  return marketContext;
+}
+
 export function useAiAgent({ setIsSynthesizing }: any) {
   const { user, data, commitData } = useWealthStore();
   const [inputMsg, setInputMsg] = useState('');
@@ -305,7 +321,7 @@ export function useAiAgent({ setIsSynthesizing }: any) {
                                }
 
                                if (extData.marketContext) {
-                                   nextData.marketContext = extData.marketContext;
+                                   nextData.marketContext = normalizeMarketContextForStore(extData.marketContext);
                                    nextData.marketContextLastFetchedAt = Date.now();
                                    updated = true;
                                }
@@ -398,7 +414,7 @@ export function useAiAgent({ setIsSynthesizing }: any) {
                let updated = false;
 
                if (extDataFinal.marketContext) {
-                   nextData.marketContext = extDataFinal.marketContext;
+                   nextData.marketContext = normalizeMarketContextForStore(extDataFinal.marketContext);
                    nextData.marketContextLastFetchedAt = Date.now();
                    updated = true;
                }

@@ -1,5 +1,11 @@
 export function compactMarketContextForPrompt(marketContext: any, capturedAt?: number) {
   if (!marketContext) return null;
+  const sourceInstruments = Array.isArray(marketContext.instruments)
+    ? marketContext.instruments
+    : Array.isArray(marketContext.keyInstruments)
+      ? marketContext.keyInstruments
+      : [];
+
   return {
     capturedAt: capturedAt ? new Date(capturedAt).toISOString() : undefined,
     freshness: marketContext.freshness,
@@ -22,7 +28,7 @@ export function compactMarketContextForPrompt(marketContext: any, capturedAt?: n
       interpretation: signal.interpretation,
       evidence: (signal.evidence || []).slice(0, 3)
     })),
-    keyInstruments: (marketContext.instruments || []).slice(0, 16).map((item: any) => ({
+    keyInstruments: sourceInstruments.slice(0, 16).map((item: any) => ({
       symbol: item.symbol,
       label: item.label,
       category: item.category,
