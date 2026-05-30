@@ -68,22 +68,22 @@ export const Card: React.FC<CardProps> = ({ title, value, subValue, trendGood = 
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: "spring", stiffness: 400, damping: 25, delay: delay || 0 }}
-      className={`bg-dash-surface border border-dash-subtle rounded-2xl p-6 relative overflow-hidden flex flex-col justify-between group h-full hover:border-[#C9B284]/30 hover:bg-dash-surface-hover/80 transition-all duration-300 min-w-[200px] sm:min-w-[220px] min-h-[160px] max-w-full ${className}`}
+      className={`bg-dash-surface border border-dash-subtle rounded-2xl p-6 relative overflow-hidden flex flex-col justify-between group h-full hover:border-[#C9B284]/30 hover:bg-dash-surface-hover/80 transition-all duration-300 ${className}`}
     >
-      <div className="relative z-10 flex flex-col h-full justify-between min-w-0">
+      <div className="relative z-10 flex flex-col h-full justify-between">
         
         {/* Card Header */}
-        <div className="flex justify-between items-start mb-4 gap-2 min-w-0">
-          <div className="min-w-0">
-            <h3 className="text-dash-tertiary text-[11px] font-mono uppercase tracking-[0.15em] font-semibold flex items-center gap-1.5 whitespace-nowrap truncate" title={title}>
+        <div className="flex justify-between items-start mb-4 gap-2">
+          <div>
+            <h3 className="text-dash-tertiary text-[11px] font-mono uppercase tracking-[0.15em] font-semibold flex items-center gap-1.5">
               {title}
             </h3>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            {badge && <div className="shrink-0">{badge}</div>}
+          <div className="flex items-center gap-2">
+            {badge && <div>{badge}</div>}
             
             <button
-               className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity bg-[#202326] hover:bg-[#262A2E] text-dash-primary border border-dash-subtle px-2.5 py-1 font-semibold text-[10px] rounded-lg cursor-pointer whitespace-nowrap shrink-0"
+               className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity bg-[#202326] hover:bg-[#262A2E] text-dash-primary border border-dash-subtle px-2.5 py-1 font-semibold text-[10px] rounded-lg cursor-pointer"
                onClick={() => useInteractionStore.getState().openCopilot(title, { value, subValue }, '垂直领域专家')}
                title="专家探讨"
                aria-label="专家探讨"
@@ -92,7 +92,7 @@ export const Card: React.FC<CardProps> = ({ title, value, subValue, trendGood = 
             </button>
             
             {cardIcon && (
-              <div className="w-8 h-8 rounded-lg bg-dash-base/60 border border-dash-subtle flex items-center justify-center shadow-inner shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-dash-base/60 border border-dash-subtle flex items-center justify-center shadow-inner">
                 {cardIcon}
               </div>
             )}
@@ -101,7 +101,7 @@ export const Card: React.FC<CardProps> = ({ title, value, subValue, trendGood = 
 
         {/* Card Value Body */}
         {value !== undefined && (
-          <div className="text-[28px] md:text-[32px] font-mono font-medium text-dash-primary tracking-tight leading-none mb-4 tabular-nums whitespace-nowrap truncate" title={typeof value === 'string' ? value : undefined}>
+          <div className="text-[28px] md:text-[32px] font-mono font-medium text-dash-primary tracking-tight leading-none mb-4 tabular-nums">
             {value}
           </div>
         )}
@@ -110,8 +110,8 @@ export const Card: React.FC<CardProps> = ({ title, value, subValue, trendGood = 
 
         {/* Card Footer: trend and sparkline side by side */}
         {subValue && (
-          <div className="mt-auto flex justify-between items-end pt-2 w-full min-w-0 gap-2">
-            <div className={`text-xs ${isLongSubText ? 'text-dash-tertiary leading-relaxed max-w-[70%] line-clamp-2' : `${statusColor} font-semibold flex items-center gap-1 whitespace-nowrap shrink-0`}`}>
+          <div className="mt-auto flex justify-between items-end pt-2 w-full">
+            <div className={`text-xs ${isLongSubText ? 'text-dash-tertiary leading-relaxed max-w-[70%]' : `${statusColor} font-semibold flex items-center gap-1`}`}>
               {!isLongSubText && (isPositive ? '▲' : isNegative ? '▼' : '')}
               {subValue}
             </div>

@@ -85,7 +85,7 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
   }
 
   return (
-    <div className="space-y-6">
+    <div className="w-full min-w-0 space-y-6">
       {/* Unified Multi-Account Group Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-5 sm:p-6 bg-[#16181A] border border-white/[0.03] rounded-2xl">
         <div className="space-y-1">
@@ -124,7 +124,11 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
         </div>
       )}
 
-      <div className={accountPortfolios.length >= 2 ? "grid grid-cols-1 2xl:grid-cols-2 gap-6" : "block space-y-6"}>
+      <div className={
+        accountPortfolios.length >= 2
+          ? "grid grid-cols-1 min-[1536px]:grid-cols-2 gap-6 min-w-0"
+          : "grid grid-cols-1 gap-6 min-w-0"
+      }>
         {accountPortfolios.map((account, accIdx) => {
           const positions = account.positions || [];
           const sortedArr = [...positions].sort((a, b) => getHoldingMarketValue(b) - getHoldingMarketValue(a));
@@ -184,29 +188,32 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
           };
 
           const hasEstimated = account.meta?.estimatedValuationSymbols && account.meta.estimatedValuationSymbols.length > 0;
+          const displayAccountName = account.accountName || account.accountId || '证券账户';
           const cardBadge = (
-            <div className="flex items-center gap-3 relative mr-1">
+            <div className="flex flex-wrap items-center gap-2 relative mr-1 max-w-[240px] md:max-w-xs justify-end">
               {account.meta?.error && (
-                <span className="text-[10px] bg-rose-950/40 text-rose-400 border border-rose-900/30 px-2.5 py-0.5 rounded-[4px] font-mono font-medium">
+                <span className="text-[10px] bg-rose-950/40 text-rose-400 border border-rose-900/30 px-2.5 py-0.5 rounded-[4px] font-mono font-medium whitespace-nowrap shrink-0">
                   同步异常
                 </span>
               )}
               {hasEstimated && (
-                <span className="text-[10px] bg-blue-950/40 text-blue-400 border border-blue-900/30 px-2 py-0.5 rounded-[4px] font-mono font-medium">
+                <span className="text-[10px] bg-blue-950/40 text-blue-400 border border-blue-900/30 px-2 py-0.5 rounded-[4px] font-mono font-medium whitespace-nowrap shrink-0">
                   估算估值
                 </span>
               )}
-              <span className="text-[10px] text-[#A39167] font-mono font-semibold tracking-wider">
-                {account.accountName || account.accountId || '证券账户'}
+              <span 
+                className="text-[10px] text-[#A39167] font-mono font-semibold tracking-wider truncate max-w-[120px] sm:max-w-[160px]"
+                title={account.accountName && account.accountId ? `${account.accountName} (${account.accountId})` : account.accountId}
+              >
+                {displayAccountName}
               </span>
             </div>
           );
 
           const cardTitle = (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 select-none shrink-0">
               <div className="w-1.5 h-3 bg-[#C9B284] rounded-sm" />
-              <span className="text-[12px] md:text-[13px] font-bold text-[#E7D7B0] tracking-tight">{title}</span>
-              <span className="text-[9px] font-mono text-zinc-500 font-semibold normal-case">({account.accountId || 'Unknown ID'})</span>
+              <span className="text-[12px] md:text-[13px] font-bold text-[#E7D7B0] tracking-tight">公开市场持仓</span>
             </div>
           );
 
@@ -219,7 +226,8 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
               insight=""
               delay={delay}
               chartHeight="auto"
-              className="h-auto"
+              size="auto"
+              className="h-auto min-h-[320px] overflow-hidden"
               badge={cardBadge}
               status={account.meta?.error ? 'error' : 'success'}
               onReload={undefined}
@@ -246,10 +254,10 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
                   <span className="text-[11px] font-mono text-zinc-500">{t('charts.noData') || '该账户暂无可用资产或同步数据'}</span>
                 </div>
               ) : (
-                <div className="flex flex-col lg:flex-row items-center gap-6 relative z-10">
+                <div className="grid grid-cols-1 min-[1180px]:grid-cols-[180px_minmax(0,1fr)] gap-5 items-center min-w-0 relative z-10">
                   {/* Left: Donut Chart */}
-                  <div className="w-full lg:w-[42%] flex items-center justify-center relative min-h-[160px]">
-                    <div className="w-[160px] h-[160px] relative shrink-0">
+                  <div className="w-full flex items-center justify-center min-w-0 relative min-h-[160px]">
+                    <div className="w-[150px] h-[150px] sm:w-[160px] sm:h-[160px] relative shrink-0">
                       <ReactECharts option={pieOption} onEvents={chartEvents} className="w-full h-full" />
                       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                         <span className="text-[9px] font-mono text-[#8C8370] uppercase tracking-widest leading-none mb-1">Total</span>
@@ -261,11 +269,11 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
                   </div>
 
                   {/* Right: Interactive Holdings List */}
-                  <div className="w-full lg:w-[58%] flex flex-col justify-start custom-scroll pr-1 pb-1">
-                    <div className="grid grid-cols-12 text-[9px] font-mono font-bold tracking-widest text-[#8C8370] uppercase pb-2 border-b border-[#C9B284]/12 mb-2 px-3">
-                      <div className="col-span-6">{t('dashboard.instrument') || '标的'}</div>
-                      <div className="col-span-4 text-right">{t('dashboard.estValue') || '预估市值'}</div>
-                      <div className="col-span-2 text-right">{t('dashboard.ratio') || '占比'}</div>
+                  <div className="w-full min-w-0 overflow-hidden flex flex-col justify-start custom-scroll pr-1 pb-1">
+                    <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(92px,0.8fr)_minmax(52px,0.45fr)] gap-2 items-center text-[9px] font-mono font-bold tracking-widest text-[#8C8370] uppercase pb-2 border-b border-[#C9B284]/12 mb-2 px-3">
+                      <div className="min-w-0 truncate">{t('dashboard.instrument') || '标的'}</div>
+                      <div className="min-w-0 text-right truncate">{t('dashboard.estValue') || '预估市值'}</div>
+                      <div className="text-right whitespace-nowrap">{t('dashboard.ratio') || '占比'}</div>
                     </div>
 
                     <div className="space-y-1.5 max-h-[180px] overflow-y-auto custom-scroll pr-1">
@@ -286,14 +294,14 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
                               accountId: account.accountId,
                               accountName: account.accountName
                             })}
-                            className={`grid grid-cols-12 items-center px-3 py-2 cursor-pointer rounded-xl transition-all border ${
+                            className={`grid grid-cols-[minmax(0,1.4fr)_minmax(92px,0.8fr)_minmax(52px,0.45fr)] gap-2 items-center px-3 py-2 cursor-pointer rounded-xl transition-all border ${
                               isSelected 
                                 ? 'bg-[#C9B284]/10 border-[#C9B284]/45 shadow-[0_2px_12px_rgba(201,178,132,0.12)] text-[#E7D7B0]' 
                                 : 'border-white/[0.02] hover:bg-white/5 text-slate-300'
                             }`}
                           >
                             {/* Name with Dot */}
-                            <div className="col-span-6 flex items-center gap-2 min-w-0">
+                            <div className="min-w-0 flex items-center gap-2">
                               <span className="w-2 rounded-full h-2 shrink-0 shadow-sm" style={{ backgroundColor: itemColor }} />
                               <span className={`text-[12px] truncate ${isSelected ? 'font-bold text-[#E7D7B0] tracking-tight' : 'font-medium'}`}>
                                 {item.name || item.symbol}
@@ -301,30 +309,30 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
                             </div>
 
                             {/* Value */}
-                            <div className={`col-span-4 flex items-center justify-end gap-1.5 text-right font-mono ${val > 0 ? 'text-xs font-semibold text-slate-200' : 'text-[10px] text-rose-400 font-medium'}`}>
+                            <div className={`min-w-0 flex items-center justify-end gap-1 text-right font-mono ${val > 0 ? 'text-xs font-semibold text-slate-200' : 'text-[10px] text-rose-400 font-medium'}`}>
                               {val > 0 ? (
                                 <>
-                                  <span>{currSym}{val.toLocaleString('en-US', { maximumFractionDigits: 0 })}</span>
+                                  <span className="truncate">{currSym}{val.toLocaleString('en-US', { maximumFractionDigits: 0 })}</span>
                                   {(item._staleQuote || item.valuationSource === 'cost_basis_estimate') && (
-                                    <span className="text-[9px] font-sans font-normal px-1 py-0.5 rounded bg-amber-950/40 text-amber-400 border border-amber-900/30 scale-90 origin-right whitespace-nowrap select-none">
+                                    <span className="text-[9px] font-sans font-normal px-1 py-0.5 rounded bg-amber-950/40 text-amber-400 border border-amber-900/30 scale-90 origin-right whitespace-nowrap select-none shrink-0">
                                       估
                                     </span>
                                   )}
                                   {(!item._staleQuote && item.valuationSource === 'longbridge_position_value') && (
-                                    <span className="text-[9px] font-sans font-normal px-1 py-0.5 rounded bg-emerald-950/40 text-emerald-400 border border-emerald-900/30 scale-90 origin-right whitespace-nowrap select-none">
+                                    <span className="text-[9px] font-sans font-normal px-1 py-0.5 rounded bg-emerald-950/40 text-emerald-400 border border-emerald-900/30 scale-90 origin-right whitespace-nowrap select-none shrink-0">
                                       持仓值
                                     </span>
                                   )}
                                 </>
                               ) : (
-                                <span>估值缺失</span>
+                                <span className="truncate">估值缺失</span>
                               )}
                             </div>
 
                             {/* Percentage / Arrow */}
-                            <div className={`col-span-2 flex items-center justify-end gap-1.5 text-right font-mono text-[11px] font-semibold ${val > 0 ? 'text-[#C9B284]/90' : 'text-slate-500'}`}>
+                            <div className={`text-right font-mono text-[11px] font-semibold whitespace-nowrap flex items-center justify-end gap-1 ${val > 0 ? 'text-[#C9B284]/90' : 'text-slate-500'}`}>
                               <span>{val > 0 ? pct : '--'}</span>
-                              <svg className={`w-3 h-3 text-[#C9B284]/65 transition-transform ${isSelected ? 'translate-x-[2px]' : 'opacity-30'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <svg className={`w-3 h-3 text-[#C9B284]/65 transition-transform ${isSelected ? 'translate-x-[2px]' : 'opacity-30'} shrink-0`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.8} d="M9 5l7 7-7 7" />
                               </svg>
                             </div>
