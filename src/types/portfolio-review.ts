@@ -1,4 +1,5 @@
 import { AccountPortfolio } from './terminal';
+import type { MarketContext } from './market-context';
 
 export interface ReviewHolding {
   accountId?: string;
@@ -91,6 +92,8 @@ export interface PortfolioReviewSession {
   status: 'draft' | 'analyzing' | 'ready' | 'error';
   report?: PortfolioReviewReport;
   error?: string;
+  marketContextSnapshot?: MarketContext;
+  marketContextCapturedAt?: number;
   reviewParams?: {
     riskPreference?: '保守' | '中性' | '激进' | '高波动可接受' | '';
     maxDrawdownTolerance?: '5%' | '10%' | '20%' | string;

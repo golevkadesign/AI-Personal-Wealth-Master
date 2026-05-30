@@ -663,6 +663,14 @@ export const useWealthStore = create<WealthState>((set, get) => ({
     // 5. 使用 diffPortfolioSnapshots(previousSnapshot, currentSnapshot) 生成 deltas。
     const deltas = diffPortfolioSnapshots(previousSnapshot, currentSnapshot);
 
+    const marketContextSnapshot = data.marketContext
+      ? JSON.parse(JSON.stringify(data.marketContext))
+      : undefined;
+
+    const marketContextCapturedAt = data.marketContext
+      ? (data.marketContextLastFetchedAt || Date.now())
+      : undefined;
+
     // 6. 创建 PortfolioReviewSession：
     //    - id 使用 review_${Date.now()}
     //    - status = 'draft'
@@ -673,7 +681,9 @@ export const useWealthStore = create<WealthState>((set, get) => ({
       currentSnapshot,
       previousSnapshot,
       deltas,
-      status: 'draft'
+      status: 'draft',
+      marketContextSnapshot,
+      marketContextCapturedAt
     };
 
     // 7. 插入 portfolioReviewSessions 头部，最多保留 20 条。

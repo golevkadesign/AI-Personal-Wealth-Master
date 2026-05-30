@@ -455,10 +455,29 @@ export function PortfolioReviewDrawer({ isOpen, onClose }: PortfolioReviewDrawer
               <div className="bg-[#10141D] border border-[#C9B284]/15 rounded-xl p-4 space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#C9B284]/10 pb-3">
                   <div className="space-y-0.5 min-w-0">
-                    <h4 className="text-xs font-bold text-[#E7D7B0] uppercase tracking-widest font-mono flex items-center gap-1.5">
-                      <Activity className="w-4 h-4 text-[#C9B284]" />
-                      市场环境上下文 / Market Context
-                    </h4>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h4 className="text-xs font-bold text-[#E7D7B0] uppercase tracking-widest font-mono flex items-center gap-1.5">
+                        <Activity className="w-4 h-4 text-[#C9B284]" />
+                        市场环境上下文 / Market Context
+                      </h4>
+                      {activeSession && activeSession.marketContextSnapshot ? (() => {
+                        const capD = activeSession.marketContextCapturedAt ? new Date(activeSession.marketContextCapturedAt) : null;
+                        const timeStr = capD ? `${String(capD.getHours()).padStart(2, '0')}:${String(capD.getMinutes()).padStart(2, '0')}` : '';
+                        return (
+                          <span className="inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded border border-emerald-500/10 bg-emerald-500/5 text-[9px] text-emerald-300 font-sans leading-none select-none" title="已冻结当时的市场环境数据，用于生成此次复盘报告">
+                            <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
+                            <span>已冻结到本轮复盘</span>
+                            {timeStr && <span className="text-[#8C8370] font-mono">Captured {timeStr}</span>}
+                          </span>
+                        );
+                      })() : (
+                        <span className="inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded border border-white/10 bg-white/[0.03] text-[9px] text-slate-400 font-sans leading-none select-none" title="创建新复盘时会冻结当前市场环境">
+                          <span className="w-1 h-1 rounded-full bg-zinc-500" />
+                          <span>尚未冻结</span>
+                          <span className="text-zinc-600">创建新复盘时会冻结当前市场环境</span>
+                        </span>
+                      )}
+                    </div>
                     <p className="text-[10px] text-[#8C8370] truncate">延迟/历史市场数据，仅作为复盘背景，不作为交易执行报价</p>
                   </div>
                   <button
