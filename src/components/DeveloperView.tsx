@@ -35,11 +35,16 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({
   const user = useWealthStore(s => s.user);
   const state = useWealthStore(s => s.data);
   const commitData = useWealthStore(s => s.commitData);
+  const fetchMarketContext = useWealthStore(s => s.fetchMarketContext);
+  const marketContextStatus = useWealthStore(s => s.marketContextStatus);
+  const marketContextError = useWealthStore(s => s.marketContextError);
+
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editProfileData, setEditProfileData] = useState<any>({});
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
   const [copiedUid, setCopiedUid] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [isCopiedMc, setIsCopiedMc] = useState(false);
   
   // Tabs & Pipeline
   const [activeTab, setActiveTab] = useState<'state' | 'pipeline'>('state');
@@ -172,21 +177,58 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({
     const gActive = state?.goal?.name ? 1 : 0;
     const wCount = state?.dynamicWidgets?.length || 12;
 
+    const mcInstruments = Array.isArray(state?.marketContext?.instruments)
+      ? state.marketContext.instruments
+      : Array.isArray((state?.marketContext as any)?.keyInstruments)
+        ? (state?.marketContext as any).keyInstruments
+        : [];
+
     return {
       userProfile: `${uCount} fields`,
       metrics: `${mCount} metrics`,
       distributions: `${distCount} items`,
       insights: `${iCount} items`,
       goal: gActive ? '1 active' : '0 active',
-      dynamicWidgets: `${wCount} widgets`
+      dynamicWidgets: `${wCount} widgets`,
+      marketContext: state?.marketContext
+        ? `${mcInstruments.length} instruments`
+        : 'not loaded'
     };
   }, [user, state]);
+
+  const marketContext = state?.marketContext;
+  const marketContextInstruments = Array.isArray(marketContext?.instruments)
+    ? marketContext.instruments
+    : Array.isArray((marketContext as any)?.keyInstruments)
+      ? (marketContext as any).keyInstruments
+      : [];
+
+  const marketContextSignals = Array.isArray(marketContext?.crossAssetSignals)
+    ? marketContext.crossAssetSignals
+    : [];
+
+  const marketContextWarnings = Array.isArray(marketContext?.warnings)
+    ? marketContext.warnings
+    : [];
+
+  const marketContextSourceSummary = Array.isArray(marketContext?.sourceSummary)
+    ? marketContext.sourceSummary
+    : [];
+
+  const formatTime = (ts?: number) => {
+    if (!ts) return 'Never';
+    try {
+      return new Date(ts).toLocaleString();
+    } catch {
+      return 'Invalid time';
+    }
+  };
 
   // Generate pretty syntax highlighted code snippets
   const jsonCodeLines = useMemo(() => {
     let rawStr = '';
     if (!selectedSection) {
-      rawStr = `{\n  "userProfile": { ... ${counts.userProfile} },\n  "metrics": { ... ${counts.metrics} },\n  "distributions": [ ... ${counts.distributions} ],\n  "insights": [ ... ${counts.insights} ],\n  "goal": { ... ${counts.goal} },\n  "dynamicWidgets": [ ... ${counts.dynamicWidgets} ]\n}`;
+      rawStr = `{\n  "userProfile": { ... ${counts.userProfile} },\n  "metrics": { ... ${counts.metrics} },\n  "distributions": [ ... ${counts.distributions} ],\n  "insights": [ ... ${counts.insights} ],\n  "goal": { ... ${counts.goal} },\n  "dynamicWidgets": [ ... ${counts.dynamicWidgets} ],\n  "marketContext": { ... ${counts.marketContext} }\n}`;
     } else {
       let subset: any = {};
       if (selectedSection === 'userProfile') {
@@ -201,11 +243,18 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({
         subset = { goal: state?.goal || {} };
       } else if (selectedSection === 'dynamicWidgets') {
         subset = { dynamicWidgets: state?.dynamicWidgets || [] };
+      } else if (selectedSection === 'marketContext') {
+        subset = {
+          marketContext: state?.marketContext || null,
+          marketContextLastFetchedAt: state?.marketContextLastFetchedAt || null,
+          marketContextStatus,
+          marketContextError
+        };
       }
       rawStr = JSON.stringify(subset, null, 2);
     }
     return rawStr.split('\n');
-  }, [selectedSection, user, state, counts]);
+  }, [selectedSection, user, state, counts, marketContextStatus, marketContextError]);
 
   const handleRefresh = () => {
     // Force a minor recalculation/refresh aesthetic representation
@@ -418,6 +467,146 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({
                         Live snapshot of the current workspace state stored in local database.
                       </p>
 
+                      {/* Market Context Debug Panel */}
+                      <div className="mb-5 rounded-xl border border-[#1C2026] bg-[#12151A]/60 p-4 relative z-10">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                          <div>
+                            <h4 className="text-xs font-serif text-[#E7D7B0] tracking-wide font-medium">Market Context Debug</h4>
+                            <p className="text-[10px] text-[#8C8370] leading-relaxed mt-0.5">
+                              Delayed / historical market context, not execution-grade quote data.
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              disabled={marketContextStatus === 'loading'}
+                              onClick={async () => {
+                                try {
+                                  await fetchMarketContext({ forceRefresh: true });
+                                } catch (e) {
+                                  console.error(e);
+                                }
+                              }}
+                              className="px-2.5 py-1.5 bg-[#1C2026] hover:bg-[#1E232B] border border-[#1C2026] hover:border-[#8C8370]/30 rounded-lg text-[10px] font-mono text-[#E7D7B0] uppercase tracking-wider transition-all cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {marketContextStatus === 'loading' ? 'Refreshing...' : 'Force Refresh'}
+                            </button>
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(JSON.stringify({
+                                  marketContext: state?.marketContext || null,
+                                  marketContextLastFetchedAt: state?.marketContextLastFetchedAt || null,
+                                  marketContextStatus,
+                                  marketContextError
+                                }, null, 2));
+                                setIsCopiedMc(true);
+                                setTimeout(() => setIsCopiedMc(false), 2000);
+                              }}
+                              className="px-2.5 py-1.5 bg-[#1C2026] hover:bg-[#1E232B] border border-[#1C2026] hover:border-[#8C8370]/30 rounded-lg text-[10px] font-mono text-[#C9B284] uppercase tracking-wider transition-all cursor-pointer shadow-sm"
+                            >
+                              {isCopiedMc ? 'Copied' : 'Copy JSON'}
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Status grid info */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-[#0B0D10]/40 rounded-lg p-3 text-[11px] font-mono mb-4 border border-[#1C2026]">
+                          <div>
+                            <div className="text-[#8C8370] text-[9px] uppercase tracking-widest">Status</div>
+                            <div className={`mt-1 font-semibold ${marketContextStatus === 'error' ? 'text-rose-400' : marketContextStatus === 'loading' ? 'text-[#C9B284]' : 'text-emerald-400'}`}>
+                              {marketContextStatus || 'idle'}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-[#8C8370] text-[9px] uppercase tracking-widest">Freshness</div>
+                            <div className="mt-1 text-neutral-300">{marketContext?.freshness || 'N/A'}</div>
+                          </div>
+                          <div>
+                            <div className="text-[#8C8370] text-[9px] uppercase tracking-widest">Data Quality</div>
+                            <div className="mt-1 text-neutral-300">{marketContext?.dataQuality || 'N/A'}</div>
+                          </div>
+                          <div>
+                            <div className="text-[#8C8370] text-[9px] uppercase tracking-widest">Risk Mode</div>
+                            <div className="mt-1 text-neutral-300">{marketContext?.regime?.riskMode || 'unknown'}</div>
+                          </div>
+                          <div>
+                            <div className="text-[#8C8370] text-[9px] uppercase tracking-widest">Instruments</div>
+                            <div className="mt-1 text-neutral-300">{marketContextInstruments.length}</div>
+                          </div>
+                          <div>
+                            <div className="text-[#8C8370] text-[9px] uppercase tracking-widest">Signals</div>
+                            <div className="mt-1 text-neutral-300">{marketContextSignals.length}</div>
+                          </div>
+                          <div className="col-span-2 sm:col-span-3">
+                            <div className="text-[#8C8370] text-[9px] uppercase tracking-widest">Last Fetched</div>
+                            <div className="mt-1 text-neutral-300">{formatTime(state?.marketContextLastFetchedAt)}</div>
+                          </div>
+                        </div>
+
+                        {/* Error presentation */}
+                        {marketContextError && (
+                          <div className="mb-4 text-xs text-rose-400 font-mono bg-rose-500/5 border border-rose-500/10 rounded-lg p-2.5">
+                            Error: {marketContextError}
+                          </div>
+                        )}
+
+                        {/* Lists of sourceSummary and warnings */}
+                        <div className="space-y-2 mb-4 text-[10.5px] font-mono">
+                          {marketContextSourceSummary.length > 0 && (
+                            <div>
+                              <span className="text-[#8C8370] font-semibold">Sources:</span>{' '}
+                              <span className="text-neutral-400">{marketContextSourceSummary.slice(0, 2).join(', ')}</span>
+                            </div>
+                          )}
+                          {marketContextWarnings.length > 0 ? (
+                            <div>
+                              <div className="text-[#8C8370] font-semibold mb-1">Warnings (Recent 2):</div>
+                              <ul className="list-disc pl-4 space-y-0.5 text-neutral-400">
+                                {marketContextWarnings.slice(0, 2).map((w: string, i: number) => (
+                                  <li key={i}>{w}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          ) : (
+                            <div className="text-[#8C8370]">No active warnings.</div>
+                          )}
+                        </div>
+
+                        {/* Snapshot list */}
+                        <div className="border-t border-[#1C2026] pt-3 mt-3">
+                          <div className="text-[10px] font-mono uppercase tracking-widest text-[#8C8370] font-semibold mb-2">
+                            Top Instruments Snapshot
+                          </div>
+                          {marketContextInstruments.length === 0 ? (
+                            <div className="text-xs font-mono text-[#8C8370] italic">No instruments loaded.</div>
+                          ) : (
+                            <div className="space-y-1.5 custom-scrollbar max-h-[140px] overflow-y-auto">
+                              {marketContextInstruments.slice(0, 6).map((item: any, idx: number) => {
+                                const sym = item.symbol || 'N/A';
+                                const cat = item.category || 'N/A';
+                                let chgText = 'N/A';
+                                if (item.change3M !== undefined && item.change3M !== null) {
+                                  const val = Number(item.change3M);
+                                  chgText = Number.isFinite(val) ? `${val.toFixed(2)}%` : 'N/A';
+                                }
+                                const qual = item.dataQuality || 'N/A';
+                                return (
+                                  <div key={idx} className="flex flex-wrap items-center justify-between text-[11px] font-mono bg-[#0B0D10]/20 border border-[#1C2026]/40 rounded px-2.5 py-1 hover:bg-[#0B0D10]/40 transition-colors">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-semibold text-neutral-200">{sym}</span>
+                                      <span className="text-[#8C8370] text-[9px] uppercase tracking-widest">({cat})</span>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                      <span>3M: <span className={chgText.startsWith('-') ? 'text-rose-400' : chgText === 'N/A' ? 'text-[#8C8370]' : 'text-emerald-400'}>{chgText}</span></span>
+                                      <span className="text-[#8C8370] text-[10px]">Quality: <span className="text-neutral-300">{qual}</span></span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
                       {/* Summary lists mapping database states */}
                       <div className="space-y-2 mb-6 shrink-0 relative z-10">
                         {[
@@ -427,6 +616,19 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({
                           { id: 'insights', name: 'insights', count: counts.insights, icon: Sparkles, badge: 'ok', badgeColor: 'bg-[#0E2C1C] text-[#4ADE80] border-[#22C55E]/15' },
                           { id: 'goal', name: 'goal', count: counts.goal, icon: Target, badge: 'partial', badgeColor: 'bg-[#2D1F10] text-[#FB923C] border-[#F97316]/15' },
                           { id: 'dynamicWidgets', name: 'dynamicWidgets', count: counts.dynamicWidgets, icon: Sliders, badge: 'ok', badgeColor: 'bg-[#0E2C1C] text-[#4ADE80] border-[#22C55E]/15' },
+                          {
+                            id: 'marketContext',
+                            name: 'marketContext',
+                            count: counts.marketContext,
+                            icon: Activity,
+                            badge: state?.marketContext ? (marketContextStatus === 'error' ? 'error' : 'ready') : 'empty',
+                            badgeColor:
+                              marketContextStatus === 'error'
+                                ? 'bg-[#2B1010] text-rose-400 border-rose-500/20'
+                                : state?.marketContext
+                                  ? 'bg-[#0E2C1C] text-[#4ADE80] border-[#22C55E]/15'
+                                  : 'bg-[#1E232B] text-[#8C8370] border-[#8C8370]/15'
+                          }
                         ].map((row) => {
                           const IconComponent = row.icon;
                           const isSelected = selectedSection === row.id;
