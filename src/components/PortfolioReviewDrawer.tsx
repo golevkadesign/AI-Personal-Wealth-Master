@@ -3,6 +3,53 @@ import { X, Calendar, Layers, Activity, ShieldAlert, BadgeInfo, CheckCircle, Hel
 import { useWealthStore } from '../hooks/useWealthStore';
 import { PortfolioReviewSession, PositionDelta } from '../types/portfolio-review';
 
+const marketContextToneClass = {
+  positive: 'text-emerald-300 border-emerald-300/20 bg-[#10b981]/5',
+  neutral: 'text-[#C9B284] border-[#C9B284]/20 bg-[#C9B284]/5',
+  warning: 'text-amber-300 border-amber-300/20 bg-amber-300/5',
+  muted: 'text-slate-400 border-white/10 bg-white/[0.03]'
+};
+
+function formatMarketRegime(regime?: any): {
+  label: string;
+  tone: 'positive' | 'neutral' | 'warning' | 'muted';
+  desc: string;
+} {
+  if (!regime || !regime.riskMode) {
+    return { label: 'Unknown', tone: 'muted', desc: '市场数据不足，暂不判断' };
+  }
+  switch (regime.riskMode) {
+    case 'risk_on':
+      return { label: 'Risk-on', tone: 'positive', desc: '权益风险偏好偏强' };
+    case 'risk_off':
+      return { label: 'Risk-off', tone: 'warning', desc: '风险资产承压或波动抬升' };
+    case 'neutral':
+      return { label: 'Neutral', tone: 'neutral', desc: '市场环境中性或信号分化' };
+    default:
+      return { label: 'Unknown', tone: 'muted', desc: '市场数据不足，暂不判断' };
+  }
+}
+
+function formatPressure(value?: string) {
+  if (!value) return '暂无数据';
+  switch (value) {
+    case 'high':
+      return '高压 / High';
+    case 'medium':
+      return '中偏升 / Medium';
+    case 'low':
+      return '低压平和 / Low';
+    case 'risk_on':
+      return 'Risk-on / 偏强';
+    case 'risk_off':
+      return 'Risk-off / 偏弱';
+    case 'neutral':
+      return 'Neutral / 中性';
+    default:
+      return value;
+  }
+}
+
 interface PortfolioReviewDrawerProps {
   isOpen: boolean;
   onClose: () => void;
@@ -15,6 +62,11 @@ export function PortfolioReviewDrawer({ isOpen, onClose }: PortfolioReviewDrawer
   const portfolioReviewMemory = useWealthStore(state => state.portfolioReviewMemory);
   const savePortfolioReviewMemoryFromSession = useWealthStore(state => state.savePortfolioReviewMemoryFromSession);
   const updatePortfolioReviewSession = useWealthStore(state => state.updatePortfolioReviewSession);
+
+  const data = useWealthStore(state => state.data);
+  const marketContextStatus = useWealthStore(state => state.marketContextStatus);
+  const marketContextError = useWealthStore(state => state.marketContextError);
+  const fetchMarketContext = useWealthStore(state => state.fetchMarketContext);
 
   // Find the currently active session
   const activeSession = portfolioReviewSessions.find(s => s.id === activeSessionId);
@@ -373,6 +425,211 @@ export function PortfolioReviewDrawer({ isOpen, onClose }: PortfolioReviewDrawer
                     </select>
                   </div>
                 </div>
+              </div>
+
+              {/* 市场环境上下文 / Market Context Panel */}
+              <div className="bg-[#10141D] border border-[#C9B284]/15 rounded-xl p-4 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#C9B284]/10 pb-3">
+                  <div className="space-y-0.5 min-w-0">
+                    <h4 className="text-xs font-bold text-[#E7D7B0] uppercase tracking-widest font-mono flex items-center gap-1.5">
+                      <Activity className="w-4 h-4 text-[#C9B284]" />
+                      市场环境上下文 / Market Context
+                    </h4>
+                    <p className="text-[10px] text-[#8C8370] truncate">延迟/历史市场数据，仅作为复盘背景，不作为交易执行报价</p>
+                  </div>
+                  <button
+                    disabled={marketContextStatus === 'loading'}
+                    onClick={() => fetchMarketContext({ forceRefresh: true })}
+                    className={`px-3 py-1.5 border text-[10.5px] font-sans font-medium rounded-lg transition-all select-none self-start sm:self-auto cursor-pointer ${
+                      marketContextStatus === 'loading'
+                        ? 'bg-zinc-900 border-zinc-800 text-zinc-600 cursor-not-allowed'
+                        : 'bg-zinc-950/40 hover:bg-[#C9B284]/10 border-white/[0.08] hover:border-[#C9B284]/30 text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    {marketContextStatus === 'loading' ? '刷新中...' : '刷新市场'}
+                  </button>
+                </div>
+
+                {!data?.marketContext ? (
+                  /* 无数据状态 */
+                  <div className="py-6 flex flex-col items-center justify-center text-center space-y-2">
+                    <BadgeInfo className="w-8 h-8 text-[#C9B284]/20" />
+                    <div className="text-[#E7D7B0]/60 text-xs font-medium">等待市场上下文</div>
+                    <p className="text-[#8C8370] text-[10.5px] max-w-md leading-relaxed select-none">
+                      点击右上角“刷新市场”后，系统会拉取 Stooq 延迟/历史市场数据，用于辅助判断 risk mode、利率压力、美元压力、信用压力和商品冲击。
+                    </p>
+                    {marketContextStatus === 'error' && marketContextError && (
+                      <div className="text-rose-400 text-[10px] bg-rose-500/5 px-2.5 py-1 rounded border border-rose-500/10 mt-1">
+                        刷新失败: {marketContextError}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  /* 有数据状态 */
+                  <div className="space-y-4">
+                    {/* A. Regime Summary */}
+                    {data.marketContext.regime && (() => {
+                      const regimeInfo = formatMarketRegime(data.marketContext.regime);
+                      return (
+                        <div className="bg-[#121622] rounded-lg p-3 border border-[#C9B284]/5 space-y-2">
+                          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.03] pb-1.5">
+                            <div className="flex items-center gap-2">
+                              <span className={`px-1.5 py-0.5 rounded text-[9.5px] font-sans font-bold leading-none border ${marketContextToneClass[regimeInfo.tone]}`}>
+                                {regimeInfo.label}
+                              </span>
+                              <span className="text-[10.5px] text-[#E7D7B0]/90 font-sans">{regimeInfo.desc}</span>
+                            </div>
+                            <div className="text-[9.5px] text-[#8C8370] font-mono flex flex-wrap items-center gap-1.5 select-none">
+                              <span className="bg-white/5 px-1.5 py-0.5 rounded">freshness: {data.marketContext.freshness}</span>
+                              <span className="bg-white/5 px-1.5 py-0.5 rounded">quality: {data.marketContext.dataQuality}</span>
+                              {data.marketContextLastFetchedAt && (() => {
+                                const d = new Date(data.marketContextLastFetchedAt);
+                                const hh = String(d.getHours()).padStart(2, '0');
+                                const mm = String(d.getMinutes()).padStart(2, '0');
+                                return <span>更新于 {hh}:{mm}</span>;
+                              })()}
+                            </div>
+                          </div>
+                          <p className="text-[11px] text-[#C9B284] leading-relaxed font-sans whitespace-pre-wrap">{data.marketContext.regime.summary}</p>
+                        </div>
+                      );
+                    })()}
+
+                    {/* B. Factor Grid */}
+                    {data.marketContext.regime && (
+                      <div className="space-y-1.5">
+                        <span className="text-[9.5px] text-[#8C8370] font-mono uppercase tracking-wider block">核心市场定价因子评估 / Factor Appraisal</span>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                          {/* 1. 风险偏好 */}
+                          <div className="bg-black/20 border border-white/[0.04] p-2 rounded-lg flex flex-col justify-center min-w-0">
+                            <span className="text-[9px] text-zinc-500">风险偏好 / Risk Bias</span>
+                            <span className="text-[11.5px] font-mono font-bold text-[#C9B284] mt-0.5">
+                              {formatPressure(data.marketContext.regime.riskMode)}
+                            </span>
+                          </div>
+                          {/* 2. 利率压力 */}
+                          <div className="bg-black/20 border border-white/[0.04] p-2 rounded-lg flex flex-col justify-center min-w-0">
+                            <span className="text-[9px] text-zinc-500">利率压力 / USD Rate</span>
+                            <span className={`text-[11.5px] font-mono font-bold mt-0.5 ${
+                              data.marketContext.regime.ratePressure === 'rising_rate_pressure' ? 'text-amber-400' : 'text-zinc-300'
+                            }`}>
+                              {formatPressure(data.marketContext.regime.ratePressure)}
+                            </span>
+                          </div>
+                          {/* 3. 美元压力 */}
+                          <div className="bg-black/20 border border-white/[0.04] p-2 rounded-lg flex flex-col justify-center min-w-0">
+                            <span className="text-[9px] text-zinc-500">美元压力 / Dollar Index</span>
+                            <span className={`text-[11.5px] font-mono font-bold mt-0.5 ${
+                              data.marketContext.regime.dollarPressure === 'strong_usd' ? 'text-amber-400' : 'text-zinc-300'
+                            }`}>
+                              {formatPressure(data.marketContext.regime.dollarPressure)}
+                            </span>
+                          </div>
+                          {/* 4. 信用压力 */}
+                          <div className="bg-black/20 border border-white/[0.04] p-2 rounded-lg flex flex-col justify-center min-w-0">
+                            <span className="text-[9px] text-zinc-500">信用压力 / Credit Stress</span>
+                            <span className={`text-[11.5px] font-mono font-bold mt-0.5 ${
+                              data.marketContext.regime.creditStress === 'elevated' ? 'text-amber-400' : 'text-zinc-300'
+                            }`}>
+                              {formatPressure(data.marketContext.regime.creditStress)}
+                            </span>
+                          </div>
+                          {/* 5. 商品冲击 */}
+                          <div className="bg-black/20 border border-white/[0.04] p-2 rounded-lg flex flex-col justify-center min-w-0">
+                            <span className="text-[9px] text-zinc-500">商品冲击 / Commodity Impulse</span>
+                            <span className={`text-[11.5px] font-mono font-bold mt-0.5 ${
+                              data.marketContext.regime.commodityImpulse === 'inflationary' ? 'text-amber-400' : 'text-zinc-300'
+                            }`}>
+                              {formatPressure(data.marketContext.regime.commodityImpulse)}
+                            </span>
+                          </div>
+                          {/* 6. 波动状态 */}
+                          <div className="bg-black/20 border border-white/[0.04] p-2 rounded-lg flex flex-col justify-center min-w-0">
+                            <span className="text-[9px] text-zinc-500">波动状态 / Volatility (VIX)</span>
+                            <span className={`text-[11.5px] font-mono font-bold mt-0.5 ${
+                              data.marketContext.regime.volatilityState === 'stressed' ? 'text-amber-400' : 'text-zinc-300'
+                            }`}>
+                              {formatPressure(data.marketContext.regime.volatilityState)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* C. Cross-Asset Signals */}
+                    <div className="space-y-1.5">
+                      <span className="text-[9.5px] text-[#8C8370] font-mono uppercase tracking-wider block">跨资产博弈信号 / Cross-Asset Signals</span>
+                      {!data.marketContext.crossAssetSignals || data.marketContext.crossAssetSignals.length === 0 ? (
+                        <div className="text-[10.5px] text-zinc-500 italic bg-black/10 py-2 px-3 rounded-lg border border-white/[0.02]">
+                          暂无明确跨资产背离信号
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {data.marketContext.crossAssetSignals.slice(0, 4).map((sig: any, sIdx: number) => (
+                            <div key={sIdx} className="bg-zinc-950/50 border border-white/[0.04] rounded-lg p-2.5 space-y-1.5">
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <span className="text-white text-xs font-semibold">{sig.title}</span>
+                                <span className={`px-1.5 py-0.5 rounded text-[8.5px] font-mono leading-none border uppercase tracking-wider ${
+                                  sig.severity === 'critical' ? 'text-rose-400 border-rose-400/20 bg-rose-500/5' :
+                                  sig.severity === 'warning' ? 'text-amber-400 border-amber-400/20 bg-amber-500/5' :
+                                  sig.severity === 'watch' ? 'text-blue-400 border-blue-400/20 bg-blue-500/5' :
+                                  'text-zinc-400 border-white/10 bg-white/5'
+                                }`}>
+                                  {sig.severity}
+                                </span>
+                              </div>
+                              <p className="text-[10.5px] text-zinc-400 line-clamp-2 leading-relaxed">
+                                {sig.interpretation}
+                              </p>
+                              {sig.affectedExposures && sig.affectedExposures.length > 0 && (
+                                <div className="flex flex-wrap items-center gap-1 mt-1 pb-0.5">
+                                  <span className="text-[8.5px] text-zinc-600 uppercase font-mono mr-1">敏感敞口 / Affected:</span>
+                                  {sig.affectedExposures.slice(0, 3).map((exp: string, eIdx: number) => (
+                                    <span key={eIdx} className="px-1.5 py-0.5 rounded bg-white/[0.03] border border-white/5 text-zinc-400 font-mono text-[8.5px]">
+                                      {exp}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* D. Warnings and Footer Static References */}
+                    <div className="border-t border-white/[0.04] pt-2.5 flex flex-col gap-1.5">
+                      {data.marketContext.sourceSummary && data.marketContext.sourceSummary.length > 0 && (
+                        <div className="text-[9px] text-[#8C8370] font-mono leading-none">
+                          来源: {data.marketContext.sourceSummary.join(' · ')}
+                        </div>
+                      )}
+                      
+                      {/* Warnings */}
+                      {data.marketContext.warnings && data.marketContext.warnings.length > 0 && (
+                        <div className="space-y-0.5">
+                          {data.marketContext.warnings.slice(0, 2).map((warn: string, wIdx: number) => (
+                            <p key={wIdx} className="text-[9px] text-[#8C8370] leading-normal flex items-start gap-1">
+                              <span className="text-[#C9B284]/70 select-none">•</span>
+                              <span>{warn}</span>
+                            </p>
+                          ))}
+                        </div>
+                      )}
+
+                      <p className="text-[9px] text-[#8C8370] leading-normal flex items-start gap-1 font-sans mt-0.5 select-none">
+                        <span className="text-amber-500 select-none shrink-0">[⚠️ 风险边界声明]</span>
+                        <span>市场环境上下文包含由对应数据源拉取并整合的延迟/历史市场数据。由于流动性对冲特征可能由于极端突发而瞬时失效，底层定价规则仅作会话时点静态复盘之用，绝对不可作为高频或实时交易执行的任何出入场指令依据。</span>
+                      </p>
+
+                      {marketContextStatus === 'error' && marketContextError && (
+                        <div className="text-rose-400 text-[10px] mt-1 select-none">
+                          刷新出错: {marketContextError.length > 36 ? `${marketContextError.substring(0, 36)}...` : marketContextError}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Error Warning Box */}
