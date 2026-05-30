@@ -142,6 +142,7 @@ export interface TerminalState {
   _liveFetchedAt?: number;
   dynamicWidgets?: SDUIComponent[];
   dashboardSchema?: SDUIComponent[];
+  _dashboardSchemaVersion?: string;
   historicalSnapshots?: Snapshot[];
   publicHoldingsSyncStatus?: 'idle' | 'loading' | 'success' | 'empty' | 'error';
   publicHoldingsError?: string;

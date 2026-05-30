@@ -6,7 +6,8 @@ import { sanitizeTerminalState } from '../lib/sanitizer';
 import { mergeWith, isArray, debounce } from 'lodash-es';
 import { setDoc, doc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, isFirestoreQuotaExceeded } from '../lib/firebase';
-import { DEFAULT_DASHBOARD_SCHEMA } from '../lib/default-schema';
+import { DEFAULT_DASHBOARD_SCHEMA, DASHBOARD_SCHEMA_VERSION } from '../lib/default-schema';
+import { normalizeDashboardSchema } from '../lib/dashboard-schema-migration';
 import { PortfolioReviewSession, PortfolioReviewMemory } from '../types/portfolio-review';
 import { createPortfolioReviewSnapshot } from '../lib/portfolio-review/snapshot';
 import { diffPortfolioSnapshots } from '../lib/portfolio-review/diff';
@@ -30,6 +31,7 @@ export const EMPTY_STATE: TerminalState = {
   lifeStrategiesLong: [],
   dynamicWidgets: [],
   dashboardSchema: DEFAULT_DASHBOARD_SCHEMA,
+  _dashboardSchemaVersion: DASHBOARD_SCHEMA_VERSION,
   historicalSnapshots: [],
 };
 
@@ -193,20 +195,21 @@ export const useWealthStore = create<WealthState>((set, get) => ({
   },
   setLoadingAuth: (loadingAuth) => set({ loadingAuth }),
   setData: (newData, options) => set((state) => {
+    const normalizedData = normalizeDashboardSchema(newData);
     const shouldPreserve = options?.preserveLiveData !== false;
     
     if (shouldPreserve) {
-        const preserved = preserveLiveLongbridgeSlice(state.data, newData);
+        const preserved = preserveLiveLongbridgeSlice(state.data, normalizedData);
         if (preserved) {
             return {
-                data: newData,
+                data: normalizedData,
                 publicHoldingsSyncStatus: state.publicHoldingsSyncStatus,
                 publicHoldingsLastSyncAt: state.publicHoldingsLastSyncAt,
                 publicHoldingsError: state.publicHoldingsError
             };
         }
     }
-    return { data: newData };
+    return { data: normalizedData };
   }),
   clearDynamicWidgets: () => {
     get().commitData({ dynamicWidgets: [] });
@@ -295,17 +298,19 @@ export const useWealthStore = create<WealthState>((set, get) => ({
         }
       }
 
+      const normalizedFullData = normalizeDashboardSchema(fullData);
+
       if (state.user?.uid) {
-          localStorage.setItem(`ai_terminal_data_${state.user.uid}`, JSON.stringify(fullData));
+          localStorage.setItem(`ai_terminal_data_${state.user.uid}`, JSON.stringify(normalizedFullData));
           
           if (state.persistenceMode === 'auto') {
-              const appDataToSave = { ...fullData };
+              const appDataToSave = { ...normalizedFullData };
               delete appDataToSave.userProfile;
-              debouncedSyncToCloud(state.user.uid, { appData: appDataToSave, userProfile: fullData.userProfile });
+              debouncedSyncToCloud(state.user.uid, { appData: appDataToSave, userProfile: normalizedFullData.userProfile });
           }
       }
 
-      return { data: fullData };
+      return { data: normalizedFullData };
     });
   },
   fetchLongbridge: async () => {

@@ -1,5 +1,7 @@
 import { SDUIComponent } from '../types/terminal';
 
+export const DASHBOARD_SCHEMA_VERSION = '2026-portfolio-section-v1';
+
 export const DEFAULT_DASHBOARD_SCHEMA: SDUIComponent[] = [
   {
     id: "metrics-grid",
