@@ -4,6 +4,33 @@ import { Sparkles, Trash2 } from 'lucide-react';
 import { useWealthStore } from '../hooks/useWealthStore';
 import { ErrorBoundary } from './ui/ErrorBoundary';
 import { SDUIRenderer } from '../lib/sdui-registry';
+import { MarketContext } from '../types/market-context';
+
+const marketToneClass = {
+  positive: 'text-emerald-300 border-emerald-300/20 bg-[#10b981]/5',
+  neutral: 'text-[#C9B284] border-[#C9B284]/20 bg-[#C9B284]/5',
+  warning: 'text-amber-300 border-amber-300/20 bg-amber-300/5',
+  muted: 'text-slate-400 border-white/10 bg-white/[0.03]'
+};
+
+function formatMarketRegime(regime?: MarketContext['regime']): {
+  label: string;
+  tone: 'positive' | 'neutral' | 'warning' | 'muted';
+} {
+  if (!regime) {
+    return { label: '等待市场数据', tone: 'muted' };
+  }
+  switch (regime.riskMode) {
+    case 'risk_on':
+      return { label: 'Risk-on', tone: 'positive' };
+    case 'risk_off':
+      return { label: 'Risk-off', tone: 'warning' };
+    case 'neutral':
+      return { label: 'Neutral', tone: 'neutral' };
+    default:
+      return { label: '等待市场数据', tone: 'muted' };
+  }
+}
 
 export const DashboardGrid: React.FC = () => {
   const { 
@@ -16,7 +43,10 @@ export const DashboardGrid: React.FC = () => {
     publicHoldingAccountsSyncStatus,
     publicHoldingAccountsError,
     publicHoldingAccountsLastSyncAt,
-    clearDynamicWidgets 
+    clearDynamicWidgets,
+    marketContextStatus,
+    marketContextError,
+    fetchMarketContext
   } = useWealthStore();
 
   const createPortfolioReviewSession = useWealthStore(state => state.createPortfolioReviewSession);
@@ -50,6 +80,26 @@ export const DashboardGrid: React.FC = () => {
 
   const getAiAnalysisText = () => {
     return data.dynamicWidgets && data.dynamicWidgets.length > 0 ? '本轮已生成洞察' : '空闲中';
+  };
+
+  const getMarketContextSubtext = () => {
+    if (marketContextStatus === 'error' && marketContextError) {
+      return marketContextError.length > 36 ? `${marketContextError.substring(0, 36)}...` : marketContextError;
+    }
+    if (data.marketContext) {
+      let text = `${data.marketContext.freshness} · Stooq delayed`;
+      if (data.marketContextLastFetchedAt) {
+        const d = new Date(data.marketContextLastFetchedAt);
+        const hh = String(d.getHours()).padStart(2, '0');
+        const mm = String(d.getMinutes()).padStart(2, '0');
+        text += ` 更新于 ${hh}:${mm}`;
+      }
+      return text;
+    }
+    if (marketContextStatus === 'loading') {
+      return '连接 Stooq 数据源...';
+    }
+    return '手动刷新后用于复盘背景';
   };
 
   return (
@@ -150,10 +200,54 @@ export const DashboardGrid: React.FC = () => {
                     <span className="text-zinc-300 font-medium font-sans">{getAiAnalysisText()}</span>
                   </div>
                 </div>
+
+                {/* 状态 5：市场环境 */}
+                <div className="flex flex-col justify-center min-w-0">
+                  <div className="flex items-center gap-1 text-zinc-500 shrink-0 select-none">
+                    <span>市场环境:</span>
+                    <div className="flex items-center gap-1.5 ml-1">
+                      <span className={`w-1.5 h-1.5 rounded-full ${
+                        marketContextStatus === 'loading' ? 'bg-amber-500 animate-pulse' :
+                        marketContextStatus === 'error' ? 'bg-rose-500' :
+                        data.marketContext ? (
+                          formatMarketRegime(data.marketContext.regime).tone === 'positive' ? 'bg-emerald-500' :
+                          formatMarketRegime(data.marketContext.regime).tone === 'warning' ? 'bg-amber-500' :
+                          'bg-[#C9B284]'
+                        ) : 'bg-zinc-500'
+                      }`} />
+                      <span className={`px-1.5 py-0.5 rounded border text-[10px] font-sans font-medium leading-none ${
+                        marketContextStatus === 'loading'
+                          ? 'text-amber-300 border-amber-300/20 bg-amber-300/5'
+                          : marketContextStatus === 'error'
+                          ? 'text-rose-300 border-rose-300/20 bg-rose-300/5'
+                          : marketToneClass[data.marketContext ? formatMarketRegime(data.marketContext.regime).tone : 'muted']
+                      }`}>
+                        {marketContextStatus === 'loading' ? '刷新中' :
+                         marketContextStatus === 'error' ? '刷新失败' :
+                         data.marketContext ? formatMarketRegime(data.marketContext.regime).label : '等待市场数据'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-[9px] text-zinc-500 font-mono truncate select-none mt-0.5">
+                    {getMarketContextSubtext()}
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-3 shrink-0 self-start md:self-auto">
+            <div className="flex flex-wrap items-center gap-2.5 shrink-0 self-start md:self-auto">
+              <button
+                onClick={() => fetchMarketContext({ forceRefresh: true })}
+                disabled={marketContextStatus === 'loading'}
+                className={`px-3 py-1.5 md:py-2 border text-[11px] md:text-xs font-sans font-medium rounded-lg transition-all select-none ${
+                  marketContextStatus === 'loading'
+                    ? 'bg-zinc-900 border-zinc-800 text-zinc-600 cursor-not-allowed'
+                    : 'bg-zinc-950/40 hover:bg-[#C9B284]/10 border-white/[0.08] hover:border-[#C9B284]/30 text-zinc-400 hover:text-white cursor-pointer'
+                }`}
+              >
+                {marketContextStatus === 'loading' ? '刷新中...' : '刷新市场'}
+              </button>
+
               <button
                 onClick={() => {
                   setCtaError(null);
