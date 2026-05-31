@@ -4,6 +4,10 @@ function formatPercent(value) {
   return Number.isFinite(value) ? `${value.toFixed(2)}%` : 'N/A';
 }
 
+function formatRatio(value) {
+  return Number.isFinite(value) ? `${(value * 100).toFixed(2)}%` : 'N/A';
+}
+
 function safeText(value, fallback = 'N/A') {
   return value === undefined || value === null || value === '' ? fallback : String(value);
 }
@@ -98,9 +102,9 @@ async function main() {
       console.log(`\n• Unified Quality Summary:`);
       console.log(`  - Status                  : ${safeText(data.qualitySummary.status)}`);
       console.log(`  - Confidence              : ${safeText(data.qualitySummary.confidence)}`);
-      console.log(`  - Coverage Ratio          : ${formatPercent(data.qualitySummary.coverageRatio)}`);
-      console.log(`  - Instrument Coverage    : ${formatPercent(data.qualitySummary.instrumentCoverageRatio)}`);
-      console.log(`  - Enhancement Coverage  : ${data.qualitySummary.enhancementCoverageRatio !== undefined ? formatPercent(data.qualitySummary.enhancementCoverageRatio) : 'N/A'}`);
+      console.log(`  - Coverage Ratio          : ${formatRatio(data.qualitySummary.coverageRatio)}`);
+      console.log(`  - Instrument Coverage    : ${formatRatio(data.qualitySummary.instrumentCoverageRatio)}`);
+      console.log(`  - Enhancement Coverage  : ${data.qualitySummary.enhancementCoverageRatio !== undefined ? formatRatio(data.qualitySummary.enhancementCoverageRatio) : 'N/A'}`);
       console.log(`  - Summary                 : ${safeText(data.qualitySummary.summary)}`);
       
       if (Array.isArray(data.qualitySummary.sourceHealth)) {
