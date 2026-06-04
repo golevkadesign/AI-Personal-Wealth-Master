@@ -1,15 +1,20 @@
+/**
+ * @file AssistantResponseRenderer.tsx
+ * @description
+ * 这是一个展示层包装适配器 (Presentation Adapter)。
+ * 1. msg.content 是输入数据的核心唯一事实源。
+ * 2. 这里的 viewModel 解析结果由 parser 即时编译呈现，绝不进行持久化 / 写入 chatHistory / store / Firestore / localStorage。
+ * 3. 完整原文查看与复制能力永远保留，确保渲染层不丢失、不篡改任何 AI 原始输出。
+ * 4. 出错或非结构化消息时，会自动安全降级为普通高清 Markdown fallback 渲染。
+ */
+
 import React, { useMemo, useState } from 'react';
 import Markdown from 'react-markdown';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  ShieldCheck, 
   Clock, 
-  AlertTriangle, 
-  TrendingUp, 
-  Zap, 
   ChevronDown, 
   Copy, 
-  FileText, 
   Sparkles,
   Check,
   Bot,
@@ -175,6 +180,19 @@ export const AssistantResponseRenderer: React.FC<AssistantResponseRendererProps>
 
     return { primaryBlocks: primary, secondaryBlocks: secondary };
   }, [viewModel]);
+
+  // Dev mode diagnostics logger
+  if ((import.meta as any).env?.DEV && viewModel && !isStreaming) {
+    console.debug('[AssistantResponseRenderer]', {
+      mode: shouldUseCompactMarkdown ? 'compact' : 'structured',
+      rawLength: viewModel.meta.rawLength,
+      blockTypes: viewModel.blocks.map(b => b.type),
+      primaryCount: primaryBlocks.length,
+      secondaryCount: secondaryBlocks.length,
+      confidence: viewModel.meta.confidence,
+      hasRawText: Boolean(viewModel.rawText),
+    });
+  }
 
   // 4. 复制功能
   const handleCopyRaw = () => {
@@ -478,8 +496,31 @@ export const AssistantResponseRenderer: React.FC<AssistantResponseRendererProps>
   // 如果处于流式模式、编译失败或者是轻量短文本消息，则直接采用传统简洁 Markdown 形式，不抢主视觉
   if (isStreaming || !viewModel || shouldUseCompactMarkdown) {
     return (
-      <div className="w-full text-left font-sans select-text">
+      <div className="w-full text-left font-sans select-text space-y-1 group/compact relative">
         {renderMarkdown(content)}
+        
+        {!isStreaming && content.length > 0 && (
+          <div className="flex justify-end pt-1 opacity-0 group-hover/compact:opacity-100 transition-opacity duration-150">
+            <button
+              type="button"
+              onClick={handleCopyRaw}
+              className="inline-flex items-center gap-1.5 text-[10px] font-mono text-[#8C8370] hover:text-[#C9B284] transition-colors cursor-pointer"
+              title="复制原文"
+            >
+              {isCopied ? (
+                <>
+                  <Check className="w-3 h-3 text-emerald-400" />
+                  <span className="text-emerald-400">Copied</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3 h-3" />
+                  <span>Copy</span>
+                </>
+              )}
+            </button>
+          </div>
+        )}
       </div>
     );
   }

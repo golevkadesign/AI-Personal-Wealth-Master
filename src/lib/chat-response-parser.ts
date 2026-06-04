@@ -123,6 +123,12 @@ function restoreBlocks(blocks: AssistantResponseBlock[], codeBlocks: string[]): 
   });
 }
 
+/**
+ * 基于确定性字符串匹配与正则表达式构建助手响应的视图模型 (ViewModel)。
+ * 1. 编译期与运行期只作确定性的结构提取与轻量分割，绝不进行文本总结/改写或删除。
+ * 2. remainderMarkdown 及 rawText 完美保留了完整的 AI 原始回答。
+ * 3. 结果专用于 presentation 视图层包装，绝不进行状态持久化或写入 chatHistory / store。
+ */
 export function buildAssistantResponseViewModel(rawText: string): AssistantResponseViewModel {
   const safeRawText = typeof rawText === 'string'
     ? rawText
