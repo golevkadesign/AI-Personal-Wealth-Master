@@ -71,26 +71,6 @@ export function TerminalHeader({
         {/* Actions Area */}
         <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
           
-          <button
-            onClick={() => setShowProfileReport(true)}
-            className="hidden sm:inline-flex items-center gap-2 bg-[#1A1D1F] hover:bg-[#202326] text-dash-primary border border-dash-subtle px-3 py-1.5 rounded-xl font-mono text-[11px] font-semibold tracking-wider transition-colors duration-200"
-            title={t('nav.memoryProfile')}
-            aria-label={t('nav.memoryProfile')}
-          >
-            <Database className="w-3.5 h-3.5 text-[#A39167]" />
-            <span>{t('nav.memoryProfile')}</span>
-          </button>
-
-          <button
-            onClick={() => setShowDeveloperView(true)}
-            className="hidden sm:inline-flex items-center gap-2 bg-[#1A1D1F] hover:bg-[#202326] text-dash-primary border border-dash-subtle px-3 py-1.5 rounded-xl font-mono text-[11px] font-semibold tracking-wider transition-colors duration-200"
-            title={t('nav.developer')}
-            aria-label={t('nav.developer')}
-          >
-            <Cpu className="w-3.5 h-3.5 text-[#A39167]" />
-            <span>{t('nav.developer')}</span>
-          </button>
-
           {/* Sparkly Premium AI Button */}
           <motion.button 
             whileHover={{ scale: 1.02 }}
@@ -104,7 +84,7 @@ export function TerminalHeader({
             <span>询问 Arbitra</span>
           </motion.button>
 
-          <div className="h-6 w-px bg-dash-subtle/80 mx-1"></div>
+          <div className="h-6 w-px bg-dash-subtle/50 mx-0.5"></div>
 
           {/* Avatar dropdown trigger & menu */}
           <div className="relative" ref={dropdownRef}>
@@ -138,6 +118,30 @@ export function TerminalHeader({
 
                 {/* Dropdown Menu List Items */}
                 <div className="p-1.5 space-y-1">
+                  {/* Memory Profile Toggle Option */}
+                  <button
+                    onClick={() => {
+                      setIsDropdownOpen(false);
+                      setShowProfileReport(true);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg text-left text-[12.5px] text-[#8C8370] hover:bg-[#C9B284]/10 hover:text-[#E7D7B0] transition-all cursor-pointer"
+                  >
+                    <Database className="w-4 h-4 text-[#8C8370]" />
+                    <span>{t('nav.memoryProfile') || '长线记忆 / Memory'}</span>
+                  </button>
+
+                  {/* Developer View Toggle Option */}
+                  <button
+                    onClick={() => {
+                      setIsDropdownOpen(false);
+                      setShowDeveloperView(true);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg text-left text-[12.5px] text-[#8C8370] hover:bg-[#C9B284]/10 hover:text-[#E7D7B0] transition-all cursor-pointer"
+                  >
+                    <Cpu className="w-4 h-4 text-[#8C8370]" />
+                    <span>{t('nav.developer') || '开发者视图 / Developer'}</span>
+                  </button>
+
                   {/* Toggle Interface Language Option */}
                   <button
                     onClick={() => {
