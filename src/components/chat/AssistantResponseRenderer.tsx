@@ -28,6 +28,7 @@ export interface AssistantResponseRendererProps {
     liveSources?: string[];
   };
   isStreaming?: boolean;
+  isInteractionDisabled?: boolean;
   onQuickPrompt?: (prompt: string) => void;
 }
 
@@ -71,11 +72,28 @@ export const AssistantResponseRenderer: React.FC<AssistantResponseRendererProps>
   markdownComponents,
   metadata,
   isStreaming = false,
+  isInteractionDisabled = false,
   onQuickPrompt,
 }) => {
   const [isCopied, setIsCopied] = useState(false);
   const [isRawExpanded, setIsRawExpanded] = useState(false);
   const [expandedAccordionIndexes, setExpandedAccordionIndexes] = useState<Record<number, boolean>>({});
+  const [submittedPrompt, setSubmittedPrompt] = useState<string | null>(null);
+
+  const handleFollowupPrompt = (prompt: string) => {
+    const safePrompt = typeof prompt === 'string' ? prompt.trim() : '';
+    if (!safePrompt) return;
+    if (!onQuickPrompt) return;
+    if (isInteractionDisabled || isStreaming) return;
+    if (submittedPrompt === safePrompt) return;
+
+    setSubmittedPrompt(safePrompt);
+    onQuickPrompt(safePrompt);
+
+    window.setTimeout(() => {
+      setSubmittedPrompt(prev => prev === safePrompt ? null : prev);
+    }, 1500);
+  };
 
   // 1. 拼合 Markdown 渲染单元
   const finalMarkdownComponents = useMemo(() => {
@@ -374,6 +392,8 @@ export const AssistantResponseRenderer: React.FC<AssistantResponseRendererProps>
 
             case 'followupPrompts':
               if (!onQuickPrompt) return null;
+              const validPrompts = block.prompts.filter(p => typeof p === 'string' && p.trim().length > 0);
+              if (validPrompts.length === 0) return null;
               return (
                 <div key={idx} className="space-y-2 border-t border-[#1C2026] pt-3">
                   {block.title && (
@@ -384,16 +404,35 @@ export const AssistantResponseRenderer: React.FC<AssistantResponseRendererProps>
                     </div>
                   )}
                   <div className="flex flex-col gap-1.5">
-                    {block.prompts.map((prompt, pIdx) => (
-                      <button
-                        key={pIdx}
-                        onClick={() => onQuickPrompt?.(prompt)}
-                        className="text-left w-full text-[12px] text-neutral-300 hover:text-white bg-[#12151A] hover:bg-[#1C2026] border border-[#1C2026] hover:border-[#C9B284]/20 rounded-xl px-4 py-2 transition-all duration-200 cursor-pointer flex items-center justify-between gap-3 group"
-                      >
-                        <span className="font-sans font-medium line-clamp-1">{prompt}</span>
-                        <ChevronDown className="w-3.5 h-3.5 rotate-270 opacity-30 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all text-[#C9B284]" />
-                      </button>
-                    ))}
+                    {validPrompts.map((prompt, pIdx) => {
+                      const safePrompt = prompt.trim();
+                      const isCurrentSubmitted = submittedPrompt === safePrompt;
+                      const isDisabled = isInteractionDisabled || isStreaming || !!submittedPrompt;
+
+                      return (
+                        <button
+                          key={pIdx}
+                          type="button"
+                          disabled={isDisabled}
+                          onClick={() => handleFollowupPrompt(safePrompt)}
+                          className={`text-left w-full text-[12px] rounded-xl px-4 py-2 transition-all duration-200 flex items-center justify-between gap-3 group border ${
+                            isDisabled
+                              ? 'bg-[#12151A]/40 text-neutral-500 border-[#1C2026] cursor-not-allowed opacity-50'
+                              : 'bg-[#12151A] hover:bg-[#1C2026] text-neutral-300 hover:text-white border-[#1C2026] hover:border-[#C9B284]/20 cursor-pointer'
+                          }`}
+                        >
+                          <span className="font-sans font-medium line-clamp-1">{safePrompt}</span>
+                          {isCurrentSubmitted ? (
+                            <span className="flex items-center gap-1 text-[11px] font-mono text-[#C9B284] shrink-0">
+                              <Check className="w-3.5 h-3.5 text-[#C9B284]" />
+                              <span>已发送</span>
+                            </span>
+                          ) : (
+                            <ChevronDown className="w-3.5 h-3.5 rotate-270 opacity-30 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all text-[#C9B284] shrink-0" />
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               );

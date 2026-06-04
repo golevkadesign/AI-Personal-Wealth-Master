@@ -252,6 +252,7 @@ export const ChatList = React.memo(function ChatList({
                             liveSources: msg._liveSources,
                           }}
                           isStreaming={isTyping && i === messages.length - 1}
+                          isInteractionDisabled={isTyping}
                           onQuickPrompt={onQuickPrompt}
                         />
 
