@@ -166,15 +166,15 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({
 
   // Live element counts for the state inspector rows
   const counts = useMemo(() => {
-    const uCount = Object.keys(user || {}).length || 8;
-    const mCount = Object.keys(state?.metrics || {}).length || 6;
+    const uCount = Object.keys(user || {}).length;
+    const mCount = Object.keys(state?.metrics || {}).length;
     
     // Total items across all distribution categories
     const distCount = Object.values(state?.distributions || {}).reduce(
       (acc: number, arr: any) => acc + (Array.isArray(arr) ? arr.length : 0), 0
-    ) || 5;
+    );
 
-    const iCount = Object.keys(state?.insights || {}).filter(k => state?.insights?.[k]).length || 3;
+    const iCount = Object.keys(state?.insights || {}).filter(k => state?.insights?.[k]).length;
     const gActive = state?.goal?.name ? 1 : 0;
     const wCount = state?.dynamicWidgets?.length ?? 0;
 

@@ -198,6 +198,14 @@ function cleanComponentActions(component: SDUIComponent): SDUIComponent {
   return result;
 }
 
+/**
+ * SDUIIntakeDiagnostics 接口定义了 SDUI 数据摄取阶段的只读性能与过滤观测快照。
+ * 
+ * ⚠️ 设计原则：
+ * 1. 这是一个仅保存在浏览器 Session 内存中的临时 debug 数据；
+ * 2. 绝对不可将其写入 TerminalState、Firestore 或 localStorage 等持久化介质；
+ * 3. 专门提供给 DeveloperView 终端审计面板，严防污染任何真实的个人财富财务状态。
+ */
 export interface SDUIIntakeDiagnostics {
   rawTopLevel: number;
   normalizedCount: number;
@@ -217,6 +225,21 @@ export function getLastSDUIIntakeDiagnostics(): SDUIIntakeDiagnostics | null {
   return lastSDUIIntakeDiagnostics;
 }
 
+/**
+ * normalizeDynamicWidgetsForDashboard 是端到端 AI 状态注入前置核心的一道“前端 Intake 准入防线”。
+ * 
+ * 🛠️ 职责范围：
+ * 1. 【安全规范化】：对 LLM 主链路流式下发的未知、无序 widgets 结构体进行标准化树状还原；
+ * 2. 【深层候选抽取】：递归展开 Grid/Flex 嵌套子卡片，平铺出扁平的决策洞察池 (Candidates)；
+ * 3. 【精准去重过滤】：对高频重复、微调无意义的 Insight 建立指纹映射哈希，按优先级去重；
+ * 4. 【风控与硬重限流】：
+ *    - 确保每轮主会话下发的 InterventionCard (强力红线预警) 至多只能展示 1 张；
+ *    - 严格限制累计最终导出的 Top-level 洞察微件总数 <= 3 (Top3 Limit)，减少认知过载与雪崩；
+ * 5. 【Action 安全清洗】：拦截任何恶意、不规范的 actionProps，强制将事件路由至标准 AI Drawer 调优模块。
+ * 
+ * 📌 注意：
+ * 本防御模块为纯粹的结构体流式切片清洗机制，不承载任何后端 prompt 的状态变更，不涉及 dashboardSchema 主动写入。
+ */
 export function normalizeDynamicWidgetsForDashboard(rawWidgets: any): SDUIComponent[] {
   const rawTopLevel = Array.isArray(rawWidgets) ? rawWidgets.length : 0;
   const normalized = normalizeSDUISchema(rawWidgets);
