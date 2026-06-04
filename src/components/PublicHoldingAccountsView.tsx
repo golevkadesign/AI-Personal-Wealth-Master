@@ -1,4 +1,5 @@
 import React from 'react';
+import { Sparkles } from 'lucide-react';
 import { ChartWidget } from './ChartWidget';
 import { ReactECharts } from './ReactECharts';
 import { getCurrencySymbol, getHoldingMarketValue } from './chart-configs';
@@ -35,7 +36,9 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
   globalData
 }) => {
   const [isRefreshing, setIsRefreshing] = React.useState(false);
+  const [ctaError, setCtaError] = React.useState<string | null>(null);
   const fetchLongbridgeAccountPortfolios = useWealthStore(state => state.fetchLongbridgeAccountPortfolios);
+  const createPortfolioReviewSession = useWealthStore(state => state.createPortfolioReviewSession);
 
   const handleReload = async () => {
     setIsRefreshing(true);
@@ -43,6 +46,16 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
       await fetchLongbridgeAccountPortfolios();
     } finally {
       setIsRefreshing(false);
+    }
+  };
+
+  const handleCreatePortfolioReview = () => {
+    setCtaError(null);
+    const session = createPortfolioReviewSession();
+    if (session) {
+      window.dispatchEvent(new CustomEvent('open-portfolio-review', { detail: { sessionId: session.id } }));
+    } else {
+      setCtaError('当前没有可复盘的持仓数据，请先同步券商账户或录入公开市场持仓。');
     }
   };
 
@@ -104,7 +117,7 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
         </div>
 
         {/* Global Action Section */}
-        <div className="flex items-center gap-3 self-end sm:self-center">
+        <div className="flex flex-wrap items-center gap-2 self-end sm:self-center justify-end">
           <button
             onClick={handleReload}
             disabled={isRefreshing}
@@ -113,8 +126,22 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
             <span>🔄</span>
             <span>{isRefreshing ? '同步中...' : '刷新实盘'}</span>
           </button>
+
+          <button
+            onClick={handleCreatePortfolioReview}
+            className="bg-[#C9B284]/10 hover:bg-[#C9B284]/20 border border-[#C9B284]/25 hover:border-[#C9B284]/45 text-[#C9B284] hover:text-[#E7D7B0] px-3 py-1.5 text-[11px] font-mono rounded-[8px] transition-all cursor-pointer flex items-center gap-1.5 shadow-sm font-medium select-none"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>生成本轮复盘</span>
+          </button>
         </div>
       </div>
+
+      {ctaError && (
+        <div className="text-[11px] text-rose-400 font-mono bg-rose-950/20 border border-rose-900/30 rounded-lg px-3 py-2">
+          ⚠️ {ctaError}
+        </div>
+      )}
 
       {/* Global Insight for Public Holdings if available */}
       {globalData?.insights?.public && (
