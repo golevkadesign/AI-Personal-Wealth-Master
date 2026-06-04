@@ -1,9 +1,10 @@
 import React, { useRef, useEffect, useMemo, useState } from 'react';
 import { cn } from '../../lib/utils';
-import { Send, FileText, Bot, User as UserIcon, Loader2, Activity, ChevronDown, Sparkles, StopCircle, Check, Copy, RefreshCw, MessageSquare, X, Mic, Maximize2, Cpu, Download } from 'lucide-react';
+import { Send, FileText, Bot, User as UserIcon, Loader2, Activity, Sparkles, StopCircle, Check, Copy, RefreshCw, MessageSquare, X, Mic, Maximize2, Cpu, Download } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { motion, AnimatePresence } from 'motion/react';
 import { AssistantResponseRenderer } from '../chat/AssistantResponseRenderer';
+import { AgentThinkingTrace } from '../chat/AgentThinkingTrace';
 
 const CodeBlock = React.memo(({ inline, className, children, setFullScreenCode, isBlock }: any) => {
   const match = /language-(\w+)/.exec(className || '');
@@ -73,19 +74,11 @@ export const ChatList = React.memo(function ChatList({
 }) {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const chatEndRef = React.useRef<HTMLDivElement>(null);
-  const [expandedThinking, setExpandedThinking] = React.useState<Record<number, boolean>>({});
   const [expandedUserMsg, setExpandedUserMsg] = React.useState<Record<number, boolean>>({});
   const [copiedIndex, setCopiedIndex] = React.useState<number | null>(null);
   const [fullScreenCode, setFullScreenCode] = React.useState<{ code: string, language: string } | null>(null);
   const [showSuggestedJson, setShowSuggestedJson] = React.useState<Record<number, boolean>>({});
   
-  React.useEffect(() => {
-    if (!isTyping && messages.length > 0) {
-      // 自动折叠最后一条消息的思考过程
-      setExpandedThinking(prev => ({ ...prev, [messages.length - 1]: false }));
-    }
-  }, [isTyping, messages.length]);
-
   const isAtBottomRef = React.useRef(true);
 
   const handleCopy = (text: string, index: number) => {
@@ -194,42 +187,12 @@ export const ChatList = React.memo(function ChatList({
                 
                 {/* Thinking Section styled to be elegant and progressive */}
                 {msg.thinking && (
-                  <div className="w-full mb-2">
-                    <div className="rounded-xl overflow-hidden bg-dash-surface-hover/50 border border-[#C9B284]/15 shadow-sm backdrop-blur-sm">
-                        <button onClick={() => {
-                            setExpandedThinking(prev => ({ ...prev, [i]: prev[i] === undefined ? false : !prev[i] }))
-                        }} className="w-full flex items-center justify-between py-2 px-3 hover:bg-white/5 transition-colors border-b border-transparent data-[expanded=true]:border-[#C9B284]/10" data-expanded={expandedThinking[i] !== false}>
-                            <div className="flex items-center gap-2 overflow-hidden flex-1 shrink">
-                              {isTyping && i === messages.length - 1 && !msg.content ? (
-                                <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2, ease: "linear" }}>
-                                  <Sparkles className="w-3.5 h-3.5 text-[#C9B284] animate-pulse" />
-                                </motion.div>
-                              ) : <Check className="w-3.5 h-3.5 text-[#8C8270]" />}
-                              <span className="font-semibold text-[11px] text-[#C9B284] tracking-wide shrink-0">
-                                {isTyping && i === messages.length - 1 && !msg.content ? '深度推演中...' : '推演完成'}
-                              </span>
-                              {expandedThinking[i] === false && (
-                                <span className="text-[10px] text-[#A39167]/70 truncate flex-1 block text-left ml-2 font-mono">
-                                   {msg.thinking.trim().split('\n').filter(Boolean).pop()?.replace(/^["'-]|["'-]$/g, '').trim() || '分析数据...'}
-                                </span>
-                              )}
-                            </div>
-                            <ChevronDown className={`w-3.5 h-3.5 text-[#8C8270] transition-transform duration-300 ml-2 shrink-0 ${expandedThinking[i] !== false ? 'rotate-180' : ''}`} />
-                        </button>
-                        <AnimatePresence>
-                          {expandedThinking[i] !== false && (
-                              <motion.div 
-                                initial={{ height: 0, opacity: 0 }}
-                                animate={{ height: "auto", opacity: 1 }}
-                                exit={{ height: 0, opacity: 0 }}
-                                className="text-[#A39167] font-mono text-[10px] leading-relaxed whitespace-pre-wrap bg-[#08090A]/50 border-t border-[#C9B284]/10"
-                              >
-                                <div className="p-3 border-l-2 border-[#C9B284]/30 ml-2.5 my-2 max-h-[160px] overflow-y-auto custom-scroll">{msg.thinking}</div>
-                              </motion.div>
-                          )}
-                        </AnimatePresence>
-                    </div>
-                  </div>
+                  <AgentThinkingTrace
+                    rawThinking={msg.thinking}
+                    isStreaming={isTyping && i === messages.length - 1}
+                    defaultExpanded={false}
+                    className="mb-2"
+                  />
                 )}
                 
                 {/* Custom Private Wealth Advisor Memo Card */}
