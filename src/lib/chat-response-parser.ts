@@ -124,13 +124,19 @@ function restoreBlocks(blocks: AssistantResponseBlock[], codeBlocks: string[]): 
 }
 
 export function buildAssistantResponseViewModel(rawText: string): AssistantResponseViewModel {
+  const safeRawText = typeof rawText === 'string'
+    ? rawText
+    : rawText == null
+    ? ''
+    : String(rawText);
+
   const fallbackModel = (isFallback: boolean = true, customBlocks?: AssistantResponseBlock[]): AssistantResponseViewModel => {
-    const len = rawText ? rawText.length : 0;
+    const len = safeRawText.length;
     return {
-      rawText: rawText || '',
+      rawText: safeRawText,
       meta: {
         rawLength: len,
-        estimatedReadMinutes: estimateReadMinutes(rawText || ''),
+        estimatedReadMinutes: estimateReadMinutes(safeRawText),
         parsedAt: Date.now(),
         parserVersion: '1.0.0-diagnostics',
         isFallback,
@@ -142,19 +148,19 @@ export function buildAssistantResponseViewModel(rawText: string): AssistantRespo
         {
           type: 'markdownFallback',
           title: '详细诊断分析',
-          content: rawText || '',
+          content: safeRawText,
         },
       ],
-      remainderMarkdown: '',
+      remainderMarkdown: safeRawText,
     };
   };
 
-  if (typeof rawText !== 'string' || !rawText.trim()) {
+  if (!safeRawText.trim()) {
     return fallbackModel(true);
   }
 
   // 1. 保护代码块
-  const { maskedText, codeBlocks } = maskCodeBlocks(rawText);
+  const { maskedText, codeBlocks } = maskCodeBlocks(safeRawText);
 
   // 2. 基础分行
   const lines = maskedText.split('\n');
@@ -435,7 +441,7 @@ export function buildAssistantResponseViewModel(rawText: string): AssistantRespo
   // Fallback 过滤器：
   // 如果解析出的有效交互式 blocks 少于两个 (或者 rawText 字数低于 240字)，且没有显著的列表/表格等
   const interactiveBlocksCount = finalProcessedBlocks.filter(b => b.type !== 'summary').length;
-  const wordCount = rawText.length;
+  const wordCount = safeRawText.length;
   
   const keepCustomStructure = wordCount >= 240 || hasStructuredListOrTable(maskedText);
   if (interactiveBlocksCount < 2 && !keepCustomStructure) {
@@ -456,7 +462,7 @@ export function buildAssistantResponseViewModel(rawText: string): AssistantRespo
 
   // 4. 余项 Markdown 处理
   // 我们在 viewModel.remainderMarkdown 中放置原始完整文本以零退化、零流失保护原始财务事实
-  const remainderMarkdown = rawText;
+  const remainderMarkdown = safeRawText;
 
   // Confidence 计算
   let confidence: 'low' | 'medium' | 'high' = 'medium';
@@ -467,10 +473,10 @@ export function buildAssistantResponseViewModel(rawText: string): AssistantRespo
   }
 
   return {
-    rawText,
+    rawText: safeRawText,
     meta: {
-      rawLength: rawText.length,
-      estimatedReadMinutes: estimateReadMinutes(rawText),
+      rawLength: safeRawText.length,
+      estimatedReadMinutes: estimateReadMinutes(safeRawText),
       parsedAt: Date.now(),
       parserVersion: '1.0.0-diagnostics',
       isFallback: false,
@@ -479,6 +485,6 @@ export function buildAssistantResponseViewModel(rawText: string): AssistantRespo
     title: summaryBlock ? summaryBlock.title : '财富诊断分析',
     tone,
     blocks: finalProcessedBlocks,
-    remainderMarkdown,
+    remainderMarkdown: safeRawText,
   };
 }
