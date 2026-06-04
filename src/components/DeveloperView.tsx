@@ -10,17 +10,10 @@ import { useWealthStore } from '../hooks/useWealthStore';
 import { getSettings, saveSettings } from '../lib/settings';
 import { DEFAULT_PROMPTS, DEFAULT_RAG_SCHEMA } from '../lib/defaultPrompts';
 import { getLastSDUIIntakeDiagnostics } from '../lib/sdui-intake-policy';
+import { DEVELOPER_PIPELINE_AGENT_IDS, getSharedAgentDefinition } from '../lib/agent-definitions';
 
-const AGENTS = [
-  { id: 'rag', name: 'RAG Memory Agent', role: 'Context Retrieval', type: 'rag', color: 'border-emerald-500/25 bg-emerald-500/5 text-emerald-400' },
-  { id: 'hydrator', name: 'Context Hydrator', role: 'Deterministic Layer', type: 'middleware', color: 'border-slate-500/25 bg-slate-500/5 text-slate-400' },
-  { id: 'general', name: 'General Finance', role: 'Standard Planning', type: 'llm', color: 'border-blue-500/25 bg-blue-500/5 text-blue-400' },
-  { id: 'hnw', name: 'HNW Manager', role: 'Wealth Structuring', type: 'llm', color: 'border-purple-500/25 bg-purple-500/5 text-purple-400' },
-  { id: 'debt', name: 'Debt Crisis', role: 'Leverage & Risk', type: 'llm', color: 'border-rose-500/25 bg-rose-500/5 text-rose-400' },
-  { id: 'market', name: 'Market Quant', role: 'Macro Strategy', type: 'llm', color: 'border-cyan-500/25 bg-cyan-500/5 text-cyan-400' },
-  { id: 'devil', name: 'Devil\'s Advocate', role: 'Stress Testing', type: 'llm', color: 'border-red-600/30 bg-red-600/10 text-red-500' },
-  { id: 'orchestrator', name: 'CEO / Synthesizer', role: 'Final Aggregation', type: 'llm', color: 'border-[#C9B284]/30 bg-[#C9B284]/10 text-[#E7D7B0]' }
-];
+const AGENTS = DEVELOPER_PIPELINE_AGENT_IDS.map(id => getSharedAgentDefinition(id));
+
 
 interface DeveloperViewProps {
   isOpen: boolean;

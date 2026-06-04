@@ -12,7 +12,8 @@ import {
   Workflow
 } from 'lucide-react';
 import { buildAgentThinkingTrace } from '../../lib/agent-thinking-parser';
-import { AgentThinkingStep, AgentThinkingKind } from '../../lib/agent-thinking-types';
+import { AgentThinkingStep } from '../../lib/agent-thinking-types';
+import { getSharedAgentDefinition } from '../../lib/agent-definitions';
 
 export interface AgentThinkingTraceProps {
   rawThinking?: string;
@@ -43,63 +44,6 @@ function useElapsedTimer(enabled: boolean, startedAt?: number) {
   return elapsed;
 }
 
-// 获取各 Agent 的视觉主题配置
-function getKindVisual(kind: AgentThinkingKind) {
-  switch (kind) {
-    case 'rag':
-      return {
-        bg: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
-        dot: 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]',
-        color: 'text-emerald-400'
-      };
-    case 'external':
-      return {
-        bg: 'bg-teal-500/10 border-teal-500/20 text-teal-400',
-        dot: 'bg-teal-500 shadow-[0_0_6px_rgba(20,184,166,0.5)]',
-        color: 'text-teal-400'
-      };
-    case 'hydrator':
-      return {
-        bg: 'bg-slate-500/10 border-slate-500/20 text-slate-400',
-        dot: 'bg-slate-400',
-        color: 'text-slate-300'
-      };
-    case 'market':
-      return {
-        bg: 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400',
-        dot: 'bg-cyan-500 shadow-[0_0_6px_rgba(6,182,212,0.5)]',
-        color: 'text-cyan-400'
-      };
-    case 'debt':
-    case 'devil':
-      return {
-        bg: 'bg-rose-500/10 border-rose-500/20 text-rose-400',
-        dot: 'bg-rose-500 shadow-[0_0_6px_rgba(244,63,94,0.5)]',
-        color: 'text-rose-400'
-      };
-    case 'orchestrator':
-      return {
-        bg: 'bg-[#C9B284]/10 border-[#C9B284]/20 text-[#E7D7B0]',
-        dot: 'bg-[#C9B284] shadow-[0_0_6px_rgba(201,178,132,0.5)]',
-        color: 'text-[#E7D7B0]'
-      };
-    case 'general':
-    case 'hnw':
-    case 'memory':
-      return {
-        bg: 'bg-amber-500/10 border-amber-500/20 text-amber-400',
-        dot: 'bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.5)]',
-        color: 'text-amber-400'
-      };
-    case 'unknown':
-    default:
-      return {
-        bg: 'bg-zinc-500/10 border-zinc-500/20 text-zinc-400',
-        dot: 'bg-zinc-500',
-        color: 'text-[#8C8370]'
-      };
-  }
-}
 
 export const AgentThinkingTrace: React.FC<AgentThinkingTraceProps> = ({
   rawThinking,
@@ -254,7 +198,7 @@ export const AgentThinkingTrace: React.FC<AgentThinkingTraceProps> = ({
               {trace.steps.length > 0 ? (
                 <div className="relative pl-1.5 space-y-3.5">
                   {trace.steps.map((step: AgentThinkingStep, index: number) => {
-                    const visual = getKindVisual(step.kind);
+                    const visual = getSharedAgentDefinition(step.kind).visual;
                     const isLast = index === trace.steps.length - 1;
                     
                     return (
