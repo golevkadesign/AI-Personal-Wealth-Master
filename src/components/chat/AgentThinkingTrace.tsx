@@ -102,7 +102,7 @@ function getKindVisual(kind: AgentThinkingKind) {
 }
 
 export const AgentThinkingTrace: React.FC<AgentThinkingTraceProps> = ({
-  rawThinking = '',
+  rawThinking,
   isStreaming = false,
   startedAt,
   defaultExpanded = false,
@@ -112,24 +112,32 @@ export const AgentThinkingTrace: React.FC<AgentThinkingTraceProps> = ({
   const [isRawLogExpanded, setIsRawLogExpanded] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
 
+  // 1. 建立运行时输入兜底 safeRawThinking 机制，阻断异常输入崩盘
+  const safeRawThinking = typeof rawThinking === 'string'
+    ? rawThinking
+    : rawThinking == null
+    ? ''
+    : String(rawThinking);
+
   // 运行流逝时间
   const elapsedMs = useElapsedTimer(isStreaming, startedAt);
 
   // 解析 trace view model
   const trace = useMemo(() => {
     try {
-      return buildAgentThinkingTrace(rawThinking, { isStreaming, startedAt });
+      return buildAgentThinkingTrace(safeRawThinking, { isStreaming, startedAt });
     } catch (err) {
       console.error('[AgentThinkingTrace] Parser crashed:', err);
       // Fallback
+      const lines = safeRawThinking.split('\n').filter(Boolean);
       return {
-        rawText: rawThinking,
+        rawText: safeRawThinking,
         headline: isStreaming ? '正在推演' : '推演完成',
-        currentLabel: rawThinking.split('\n').filter(Boolean).pop() || '解析失败，正在展示原文',
+        currentLabel: lines.length > 0 ? lines[lines.length - 1] : '解析失败，正在展示原文',
         status: isStreaming ? 'running' : 'complete',
         steps: [],
         meta: {
-          rawLength: rawThinking.length,
+          rawLength: safeRawThinking.length,
           stepCount: 0,
           completedCount: 0,
           runningCount: 0,
@@ -140,10 +148,10 @@ export const AgentThinkingTrace: React.FC<AgentThinkingTraceProps> = ({
         }
       } as any;
     }
-  }, [rawThinking, isStreaming, startedAt]);
+  }, [safeRawThinking, isStreaming, startedAt]);
 
   // 如果原始输入为空，则直接不渲染任何壳子
-  if (!rawThinking.trim()) {
+  if (!safeRawThinking.trim()) {
     return null;
   }
 
@@ -151,7 +159,7 @@ export const AgentThinkingTrace: React.FC<AgentThinkingTraceProps> = ({
   const handleCopyRawLog = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      await navigator.clipboard.writeText(rawThinking);
+      await navigator.clipboard.writeText(safeRawThinking);
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2000);
     } catch (err) {
@@ -245,31 +253,33 @@ export const AgentThinkingTrace: React.FC<AgentThinkingTraceProps> = ({
               {/* Timeline Agent Grid/List */}
               {trace.steps.length > 0 ? (
                 <div className="relative pl-1.5 space-y-3.5">
-                  {/* Pipeline 中间连接线 */}
-                  <div className="absolute left-[11px] top-2.5 bottom-2.5 w-px bg-white/[0.04]" />
-
                   {trace.steps.map((step: AgentThinkingStep, index: number) => {
                     const visual = getKindVisual(step.kind);
                     const isLast = index === trace.steps.length - 1;
                     
                     return (
                       <div key={step.id || index} className="flex gap-3 items-start min-w-0 relative">
-                        {/* 左侧圆圈与连接线节点 */}
+                        {/* 局部的 Pipeline 线下延续 —— 深度利用 isLast 变量实现动态精准连线 */}
+                        {!isLast && (
+                          <div className="absolute left-[10px] top-6 bottom-[-14px] w-px bg-white/[0.04]" />
+                        )}
+
+                        {/* 左侧圆圈与连接线节点 —— 完美融合 getKindVisual 动态特质语义色 */}
                         <div className="relative flex items-center justify-center shrink-0 w-5 h-5 mt-0.5">
                           {step.status === 'running' ? (
                             <div className="w-4 h-4 bg-amber-500/20 border border-amber-500/40 rounded-full flex items-center justify-center animate-pulse">
-                              <span className="w-1.5 h-1.5 bg-amber-500 rounded-full" />
+                              <span className={`w-1.5 h-1.5 rounded-full ${visual.dot}`} />
                             </div>
                           ) : step.status === 'error' ? (
                             <div className="w-4 h-4 bg-rose-500/20 border border-rose-500/40 rounded-full flex items-center justify-center">
                               <span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-ping" />
                             </div>
                           ) : step.status === 'complete' ? (
-                            <div className="w-4 h-4 bg-emerald-500/10 border border-emerald-500/30 rounded-full flex items-center justify-center">
-                              <Check className="w-2.5 h-2.5 text-emerald-400" />
+                            <div className={`w-4 h-4 rounded-full flex items-center justify-center ${visual.bg}`}>
+                              <Check className={`w-2.5 h-2.5 ${visual.color}`} />
                             </div>
                           ) : (
-                            <div className="w-3 h-3 bg-zinc-800 border border-zinc-700 rounded-full" />
+                            <div className={`w-3 h-3 rounded-full border border-white/[0.06] ${visual.bg}`} />
                           )}
                         </div>
 
@@ -277,11 +287,11 @@ export const AgentThinkingTrace: React.FC<AgentThinkingTraceProps> = ({
                         <div className="flex-1 min-w-0 flex flex-col md:flex-row md:items-center justify-between gap-1 border border-white/[0.01] bg-white/[0.005] px-2.5 py-1.5 rounded-lg">
                           <div className="min-w-0">
                             <div className="flex items-center gap-2 flex-wrap text-[11px]">
-                              <span className="font-bold text-zinc-300 font-sans tracking-wide">
+                              <span className={`font-bold font-sans tracking-wide ${visual.color}`}>
                                 {step.label}
                               </span>
                               {step.role && (
-                                <span className="text-[9px] text-[#8C8370] font-mono px-1 py-0.2 bg-white/[0.03] rounded border border-white/[0.01]">
+                                <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded border ${visual.bg}`}>
                                   {step.role}
                                 </span>
                               )}
@@ -362,7 +372,7 @@ export const AgentThinkingTrace: React.FC<AgentThinkingTraceProps> = ({
                       className="overflow-hidden"
                     >
                       <pre className="max-h-[160px] overflow-y-auto font-mono text-[9.5px] text-zinc-500 leading-normal p-3 bg-black/20 border-t border-white/[0.01] select-text whitespace-pre-wrap select-all">
-                        {rawThinking}
+                        {safeRawThinking}
                       </pre>
                     </motion.div>
                   )}
