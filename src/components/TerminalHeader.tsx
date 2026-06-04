@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { Database, Cpu, Sparkles, Settings, LogOut, Globe } from 'lucide-react';
 import { logout } from '../lib/firebase';
 import { useTranslation } from '../hooks/useTranslation';
+import { useWealthStore } from '../hooks/useWealthStore';
 
 interface TerminalHeaderProps {
   user: any;
@@ -22,6 +23,17 @@ export function TerminalHeader({
   const { t, language, setLanguage } = useTranslation();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const {
+    data,
+    publicHoldingAccountsSyncStatus,
+    publicHoldingAccountsError,
+    marketContextStatus,
+    marketContextError,
+  } = useWealthStore();
+
+  const publicHoldingAccounts = data.publicHoldingAccounts || (data.distributions as any)?.publicHoldingAccounts || [];
+  const dynamicWidgetCount = data.dynamicWidgets?.length || 0;
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -52,7 +64,7 @@ export function TerminalHeader({
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 h-[72px] flex justify-between items-center">
         
         {/* Brand Area */}
-        <div className="flex items-center gap-3 sm:gap-4 select-none">
+        <div className="flex items-center gap-3 sm:gap-4 select-none shrink-0">
           <div className="bg-[#1C1F22] border border-dash-subtle shadow-inner w-10 h-10 rounded-xl flex items-center justify-center relative overflow-hidden group">
             <div className="absolute inset-0 bg-[#C9B284]/10 opacity-30 group-hover:opacity-50 transition-opacity"></div>
             {/* Elegant dark gold dot */}
@@ -65,6 +77,72 @@ export function TerminalHeader({
             <span className="text-[10px] font-mono tracking-widest uppercase text-[#A39167] mt-1 font-semibold">
               Sovereign Operating System
             </span>
+          </div>
+        </div>
+
+        {/* Mid-Status Area (xl devices only) —— 优雅融入 Header 单行内部 */}
+        <div className="hidden xl:flex flex-1 items-center justify-center min-w-0 px-6">
+          <div className="flex items-center gap-2.5 min-w-0 overflow-hidden text-[10.5px] font-mono select-none">
+            {/* 1. 系统状态 */}
+            <div className="flex items-center gap-1.5 shrink-0 border border-emerald-500/10 bg-emerald-500/[0.02] px-2 py-0.5 rounded-lg">
+              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+              <span className="text-[#8C8370] font-sans">正常运行</span>
+            </div>
+
+            {/* 2. 数据同步 */}
+            <div className="flex items-center gap-1.5 shrink-0 border border-white/[0.04] bg-white/[0.01] px-2 py-0.5 rounded-lg">
+              <span className={`w-1.5 h-1.5 rounded-full ${
+                publicHoldingAccountsSyncStatus === 'loading' ? 'bg-amber-500 animate-spin' :
+                publicHoldingAccountsSyncStatus === 'success' ? 'bg-emerald-500' :
+                publicHoldingAccountsSyncStatus === 'error' ? 'bg-rose-500' : 'bg-zinc-500'
+              }`} />
+              <span className="text-[#8C8370] font-sans">
+                {publicHoldingAccountsSyncStatus === 'loading' ? '同步中' :
+                 publicHoldingAccountsSyncStatus === 'success' ? '已同步' :
+                 publicHoldingAccountsSyncStatus === 'error' ? '同步异常' : '等待数据'}
+              </span>
+            </div>
+
+            {/* 3. 持仓账户 */}
+            <div className="flex items-center gap-1.5 shrink-0 border border-white/[0.04] bg-white/[0.01] px-2 py-0.5 rounded-lg">
+              <span className={`w-1.5 h-1.5 rounded-full ${publicHoldingAccounts.length > 0 ? 'bg-amber-500' : 'bg-zinc-500'}`} />
+              <span className="text-[#8C8370] font-sans">
+                {publicHoldingAccounts.length > 0 ? `${publicHoldingAccounts.length} 账户` : '等待账户'}
+              </span>
+            </div>
+
+            {/* 4. AI分析状态 */}
+            <div className="flex items-center gap-1.5 shrink-0 border border-white/[0.04] bg-white/[0.01] px-2 py-0.5 rounded-lg">
+              <span className={`w-1.5 h-1.5 rounded-full ${dynamicWidgetCount > 0 ? 'bg-[#C9B284]' : 'bg-zinc-500'}`} />
+              <span className="text-[#8C8370] font-sans">
+                {dynamicWidgetCount > 0 ? `AI 洞察 ${dynamicWidgetCount}` : 'AI 空闲'}
+              </span>
+            </div>
+
+            {/* 5. 市场环境 */}
+            <div className="flex items-center gap-1.5 shrink-0 border border-white/[0.04] bg-white/[0.01] px-2 py-0.5 rounded-lg min-w-0" title={
+              marketContextStatus === 'error' && marketContextError ? marketContextError : 
+              data.marketContext ? `${data.marketContext.freshness} · Stooq delayed` : '市场环境状态'
+            }>
+              <span className={`w-1.5 h-1.5 rounded-full ${
+                marketContextStatus === 'loading' ? 'bg-amber-500 animate-pulse' :
+                marketContextStatus === 'error' ? 'bg-rose-500' :
+                data.marketContext ? (
+                  data.marketContext.regime?.riskMode === 'risk_on' ? 'bg-emerald-500' :
+                  data.marketContext.regime?.riskMode === 'risk_off' ? 'bg-amber-500' :
+                  'bg-[#C9B284]'
+                ) : 'bg-zinc-500'
+              }`} />
+              <span className="text-[#8C8370] font-sans truncate max-w-[124px]">
+                {marketContextStatus === 'loading' ? '市场刷新中' :
+                 marketContextStatus === 'error' ? '市场异常' :
+                 data.marketContext ? (
+                   data.marketContext.regime?.riskMode === 'risk_on' ? 'Risk-on' :
+                   data.marketContext.regime?.riskMode === 'risk_off' ? 'Risk-off' :
+                   data.marketContext.regime?.riskMode === 'neutral' ? 'Neutral' : 'Neutral'
+                 ) : '市场待刷新'}
+              </span>
+            </div>
           </div>
         </div>
         
