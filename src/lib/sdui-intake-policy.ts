@@ -198,6 +198,25 @@ function cleanComponentActions(component: SDUIComponent): SDUIComponent {
   return result;
 }
 
+export interface SDUIIntakeDiagnostics {
+  rawTopLevel: number;
+  normalizedCount: number;
+  candidateCount: number;
+  uniqueCount: number;
+  finalCount: number;
+  droppedCount: number;
+  interventionCardsKept: number;
+  droppedReasons: Record<string, number>;
+  finalTypes: string[];
+  generatedAt: number;
+}
+
+let lastSDUIIntakeDiagnostics: SDUIIntakeDiagnostics | null = null;
+
+export function getLastSDUIIntakeDiagnostics(): SDUIIntakeDiagnostics | null {
+  return lastSDUIIntakeDiagnostics;
+}
+
 export function normalizeDynamicWidgetsForDashboard(rawWidgets: any): SDUIComponent[] {
   const rawTopLevel = Array.isArray(rawWidgets) ? rawWidgets.length : 0;
   const normalized = normalizeSDUISchema(rawWidgets);
@@ -206,6 +225,8 @@ export function normalizeDynamicWidgetsForDashboard(rawWidgets: any): SDUICompon
   // Extract nested insight cards from Grid or Flex structures
   const candidates = extractInsightCandidates(normalized);
   const candidateCount = candidates.length;
+
+  let invalidActionButtonDropped = 0;
 
   // Process unique fingerprints keeping only highest priority ones
   const fingerprintedMap = new Map<string, { priority: number; widget: SDUIComponent }>();
@@ -218,6 +239,7 @@ export function normalizeDynamicWidgetsForDashboard(rawWidgets: any): SDUICompon
       const label = cleaned.props?.label || cleaned.props?.text || '';
       const actionIntent = cleaned.props?.actionIntent || '';
       if (!label || !actionIntent) {
+        invalidActionButtonDropped++;
         continue;
       }
     }
@@ -240,23 +262,64 @@ export function normalizeDynamicWidgetsForDashboard(rawWidgets: any): SDUICompon
   // 1. Max 1 InterventionCard
   // 2. Max 3 top-level / nested widgets in total
   const finalCards: SDUIComponent[] = [];
-  let interventionCardCount = 0;
+  let interventionCardsKept = 0;
+  let interventionCardLimitDropped = 0;
+  let top3LimitDropped = 0;
 
   for (const widget of sortedAndDeduplicated) {
     if (widget.type === 'InterventionCard') {
-      if (interventionCardCount >= 1) {
+      if (interventionCardsKept >= 1) {
+        interventionCardLimitDropped++;
         continue;
       }
-      interventionCardCount++;
+    }
+
+    if (finalCards.length >= 3) {
+      top3LimitDropped++;
+      continue;
+    }
+
+    if (widget.type === 'InterventionCard') {
+      interventionCardsKept++;
     }
     finalCards.push(widget);
-    if (finalCards.length >= 3) {
-      break;
-    }
   }
 
   const finalCount = finalCards.length;
   const droppedCount = candidateCount - finalCount;
+
+  // Compile dropped reasons
+  const droppedReasons: Record<string, number> = {};
+  if (rawTopLevel - normalizedCount > 0) {
+    droppedReasons['invalidOrDisallowedByNormalizer'] = rawTopLevel - normalizedCount;
+  }
+  if (invalidActionButtonDropped > 0) {
+    droppedReasons['invalidActionButton'] = invalidActionButtonDropped;
+  }
+  const duplicateCount = (candidateCount - invalidActionButtonDropped) - fingerprintedMap.size;
+  if (duplicateCount > 0) {
+    droppedReasons['duplicateFingerprint'] = duplicateCount;
+  }
+  if (interventionCardLimitDropped > 0) {
+    droppedReasons['interventionCardLimit'] = interventionCardLimitDropped;
+  }
+  if (top3LimitDropped > 0) {
+    droppedReasons['top3Limit'] = top3LimitDropped;
+  }
+
+  // Record diagnostics
+  lastSDUIIntakeDiagnostics = {
+    rawTopLevel,
+    normalizedCount,
+    candidateCount,
+    uniqueCount: fingerprintedMap.size,
+    finalCount,
+    droppedCount,
+    interventionCardsKept,
+    droppedReasons,
+    finalTypes: finalCards.map(card => card.type),
+    generatedAt: Date.now()
+  };
 
   if (process.env.NODE_ENV !== 'production' && finalCount > 0) {
     console.info(`[SDUI Intake Policy] RawTopLevel: ${rawTopLevel}, Candidate: ${candidateCount}, Normalized: ${normalizedCount}, Final: ${finalCount}, Dropped: ${droppedCount}`);

@@ -9,6 +9,7 @@ import { auth } from '../lib/firebase';
 import { useWealthStore } from '../hooks/useWealthStore';
 import { getSettings, saveSettings } from '../lib/settings';
 import { DEFAULT_PROMPTS, DEFAULT_RAG_SCHEMA } from '../lib/defaultPrompts';
+import { getLastSDUIIntakeDiagnostics } from '../lib/sdui-intake-policy';
 
 const AGENTS = [
   { id: 'rag', name: 'RAG Memory Agent', role: 'Context Retrieval', type: 'rag', color: 'border-emerald-500/25 bg-emerald-500/5 text-emerald-400' },
@@ -175,7 +176,7 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({
 
     const iCount = Object.keys(state?.insights || {}).filter(k => state?.insights?.[k]).length || 3;
     const gActive = state?.goal?.name ? 1 : 0;
-    const wCount = state?.dynamicWidgets?.length || 12;
+    const wCount = state?.dynamicWidgets?.length ?? 0;
 
     const mcInstruments = Array.isArray(state?.marketContext?.instruments)
       ? state.marketContext.instruments
@@ -195,6 +196,11 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({
         : 'not loaded'
     };
   }, [user, state]);
+
+  const sduiDiagnostics = useMemo(() => {
+    if (!isOpen) return null;
+    return getLastSDUIIntakeDiagnostics();
+  }, [isOpen, state?.dynamicWidgets]);
 
   const marketContext = state?.marketContext;
   const marketContextInstruments = Array.isArray(marketContext?.instruments)
@@ -699,6 +705,83 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({
                                 );
                               })}
                             </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* SDUI Intake Diagnostics Panel */}
+                      <div className="mb-5 rounded-xl border border-[#1C2026] bg-[#12151A]/60 p-4 relative z-10 text-left">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Sliders className="w-4 h-4 text-[#C9B284]" />
+                          <h4 className="text-xs font-serif text-[#E7D7B0] tracking-wide font-medium">SDUI Intake Diagnostics</h4>
+                        </div>
+                        {sduiDiagnostics ? (
+                          <div className="space-y-4">
+                            {/* Live diagnostics metric grid */}
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-[#0B0D10]/40 rounded-lg p-3 text-[11px] font-mono border border-[#1C2026]">
+                              <div>
+                                <div className="text-[#8C8370] text-[9px] uppercase tracking-widest">Raw Top-Level</div>
+                                <div className="mt-1 font-semibold text-neutral-200">{sduiDiagnostics.rawTopLevel}</div>
+                              </div>
+                              <div>
+                                <div className="text-[#8C8370] text-[9px] uppercase tracking-widest">Normalized</div>
+                                <div className="mt-1 font-semibold text-neutral-200">{sduiDiagnostics.normalizedCount}</div>
+                              </div>
+                              <div>
+                                <div className="text-[#8C8370] text-[9px] uppercase tracking-widest">Candidates</div>
+                                <div className="mt-1 font-semibold text-neutral-200">{sduiDiagnostics.candidateCount}</div>
+                              </div>
+                              <div>
+                                <div className="text-[#8C8370] text-[9px] uppercase tracking-widest">Unique</div>
+                                <div className="mt-1 font-semibold text-neutral-200">{sduiDiagnostics.uniqueCount}</div>
+                              </div>
+                              <div>
+                                <div className="text-[#8C8370] text-[9px] uppercase tracking-widest">Final Kept</div>
+                                <div className="mt-1 font-semibold text-emerald-400">{sduiDiagnostics.finalCount}</div>
+                              </div>
+                              <div>
+                                <div className="text-[#8C8370] text-[9px] uppercase tracking-widest">Dropped</div>
+                                <div className="mt-1 font-semibold text-rose-400">{sduiDiagnostics.droppedCount}</div>
+                              </div>
+                              <div>
+                                <div className="text-[#8C8370] text-[9px] uppercase tracking-widest">Intervention Kept</div>
+                                <div className="mt-1 font-semibold text-amber-400">{sduiDiagnostics.interventionCardsKept}</div>
+                              </div>
+                              <div>
+                                <div className="text-[#8C8370] text-[9px] uppercase tracking-widest">Last Updated</div>
+                                <div className="mt-1 text-neutral-300 truncate" title={new Date(sduiDiagnostics.generatedAt).toLocaleString()}>
+                                  {new Date(sduiDiagnostics.generatedAt).toLocaleTimeString()}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Final Types */}
+                            {sduiDiagnostics.finalTypes && sduiDiagnostics.finalTypes.length > 0 && (
+                              <div className="text-[11px] font-mono">
+                                <span className="text-[#8C8370] font-semibold">Final Types:</span>{' '}
+                                <span className="text-emerald-400">{sduiDiagnostics.finalTypes.join(', ')}</span>
+                              </div>
+                            )}
+
+                            {/* Dropped Reasons */}
+                            <div className="text-[11px] font-mono">
+                              <div className="text-[#8C8370] font-semibold mb-1">Dropped Reasons:</div>
+                              {Object.keys(sduiDiagnostics.droppedReasons).length > 0 ? (
+                                <ul className="list-disc pl-4 space-y-0.5 text-neutral-400">
+                                  {Object.entries(sduiDiagnostics.droppedReasons).map(([reason, count]) => (
+                                    <li key={reason}>
+                                      <span className="font-semibold text-rose-400/90">{reason}</span>: {count}
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <span className="text-[#8C8370] italic text-[10.5px]">No items were dropped.</span>
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-xs font-mono text-[#8C8370] italic text-[10.5px]">
+                            No SDUI intake has run in this session.
                           </div>
                         )}
                       </div>
