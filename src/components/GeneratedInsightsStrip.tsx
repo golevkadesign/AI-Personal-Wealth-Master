@@ -15,7 +15,24 @@ export const GeneratedInsightsStrip: React.FC<GeneratedInsightsStripProps> = ({
   globalData,
   onClear,
 }) => {
-  if (!widgets || widgets.length === 0) return null;
+  const displayWidgets = React.useMemo(() => {
+    if (!widgets || widgets.length === 0) return [];
+
+    if (
+      widgets.length === 1 &&
+      widgets[0] &&
+      !Array.isArray(widgets[0]) &&
+      widgets[0].id === 'sdui-top-insights-grid' &&
+      widgets[0].type === 'Grid' &&
+      Array.isArray(widgets[0].children)
+    ) {
+      return widgets[0].children.slice(0, 3);
+    }
+
+    return widgets.slice(0, 3);
+  }, [widgets]);
+
+  if (displayWidgets.length === 0) return null;
 
   return (
     <div className="mb-7 md:mb-8 flex flex-col min-w-0 bg-[#111315]/40 backdrop-blur-sm border border-white/[0.04] rounded-xl p-4 md:p-5">
@@ -39,7 +56,7 @@ export const GeneratedInsightsStrip: React.FC<GeneratedInsightsStripProps> = ({
 
       {/* Grid container for 3 insights max */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 min-w-0">
-        {widgets.map((widget, i) => (
+        {displayWidgets.map((widget, i) => (
           <motion.div
             key={`insight-strip-${i}`}
             initial={{ opacity: 0, y: 10 }}
