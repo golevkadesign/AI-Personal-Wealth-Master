@@ -32,8 +32,8 @@ export const DashboardGrid: React.FC = () => {
   };
 
   return (
-    <div className="relative z-10 w-full mb-6 md:mb-10">
-      <div className="mx-auto flex w-full flex-col min-w-0 gap-6 md:gap-7">
+    <div className="relative z-10 w-full mb-6 md:mb-8">
+      <div className="mx-auto flex w-full flex-col min-w-0 gap-5 md:gap-6">
         {/* 动态微件区域 (Dynamic Widgets) */}
         <AnimatePresence>
           {data.dynamicWidgets && data.dynamicWidgets.length > 0 && (

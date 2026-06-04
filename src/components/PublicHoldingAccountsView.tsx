@@ -100,8 +100,8 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
   return (
     <div className="w-full min-w-0 space-y-6">
       {/* Unified Multi-Account Group Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-5 sm:p-6 bg-[#16181A] border border-white/[0.03] rounded-2xl">
-        <div className="space-y-1">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 sm:p-5 bg-[#16181A] border border-white/[0.03] rounded-2xl">
+        <div className="space-y-0.5">
           <div className="flex items-center gap-2.5">
             <h2 className="text-sm md:text-base font-bold text-[#E7D7B0] tracking-tight">多账户公开市场持仓</h2>
             {/* Unified Status Badge */}
@@ -116,7 +116,7 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
           </p>
         </div>
 
-        {/* Global Action Section */}
+        {/* Module Action Section */}
         <div className="flex flex-wrap items-center gap-2 self-end sm:self-center justify-end">
           <button
             onClick={handleReload}
@@ -138,7 +138,7 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
       </div>
 
       {ctaError && (
-        <div className="text-[11px] text-rose-400 font-mono bg-rose-950/20 border border-rose-900/30 rounded-lg px-3 py-2">
+        <div className="text-[10.5px] text-rose-400 font-mono bg-rose-950/10 border border-rose-900/20 rounded-lg px-3 py-1.5">
           ⚠️ {ctaError}
         </div>
       )}

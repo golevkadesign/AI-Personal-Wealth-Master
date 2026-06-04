@@ -27,7 +27,6 @@ export function TerminalHeader({
   const {
     data,
     publicHoldingAccountsSyncStatus,
-    publicHoldingAccountsError,
     marketContextStatus,
     marketContextError,
   } = useWealthStore();
@@ -82,15 +81,15 @@ export function TerminalHeader({
 
         {/* Mid-Status Area (xl devices only) —— 优雅融入 Header 单行内部 */}
         <div className="hidden xl:flex flex-1 items-center justify-center min-w-0 px-6">
-          <div className="flex items-center gap-2.5 min-w-0 overflow-hidden text-[10.5px] font-mono select-none">
+          <div className="flex items-center gap-2 min-w-0 overflow-hidden text-[10.5px] font-mono select-none">
             {/* 1. 系统状态 */}
-            <div className="flex items-center gap-1.5 shrink-0 border border-emerald-500/10 bg-emerald-500/[0.02] px-2 py-0.5 rounded-lg">
+            <div className="flex items-center gap-1.5 shrink-0 border border-emerald-500/10 bg-emerald-500/[0.01] px-2 py-0.5 rounded-lg">
               <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-              <span className="text-[#8C8370] font-sans">正常运行</span>
+              <span className="text-[#8C8370] font-sans">系统 OK</span>
             </div>
 
             {/* 2. 数据同步 */}
-            <div className="flex items-center gap-1.5 shrink-0 border border-white/[0.04] bg-white/[0.01] px-2 py-0.5 rounded-lg">
+            <div className="flex items-center gap-1.5 shrink-0 border border-white/[0.03] bg-white/[0.005] px-2 py-0.5 rounded-lg">
               <span className={`w-1.5 h-1.5 rounded-full ${
                 publicHoldingAccountsSyncStatus === 'loading' ? 'bg-amber-500 animate-spin' :
                 publicHoldingAccountsSyncStatus === 'success' ? 'bg-emerald-500' :
@@ -104,7 +103,7 @@ export function TerminalHeader({
             </div>
 
             {/* 3. 持仓账户 */}
-            <div className="flex items-center gap-1.5 shrink-0 border border-white/[0.04] bg-white/[0.01] px-2 py-0.5 rounded-lg">
+            <div className="flex items-center gap-1.5 shrink-0 border border-white/[0.03] bg-white/[0.005] px-2 py-0.5 rounded-lg">
               <span className={`w-1.5 h-1.5 rounded-full ${publicHoldingAccounts.length > 0 ? 'bg-amber-500' : 'bg-zinc-500'}`} />
               <span className="text-[#8C8370] font-sans">
                 {publicHoldingAccounts.length > 0 ? `${publicHoldingAccounts.length} 账户` : '等待账户'}
@@ -112,7 +111,7 @@ export function TerminalHeader({
             </div>
 
             {/* 4. AI分析状态 */}
-            <div className="flex items-center gap-1.5 shrink-0 border border-white/[0.04] bg-white/[0.01] px-2 py-0.5 rounded-lg">
+            <div className="flex items-center gap-1.5 shrink-0 border border-white/[0.03] bg-white/[0.005] px-2 py-0.5 rounded-lg">
               <span className={`w-1.5 h-1.5 rounded-full ${dynamicWidgetCount > 0 ? 'bg-[#C9B284]' : 'bg-zinc-500'}`} />
               <span className="text-[#8C8370] font-sans">
                 {dynamicWidgetCount > 0 ? `AI 洞察 ${dynamicWidgetCount}` : 'AI 空闲'}
@@ -120,7 +119,7 @@ export function TerminalHeader({
             </div>
 
             {/* 5. 市场环境 */}
-            <div className="flex items-center gap-1.5 shrink-0 border border-white/[0.04] bg-white/[0.01] px-2 py-0.5 rounded-lg min-w-0" title={
+            <div className="flex items-center gap-1.5 shrink-0 border border-white/[0.03] bg-white/[0.005] px-2 py-0.5 rounded-lg min-w-0" title={
               marketContextStatus === 'error' && marketContextError ? marketContextError : 
               data.marketContext ? `${data.marketContext.freshness} · Stooq delayed` : '市场环境状态'
             }>
