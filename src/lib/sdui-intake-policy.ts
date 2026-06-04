@@ -75,6 +75,29 @@ function getWidgetFingerprint(widget: SDUIComponent): string {
   return rawText.toLowerCase().replace(/\s+/g, '').slice(0, 100);
 }
 
+function isPlainComponent(type: string): boolean {
+  return type === 'Typography' || type === 'Badge';
+}
+
+function extractInsightCandidates(widgets: SDUIComponent[]): SDUIComponent[] {
+  const candidates: SDUIComponent[] = [];
+  for (const widget of widgets) {
+    if ((widget.type === 'Grid' || widget.type === 'Flex') && Array.isArray(widget.children) && widget.children.length > 0) {
+      const subChildren = widget.children;
+      // Filter out plain Typography/Badge if there are other richer elements in this Grid/Flex
+      const nonPlainChildren = subChildren.filter(c => !isPlainComponent(c.type));
+      if (nonPlainChildren.length > 0) {
+        candidates.push(...nonPlainChildren);
+      } else {
+        candidates.push(...subChildren);
+      }
+    } else {
+      candidates.push(widget);
+    }
+  }
+  return candidates;
+}
+
 function cleanComponentActions(component: SDUIComponent): SDUIComponent {
   const cleanedChildren = component.children
     ? component.children.map(child => cleanComponentActions(child))
@@ -82,16 +105,18 @@ function cleanComponentActions(component: SDUIComponent): SDUIComponent {
 
   const props = { ...component.props };
 
+  // 1. Clean InterventionCard.props.actions
   if (component.type === 'InterventionCard' && Array.isArray(props.actions)) {
     const validActions = props.actions
       .map((action: any) => {
         if (!action || typeof action !== 'object') return null;
         const label = action.label || action.text || '';
-        const actionIntent = action.actionIntent || '';
+        const actionIntent = action.actionIntent || action.prompt || '';
         const prompt = action.prompt || '';
-        if (!label || (!actionIntent && !prompt)) return null;
+        if (!label || !actionIntent) return null;
 
         return {
+          ...action,
           label,
           actionIntent,
           prompt
@@ -102,16 +127,18 @@ function cleanComponentActions(component: SDUIComponent): SDUIComponent {
     props.actions = validActions.slice(0, 2);
   }
 
+  // 2. Clean ActionGroup.props.buttons
   if (component.type === 'ActionGroup' && Array.isArray(props.buttons)) {
     const validButtons = props.buttons
       .map((btn: any) => {
         if (!btn || typeof btn !== 'object') return null;
         const label = btn.label || btn.text || '';
-        const actionIntent = btn.actionIntent || '';
+        const actionIntent = btn.actionIntent || btn.prompt || '';
         const prompt = btn.prompt || '';
-        if (!label || (!actionIntent && !prompt)) return null;
+        if (!label || !actionIntent) return null;
 
         return {
+          ...btn,
           label,
           actionIntent,
           prompt
@@ -122,18 +149,40 @@ function cleanComponentActions(component: SDUIComponent): SDUIComponent {
     props.buttons = validButtons.slice(0, 2);
   }
 
+  // 3. Clean ActionButton at root level if selected as a candidate itself
+  if (component.type === 'ActionButton') {
+    const label = props.label || props.text || '';
+    const actionIntent = props.actionIntent || props.prompt || props.text || '';
+    const prompt = props.prompt || '';
+    if (label && actionIntent) {
+      props.label = label;
+      props.actionIntent = actionIntent;
+      props.prompt = prompt;
+    }
+  }
+
   const result: SDUIComponent = {
     ...component,
     props,
   };
 
+  // 4. Clean ActionButton children recursively
   if (cleanedChildren) {
     result.children = cleanedChildren.filter(child => {
       if (child.type === 'ActionButton') {
-        const label = child.props?.label || child.props?.text || '';
-        const actionIntent = child.props?.actionIntent || child.props?.prompt || child.props?.text || '';
-        const prompt = child.props?.prompt || '';
-        return Boolean(label && (actionIntent || prompt));
+        const props = { ...child.props };
+        const label = props.label || props.text || '';
+        const actionIntent = props.actionIntent || props.prompt || props.text || '';
+        const prompt = props.prompt || '';
+        if (!label || !actionIntent) {
+          return false;
+        }
+        child.props = {
+          ...props,
+          label,
+          actionIntent,
+          prompt
+        };
       }
       return true;
     });
@@ -143,21 +192,34 @@ function cleanComponentActions(component: SDUIComponent): SDUIComponent {
 }
 
 export function normalizeDynamicWidgetsForDashboard(rawWidgets: any): SDUIComponent[] {
-  const rawCount = Array.isArray(rawWidgets) ? rawWidgets.length : 0;
+  const rawTopLevel = Array.isArray(rawWidgets) ? rawWidgets.length : 0;
   const normalized = normalizeSDUISchema(rawWidgets);
   const normalizedCount = normalized.length;
+
+  // Extract nested insight cards from Grid or Flex structures
+  const candidates = extractInsightCandidates(normalized);
+  const candidateCount = candidates.length;
 
   // Process unique fingerprints keeping only highest priority ones
   const fingerprintedMap = new Map<string, { priority: number; widget: SDUIComponent }>();
 
-  for (const widget of normalized) {
-    const priority = getWidgetPriority(widget);
-    const fingerprint = getWidgetFingerprint(widget);
+  for (const widget of candidates) {
+    const cleaned = cleanComponentActions(widget);
+
+    // If candidate widget itself is an ActionButton, ensure it has clean label & intent
+    if (cleaned.type === 'ActionButton') {
+      const label = cleaned.props?.label || cleaned.props?.text || '';
+      const actionIntent = cleaned.props?.actionIntent || '';
+      if (!label || !actionIntent) {
+        continue;
+      }
+    }
+
+    const priority = getWidgetPriority(cleaned);
+    const fingerprint = getWidgetFingerprint(cleaned);
     const existing = fingerprintedMap.get(fingerprint);
 
     if (!existing || priority > existing.priority) {
-      // Clean components to obey action limits and structural correctness
-      const cleaned = cleanComponentActions(widget);
       fingerprintedMap.set(fingerprint, { priority, widget: cleaned });
     }
   }
@@ -169,8 +231,8 @@ export function normalizeDynamicWidgetsForDashboard(rawWidgets: any): SDUICompon
 
   // Apply limitation strategies:
   // 1. Max 1 InterventionCard
-  // 2. Max 3 top-level widgets in total
-  const finalWidgets: SDUIComponent[] = [];
+  // 2. Max 3 top-level / nested widgets in total
+  const finalCards: SDUIComponent[] = [];
   let interventionCardCount = 0;
 
   for (const widget of sortedAndDeduplicated) {
@@ -180,18 +242,38 @@ export function normalizeDynamicWidgetsForDashboard(rawWidgets: any): SDUICompon
       }
       interventionCardCount++;
     }
-    finalWidgets.push(widget);
-    if (finalWidgets.length >= 3) {
+    finalCards.push(widget);
+    if (finalCards.length >= 3) {
       break;
     }
   }
 
-  const finalCount = finalWidgets.length;
-  const droppedCount = rawCount - finalCount;
+  const finalCount = finalCards.length;
+  const droppedCount = candidateCount - finalCount;
 
   if (process.env.NODE_ENV !== 'production' && finalCount > 0) {
-    console.info(`[SDUI Intake Policy] Raw: ${rawCount}, Normalized: ${normalizedCount}, Final: ${finalCount}, Dropped: ${droppedCount}`);
+    console.info(`[SDUI Intake Policy] RawTopLevel: ${rawTopLevel}, Candidate: ${candidateCount}, Normalized: ${normalizedCount}, Final: ${finalCount}, Dropped: ${droppedCount}`);
   }
 
-  return finalWidgets;
+  // Wrap output based on dynamic widget counts
+  if (finalCount === 0) {
+    return [];
+  }
+  if (finalCount === 1) {
+    return [finalCards[0]];
+  }
+  
+  // Return a standard Grid containing the top 1-3 insight cards
+  return [
+    {
+      id: 'sdui-top-insights-grid',
+      type: 'Grid',
+      props: {
+        columns: 3,
+        gap: 4,
+        className: 'w-full'
+      },
+      children: finalCards
+    }
+  ];
 }
