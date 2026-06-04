@@ -6,6 +6,7 @@ import { sanitizeTerminalState } from '../lib/sanitizer';
 import { Attachment } from '../App';
 import { useWealthStore } from './useWealthStore';
 import { normalizeSDUISchema } from '../lib/sdui-normalizer';
+import { normalizeDynamicWidgetsForDashboard } from '../lib/sdui-intake-policy';
 import { filterAiWritableStatePatch } from '../lib/ai-state-permissions';
 import { parseSseBuffer } from '../lib/sse-parser';
 import { deriveTerminalStatePatchFromProfile } from '../lib/profile-to-terminal-state';
@@ -519,7 +520,7 @@ export function useAiAgent({ setIsSynthesizing }: any) {
          const sanitizedUpdate = sanitizeTerminalState(filteredUpdate);
 
          if (sanitizedUpdate.dynamicWidgets) {
-           sanitizedUpdate.dynamicWidgets = normalizeSDUISchema(sanitizedUpdate.dynamicWidgets);
+           sanitizedUpdate.dynamicWidgets = normalizeDynamicWidgetsForDashboard(sanitizedUpdate.dynamicWidgets);
          }
          
          if (sanitizedUpdate.dashboardSchema) {
