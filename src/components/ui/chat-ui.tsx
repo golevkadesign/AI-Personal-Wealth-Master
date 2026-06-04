@@ -3,6 +3,7 @@ import { cn } from '../../lib/utils';
 import { Send, FileText, Bot, User as UserIcon, Loader2, Activity, ChevronDown, Sparkles, StopCircle, Check, Copy, RefreshCw, MessageSquare, X, Mic, Maximize2, Cpu, Download } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { motion, AnimatePresence } from 'motion/react';
+import { AssistantResponseRenderer } from '../chat/AssistantResponseRenderer';
 
 const CodeBlock = React.memo(({ inline, className, children, setFullScreenCode, isBlock }: any) => {
   const match = /language-(\w+)/.exec(className || '');
@@ -242,9 +243,17 @@ export const ChatList = React.memo(function ChatList({
                       </div>
                   ) : (
                       <div className="text-[13px] sm:text-sm leading-relaxed text-[#E7D7B0] space-y-3 font-sans ai-message">
-                        <Markdown components={markdownComponents}>
-                          {msg.content}
-                        </Markdown>
+                        <AssistantResponseRenderer
+                          content={msg.content || ''}
+                          markdownComponents={markdownComponents}
+                          metadata={{
+                            timeTaken: msg.timeTaken,
+                            hasMemoryUpdate: msg.hasMemoryUpdate,
+                            liveSources: msg._liveSources,
+                          }}
+                          isStreaming={isTyping && i === messages.length - 1}
+                          onQuickPrompt={onQuickPrompt}
+                        />
 
                         {msg.aiSuggestedState && (
                           <div className="mt-4 p-4 bg-[#0B0D0F]/70 border border-[#C9B284]/20 rounded-xl space-y-3">
