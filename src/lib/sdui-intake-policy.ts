@@ -1,6 +1,15 @@
 import { SDUIComponent } from '../types/terminal';
 import { normalizeSDUISchema } from './sdui-normalizer';
 
+function getNormalizedIntent(source: any): string {
+  if (!source || typeof source !== 'object') return '';
+  return typeof source.actionIntent === 'string' && source.actionIntent.trim()
+    ? source.actionIntent.trim()
+    : typeof source.prompt === 'string' && source.prompt.trim()
+      ? source.prompt.trim()
+      : '';
+}
+
 function hasActionOrPrompt(widget: SDUIComponent): boolean {
   if (widget.props) {
     if (widget.props.actionIntent || widget.props.prompt) {
@@ -111,15 +120,14 @@ function cleanComponentActions(component: SDUIComponent): SDUIComponent {
       .map((action: any) => {
         if (!action || typeof action !== 'object') return null;
         const label = action.label || action.text || '';
-        const actionIntent = action.actionIntent || action.prompt || '';
-        const prompt = action.prompt || '';
-        if (!label || !actionIntent) return null;
+        const normalizedIntent = getNormalizedIntent(action);
+        if (!label || !normalizedIntent) return null;
 
         return {
           ...action,
           label,
-          actionIntent,
-          prompt
+          actionIntent: normalizedIntent,
+          prompt: action.prompt || normalizedIntent
         };
       })
       .filter((act): act is any => act !== null);
@@ -133,15 +141,14 @@ function cleanComponentActions(component: SDUIComponent): SDUIComponent {
       .map((btn: any) => {
         if (!btn || typeof btn !== 'object') return null;
         const label = btn.label || btn.text || '';
-        const actionIntent = btn.actionIntent || btn.prompt || '';
-        const prompt = btn.prompt || '';
-        if (!label || !actionIntent) return null;
+        const normalizedIntent = getNormalizedIntent(btn);
+        if (!label || !normalizedIntent) return null;
 
         return {
           ...btn,
           label,
-          actionIntent,
-          prompt
+          actionIntent: normalizedIntent,
+          prompt: btn.prompt || normalizedIntent
         };
       })
       .filter((btn): btn is any => btn !== null);
@@ -152,12 +159,13 @@ function cleanComponentActions(component: SDUIComponent): SDUIComponent {
   // 3. Clean ActionButton at root level if selected as a candidate itself
   if (component.type === 'ActionButton') {
     const label = props.label || props.text || '';
-    const actionIntent = props.actionIntent || props.prompt || props.text || '';
-    const prompt = props.prompt || '';
-    if (label && actionIntent) {
+    const normalizedIntent = getNormalizedIntent(props);
+    if (label && normalizedIntent) {
       props.label = label;
-      props.actionIntent = actionIntent;
-      props.prompt = prompt;
+      props.actionIntent = normalizedIntent;
+      props.prompt = props.prompt || normalizedIntent;
+    } else {
+      props.actionIntent = '';
     }
   }
 
@@ -170,18 +178,17 @@ function cleanComponentActions(component: SDUIComponent): SDUIComponent {
   if (cleanedChildren) {
     result.children = cleanedChildren.filter(child => {
       if (child.type === 'ActionButton') {
-        const props = { ...child.props };
-        const label = props.label || props.text || '';
-        const actionIntent = props.actionIntent || props.prompt || props.text || '';
-        const prompt = props.prompt || '';
-        if (!label || !actionIntent) {
+        const childProps = { ...child.props };
+        const label = childProps.label || childProps.text || '';
+        const normalizedIntent = getNormalizedIntent(childProps);
+        if (!label || !normalizedIntent) {
           return false;
         }
         child.props = {
-          ...props,
+          ...childProps,
           label,
-          actionIntent,
-          prompt
+          actionIntent: normalizedIntent,
+          prompt: childProps.prompt || normalizedIntent
         };
       }
       return true;

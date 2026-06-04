@@ -262,8 +262,12 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
     const classes = `inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest border ${badgeIntentClasses[intent as keyof typeof badgeIntentClasses] || badgeIntentClasses.info} ${className}`;
     return <span className={classes.trim()}>{text}</span>;
   },
-  ActionButton: ({ actionIntent, label, variant = 'primary', className = '' }) => {
+  ActionButton: ({ actionIntent, prompt, label, variant = 'primary', className = '' }) => {
     const openDrawerWithIntent = useInteractionStore(state => state.openDrawerWithIntent);
+    const resolvedIntent = actionIntent || prompt;
+    if (!resolvedIntent) {
+      return null;
+    }
     const variantStyles: Record<string, string> = {
       'primary': 'bg-dash-primary text-black hover:bg-dash-primary/90',
       'danger': 'bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/30',
@@ -271,7 +275,7 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
     };
     const classes = `px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${variantStyles[variant] || variantStyles['primary']} ${className}`;
     return (
-      <button onClick={() => actionIntent && openDrawerWithIntent(actionIntent)} className={classes}>
+      <button onClick={() => openDrawerWithIntent(resolvedIntent)} className={classes}>
         {label}
       </button>
     );
@@ -354,6 +358,7 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
   ),
   InterventionCard: ({ title, description, level = 'warning', actions = [] }) => {
     const isCritical = level === 'critical';
+    const openDrawerWithIntent = useInteractionStore(state => state.openDrawerWithIntent);
     
     return (
       <div className={`relative overflow-hidden rounded-2xl border p-6 shadow-xl w-full
@@ -370,7 +375,7 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
              <div className="w-32 h-32 bg-amber-500 blur-3xl rounded-full mix-blend-screen" />
            </div>
          )}
-         
+          
          <div className="relative z-10 flex items-start gap-4">
             <div className={`mt-1 shrink-0 ${isCritical ? 'text-red-500 animate-pulse' : 'text-amber-500'}`}>
                {isCritical ? <ShieldAlert className="w-8 h-8" /> : <AlertTriangle className="w-8 h-8" />}
@@ -386,11 +391,13 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
                {actions?.length > 0 && (
                  <div className="flex flex-wrap gap-3">
                    {actions.map((action: any, idx: number) => {
+                     const intent = action.actionIntent || action.prompt;
+                     if (!intent) return null;
                      const isPrimary = action.type === 'primary';
                      return (
                        <button
                          key={idx}
-                         onClick={() => window.dispatchEvent(new CustomEvent('trigger-ai-drawer', { detail: action.prompt }))}
+                         onClick={() => openDrawerWithIntent(intent)}
                          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200
                            ${isPrimary 
                              ? (isCritical ? 'bg-red-500/20 text-red-100 hover:bg-red-500/40 border border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.2)]' : 'bg-amber-500/20 text-amber-100 hover:bg-amber-500/40 border border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.2)]') 
@@ -411,15 +418,18 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
     );
   },
   ActionGroup: ({ buttons = [] }) => {
+    const openDrawerWithIntent = useInteractionStore(state => state.openDrawerWithIntent);
     if (!buttons || buttons.length === 0) return null;
     return (
       <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t border-dash-subtle/50">
         {buttons.map((btn: any, idx: number) => {
+          const intent = btn.actionIntent || btn.prompt;
+          if (!intent) return null;
           const isPrimary = btn.type === 'primary';
           return (
              <button
                key={idx}
-               onClick={() => window.dispatchEvent(new CustomEvent('trigger-ai-drawer', { detail: btn.prompt }))}
+               onClick={() => openDrawerWithIntent(intent)}
                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200
                  ${isPrimary 
                    ? 'bg-dash-primary/20 text-dash-primary hover:bg-dash-primary/30 border border-dash-primary/30' 
