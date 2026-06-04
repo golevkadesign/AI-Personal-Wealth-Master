@@ -121,14 +121,23 @@ Respond MUST strictly be JSON matching this structure:
 }
 
 // 根据用户层级和输入，编排并调用对应的子Agent
-export async function evaluateWealthStatus(userTier: string, message: string, history: any[], externalData: any, onProgress?: (msg: string) => void, settings?: any, targetModules: string[] = [], attachments: any[] = []) {
+export async function evaluateWealthStatus(
+  userTier: string,
+  message: string,
+  history: any[],
+  externalData: any,
+  onProgress?: (msg: string) => void,
+  settings?: any,
+  targetModules: string[] = [],
+  attachments: any[] = []
+) {
   let agentTasks: Promise<any>[] = [];
   let agentResults: Record<string, string> = {};
 
   const ai = getUniversalAiClient(settings);
 
   console.log(`[Orchestrator] 开始评估用户财务状态. Tier: ${userTier}`);
-  if (onProgress) onProgress(`⏳ [阶段 3.1] Orchestrator 核心调度：基于 ${userTier} 分发并行分析线程...`);
+  if (onProgress) onProgress(`⏳ [阶段 3.1] Orchestrator 核心调度：基于 ${userTier} 分发并行 analysis 线程...`);
 
   // 💥 在派发所有子节点前，进行数据脱水
   const cleanExternalData = dehydrateExternalData(externalData);
@@ -215,32 +224,24 @@ export async function evaluateWealthStatus(userTier: string, message: string, hi
   try {
     await Promise.all(agentTasks);
   } catch (e: any) {
-    if (onProgress) onProgress(`❌ [阶段 3 (Error)] Orchestrator 核心调度遭遇子节点致命坍塌: ${e.message}`);
+    if (onProgress) onProgress(`❌ [阶段 3 (Error)] Orchestrator 核心评估过程出错: ${e.message}`);
     throw e;
   }
 
-  if (onProgress) onProgress(`✅ [阶段 3.8] 各节点数据已回流完毕，准备进行前端交互引擎渲染...`);
-  
-  // 综合分析已经包含在 agentResults 中，交给前端的 UI Builder 进一步组装和流式输出
   return agentResults;
 }
 
-export async function streamSynthesis(userTier: string, message: string, externalData: any, agentResults: any, settings?: any, onProgress?: (msg: string) => void) {
+export async function streamSynthesis(
+  userTier: string,
+  message: string,
+  externalData: any,
+  agentResults: Record<string, string>,
+  settings?: any,
+  onProgress?: (msg: string) => void
+) {
   const ai = getUniversalAiClient(settings);
-  if (onProgress) onProgress(`⏳ [阶段 3.8] 各节点数据已回流，启动 CEO 级全局 Synthesizer 流式结论汇总...`);
-
   const cleanExternalData = dehydrateExternalData(externalData);
-
-  // 上下文脱水：手动剔除 ECharts 配置等过长的渲染源码，仅保留分析结论
-  const dehydratedResults: Record<string, string> = { ...agentResults };
-  for (const key in dehydratedResults) {
-    if (typeof dehydratedResults[key] === 'string') {
-      // 一定程度上剔除代码块以减少 Token 大小
-      dehydratedResults[key] = dehydratedResults[key].replace(/```(?:json|javascript|echarts)?\s*[\s\S]*?\s*```/g, "[图表配置源码已脱水]");
-    }
-  }
-
-  const marketContextRAG = cleanExternalData?.marketContext || null;
+  const dehydratedResults = { ...agentResults };
 
   const authenticityPact = `【真实性公约】: 你是一个严格的专业财务终端。你必须优先使用下方 \`[实时市场行情 (MARKET_DATA)]\` 中的最新价格进行推演！如果某标的在 \`MARKET_DATA\` 中缺失，再参考 \`[LIVE_PORTFOLIO]\` 中附带的实时价格或市值/数量。严禁虚构任何数字。使用最新数据时请标注来源。
 本轮的 \`MARKET_CONTEXT\` 是延迟/历史市场上下文，只能用于判断 regime (宏观状态与风险模式)、跨资产影响、行业板块表现和风险解释之目的。
@@ -248,21 +249,23 @@ export async function streamSynthesis(userTier: string, message: string, externa
 1. 标的价格、市值、仓位和数量等硬核资产事实来自 \`MARKET_DATA\`、\`LIVE_PORTFOLIO\` 和 \`LIVE_PORTFOLIO_ACCOUNTS\`。
 2. 任何情况下，\`MARKET_CONTEXT\` 均不可表述为“实时新闻”、“最新突发政策”、“盘中事实报价”或“刚刚发布的财报/经济数据”等动态资讯。
 3. 如果引用 \`MARKET_CONTEXT\`，你必须明确指出类似“根据本轮延迟/历史市场上下文提示...”。
-4. 绝不能用 \`MARKET_CONTEXT\` 倒推或捏造用户未提供或缺席的资产硬核实时价格与市值，不能为了“匹配”而幻觉创造数值。\n\n`;
+4. 绝不能用 \`MARKET_CONTEXT\` 倒推或捏造用户未提供或缺席的资产硬核实时价格与市值，不能为了“匹配”而幻想创造数值。\n\n`;
 
   const template = settings?.agentPrompts?.orchestrator || DEFAULT_PROMPTS.orchestrator;
 
-  const safeDistributions = { ...(externalData?.contextData?.distributions || {}) };
+  const safeDistributions = { ...(cleanExternalData?.contextData?.distributions || {}) };
 
   // 💥 核心防线：如果检测到后端已成功获取实盘/外部最新数据，强制物理覆盖前端的历史 RAG 记忆！
-  if (externalData?.livePortfolio && externalData.livePortfolio.length > 0) {
-      safeDistributions.publicHoldings = externalData.livePortfolio;
+  if (cleanExternalData?.livePortfolio && cleanExternalData.livePortfolio.length > 0) {
+      safeDistributions.publicHoldings = cleanExternalData.livePortfolio;
   }
 
-  const historySnapshots = externalData?.contextData?.historicalSnapshots || [];
+  const historySnapshots = cleanExternalData?.contextData?.historicalSnapshots || [];
   const temporalContext = historySnapshots.length > 0 
     ? `\n【历史时序快照 (T-1 基准)】:\n上次核心资产状态 (记录时间: ${new Date(historySnapshots[0].timestamp).toLocaleString()}):\n${JSON.stringify({ metrics: historySnapshots[0].metrics, distributions: historySnapshots[0].distributions }, null, 2)}`
     : '\n【历史时序快照】: 暂无历史数据，以此为初始基准。';
+
+  const marketContextRAG = cleanExternalData?.marketContext || {};
 
   const uiSummaryInstructions = `
 ========================================
@@ -279,15 +282,36 @@ export async function streamSynthesis(userTier: string, message: string, externa
 - 对于期权(options)：提取并枚举。
 - 【严禁捏造Mock假数据】决不允许凭空捏造数值！
 - 必须在 \`updateGlobalState.insights.global\` 字段中，输出一段高度提炼、犀利且具有前瞻性的【全局资产战略总结】（不少于 50 字）。这是控制台顶部的核心数据，严禁遗漏！
-- 请在 insights 对象中，提供专门负责该板块的Agent的具体客观分析和切实施政建议。
+- 请在 insights 对象中，提供专门负责该板块 of Agent的具体客观分析和切实施政建议。
 - 重要：**增量更新（Differential Update）**。你只需要在 \`updateGlobalState\` 中返回**需要修改或更新**的字段。前端会将你的输出与当前的 Terminal State 进行合并（Shallow Merge / 深层合并）。对于完全没有变化的板块，**请直接省略该字段**，不要输出空数组/空字符串来覆盖原有的有效数据！！比如：如果你本次分析没有涉及 fixedAssets，那么 updateGlobalState 里面就不要出现 fixedAssets 字段。
 - 只做数据的更新，绝不重置旧的有效资产结构。如果在硬核经济策略数据中提到某些数据失效了或被抛售了，那才将其重置为 []。
-- 【数组全量替换原则 (CRITICAL)】：当用户提到生活开支(expenses)、负债(liabilities)或资产配置的变更（例如：房贷被抵扣、清仓某只股票）时，你必须在 JSON 中下发**更新后的完整列表**。前端会直接整体替换，切勿只下发增量或直接省略！
+- 【数组全量替换原则 (CRITICAL)】：当用户提到生活开支(expenses)、负债(liabilities)或资产配置的变更（例如：房贷被抵扣、清仓某只股票、大额提现）时，你必须在 JSON 中下发**更新后的完整列表**。前端会直接整体替换，切勿只下发增量或直接省略！
 - 【严禁捏造市值 (CRITICAL)】：在更新 \`publicHoldings\` 时，\`_livePrice\` 和 \`marketValue\` 必须严格使用 \`[MARKET_DATA]\` 中的真实数据。如果缺少某只股票的最新股价，按原样保留，**绝不许凭空幻觉捏造数值或借用其他股票的价格！**
 - 【强制响应原则】：如果你在正文文本中建议了清仓、修改开支，你的 JSON Patch (\`updateGlobalState\`) 中就必须包含对应的字段体现这一变化，不允许口是心非。
-- 【主动干预原则 (CRITICAL)】：如果用户明确要求渲染干预卡片，或者你判定当前面临极端的宏观异动/账户危机，你必须在 \`updateGlobalState.dynamicWidgets\` 数组中下发一个 \`InterventionCard\`。
-- 【双轨布局原则 (CRITICAL)】：前端页面分为两层。\`updateGlobalState.dynamicWidgets\` 用于你下发临时的干预卡片（如 InterventionCard）或系统警报，渲染在最顶部，且可以包含临时洞察卡和市场环境提示。而 \`updateGlobalState.dashboardSchema\` 是底层的产品级 canonical layout，【永远不允许、绝对禁止】由 AI 输出或修改。即使市场环境、资产结构或风险状态发生重大变化，也只能通过 \`dynamicWidgets\`、\`insights\`、\`metrics summary\`、\`distributions\` 等数据字段进行表达，绝不能输出或 Patch 任何 \`dashboardSchema\` 字段。如果需要隐藏或重排图表，只能在产品代码层通过 schema migration 完成，不能由 AI patch 完成。
-- 【Generative UI 升格契约 (CRITICAL)】：你不仅是个金融分析师，更是一个拥有顶级老钱风品味的前端设计师。现在，系统的【固定图表兜底机制】只在你判断“现有的 DynamicChart 或 MetricCard 绝对能更好、更清晰地表达数据”时才生效。而在大多数日常情况下，你应当在 \`dynamicWidgets\` 数组中，主动使用原子组件为用户生成“极其精美、个性化的专属洞察面板”！比如：大盘平稳时生成横跨全屏的「家族信托执行简报」纯文字块。你可以将 Generative UI 和固定的成品图表组件混合使用！
+- 【DynamicWidgets Top Insights 契约】：
+  * dynamicWidgets 是底部的临时 Top Insights 区域，不是主 Dashboard，不是 dashboardSchema，不是报告正文替代品。
+  * 默认不要输出 dynamicWidgets。只有当本轮分析中存在明确、非重复、可行动、短期需要用户特别关注的真实洞察建议时才生成。
+  * 最多生成 3 张洞察卡。即使你发现了许多问题，也必须按重要程度极度克制地只挑选最优 3 张卡下发。
+  * 同一主题、同一风险、同一资产问题只能输出 1 张卡，绝对不允许重复包装或输出多卡。
+  * 每张卡应当表达一个明确的核心判断，不应当将大段正文拆迁到大量组件卡片中。决不能为了美观而平白生成无意义、无用户价值的装饰性 UI。
+- 【InterventionCard 使用规则】：
+  * InterventionCard（干预卡片）极其显眼且对用户有强警示性。只有在以下真正极端的高危异常场景中才允许使用：
+    1. 现金流或流动性出现严重枯竭/无法满足基本法定义务；
+    2. 单一资产、行业、或券商的风险集中度处于极高危险线；
+    3. 组合风险敞口出现明显的极端负面暴露；
+    4. 用户明确要求渲染风险干预卡片；
+    5. 关键账户或数据发生严重同步中断导致无法进行准确分析。
+  * 任何普通市场波动、一般轻微提醒、或者常规理财建言，严禁使用 InterventionCard。
+  * 非上述极端危机时，请优先使用 Box + Badge + Typography + ActionButton 组成克制、尊贵且专业的普通 insight 卡片。
+- 【ActionButton 契约 (CRITICAL)】：
+  * ActionButton 绝不是用来执行真实交易的操作按钮。它只是一个“引导用户在 AI Drawer 中做进一步分析的建议指令入口”。
+  * button.actionIntent 必须是一个能直接发送给 AI Drawer 的、具体并有深度的完整指令，不可使用极短词汇。
+  * button.label 是短按钮文案（如“推演减仓路径”），actionIntent 是完整指令，二者绝对不能混淆或相同！
+  * 严禁使用“立即买入”、“立即卖出”、“去转账”、“清仓执行”等可能误导用户以为会发生真实交易的物理执行向 label。
+  * 推荐 label / actionIntent 实例：
+    - label: "检查集中度", actionIntent: "请基于当前公开市场持仓，检查我的组合在单一资产、行业和主题上的集中度，并给出保守/中性/进攻三种调整建议。"
+    - label: "推演对冲路径", actionIntent: "请基于当前持仓、现金流与最新市场背景，推演一个保守、中性和进攻三档防守反击/对冲策略，并列明触发点。"
+- 【双轨布局原则 (CRITICAL)】：前端页面分为两层。\`updateGlobalState.dynamicWidgets\` 用于你下发临时的干预卡片（如 InterventionCard）或系统警报/Top 临时建议。而 \`updateGlobalState.dashboardSchema\` 是底层的产品级 canonical layout，【永远不允许、绝对禁止】由 AI 输出或修改。所有分析和变化只能通过 \`dynamicWidgets\`、\`insights\`、\`metrics summary\`、\`distributions\` 等数据属性进行差异化下发呈现，绝不能在 \`updateGlobalState\` 中输出或 Patch 任何 \`dashboardSchema\` 字段。
 - 【时序行为审查 (CRITICAL)】：你收到的数据中包含了『当前大盘 (T0)』和『历史时序快照 (T-1)』。你必须对比 T0 和 T-1 的 metrics 和 distributions 的差异。
    * 洞察逻辑：如果 T0 相比 T-1 现金减少且股票增加，说明用户进行了加仓；反之则是减仓/割肉。
    * 行为审判：结合用户的 RAG 记忆（如 behavioralBiases）。如果用户在市场恐慌时违背长线战略割肉了，你必须在 Insights 中严厉指出这个行为动机，并提供情绪安抚或纠偏建议！不要只说数字，要指出用户的“动作”！
@@ -297,43 +321,66 @@ export async function streamSynthesis(userTier: string, message: string, externa
   - \`Flex\`: 弹性布局。props 包含 direction (row/col), justify, align, gap。
   - \`Typography\`: 文本。props 包含 variant (h2, h3, h3-serif, body, body-sm), color (text-primary, text-muted, danger, warning), text。
   - \`Badge\`: 标签。props 包含 intent (critical, warning, success, default), text。
-  - \`ActionButton\`: 交互按钮。props 包含 variant (primary, danger, outline), label, actionIntent (点击后触发的后续全局 Prompt 指令，极其重要！)。
+  - \`ActionButton\`: 建议指令入口。props 包含 variant (primary, danger, outline), label, actionIntent / prompt。
   - \`MetricCard\`: 成品核心指标卡。props 包含 title, dataKey (如 netWorth, liquidity, fcf 等), isLongSubText。
   - \`DynamicChart\`: 成品高级图表。props 包含 title, chartType (如 liquidity, publicHoldings, expenses 等)。
 
 当前前端面板状态 (TERMINAL_STATE)：
-${JSON.stringify({ 
-    metrics: externalData?.contextData?.metrics || {},
+\${JSON.stringify({ 
+    metrics: cleanExternalData?.contextData?.metrics || {},
     distributions: safeDistributions,
-    lifeStrategiesShort: externalData?.contextData?.lifeStrategiesShort || [],
-    lifeStrategiesLong: externalData?.contextData?.lifeStrategiesLong || []
+    lifeStrategiesShort: cleanExternalData?.contextData?.lifeStrategiesShort || [],
+    lifeStrategiesLong: cleanExternalData?.contextData?.lifeStrategiesLong || []
 }, null, 2)}
-${temporalContext}
+\${temporalContext}
 
 注意！你的末尾 JSON Patch 必须符合以下严格结构示例：
 \`\`\`json
 {
   "updateGlobalState": {
+    "insights": { 
+      "global": "在这里输出全局资产战略总结..."
+    },
     "dynamicWidgets": [
       {
-        "type": "Grid",
-        "props": { "columns": 2, "gap": 6, "className": "w-full mb-6" },
+        "type": "Box",
+        "props": {
+          "bg": "surface-elevated",
+          "border": "accent",
+          "padding": "md",
+          "className": "rounded-2xl flex flex-col gap-3"
+        },
         "children": [
           {
-            "type": "Box",
-            "props": { "bg": "danger-muted", "border": "danger", "padding": "lg", "className": "rounded-2xl flex flex-col gap-4" },
-            "children": [
-              { "type": "Badge", "props": { "intent": "critical", "text": "高危预警" } },
-              { "type": "Typography", "props": { "variant": "h3-serif", "color": "danger", "text": "资产流动性枯竭" } }
-            ]
+            "type": "Badge",
+            "props": {
+              "intent": "info",
+              "text": "TOP INSIGHT"
+            }
           },
           {
-             "type": "Box",
-             "props": { "bg": "surface-elevated", "padding": "lg", "className": "rounded-2xl flex flex-col gap-4" },
-             "children": [
-                { "type": "Typography", "props": { "variant": "body", "color": "text-muted", "text": "建议的对冲操作：立刻卖出 30% 风险资产。" } },
-                { "type": "ActionButton", "props": { "variant": "outline", "label": "去沙盒推演", "actionIntent": "请推演流动性危机" } }
-             ]
+            "type": "Typography",
+            "props": {
+              "variant": "h3",
+              "color": "text-primary",
+              "text": "持仓集中度需要复核"
+            }
+          },
+          {
+            "type": "Typography",
+            "props": {
+              "variant": "body-sm",
+              "color": "text-muted",
+              "text": "本轮建议优先检查组合对单一主题的暴露，而不是立即交易。"
+            }
+          },
+          {
+            "type": "ActionButton",
+            "props": {
+              "variant": "outline",
+              "label": "检查集中度",
+              "actionIntent": "请基于当前公开市场持仓，检查我的组合在单一资产、行业和主题上的集中度，并给出保守/中性/进攻三种调整建议。"
+            }
           }
         ]
       }
@@ -343,11 +390,7 @@ ${temporalContext}
     "goal": { "name": "核心破局目标", "current": 1000, "target": 5000, "index": 0.2 },
     "distributions": { "liquidity": [{"name": "现金", "value": 100}] },
     "lifeStrategiesShort": [ { "timeNode": "2024-2025", "title": "节点1", "description": "描述" } ],
-    "lifeStrategiesLong": [ { "timeNode": "未来 10 年", "title": "高维规划", "description": "描述" } ],
-    "insights": { 
-      "global": "在这里输出全局资产战略总结...",
-      "liquidity": "资金池流动性建议..."
-    }
+    "lifeStrategiesLong": [ { "timeNode": "未来 10 年", "title": "高维规划", "description": "描述" } ]
     // 注意：updateGlobalState 中绝对禁止出现 dashboardSchema 字段。
   }
 }
@@ -357,7 +400,7 @@ ${temporalContext}
   const summaryPrompt = authenticityPact + template
     .replace('{userTier}', () => userTier)
     .replace('{message}', () => message)
-    .replace('{userProfileRAG}', () => JSON.stringify(externalData?.contextData?.userProfile || {}, null, 2))
+    .replace('{userProfileRAG}', () => JSON.stringify(cleanExternalData?.contextData?.userProfile || {}, null, 2))
     .replace('{livePortfolioRAG}', () => {
       if (cleanExternalData?.livePortfolioAccounts && cleanExternalData.livePortfolioAccounts.length > 0) {
         return JSON.stringify({
@@ -367,23 +410,24 @@ ${temporalContext}
       }
       return JSON.stringify(cleanExternalData?.livePortfolio || cleanExternalData?.contextData?.distributions?.publicHoldings || [], null, 2);
     })
-    .replace('{marketDataRAG}', () => JSON.stringify(externalData?.marketData || {}, null, 2))
+    .replace('{marketDataRAG}', () => JSON.stringify(cleanExternalData?.marketData || {}, null, 2))
     .replace('{agentResults}', () => JSON.stringify(dehydratedResults, null, 2))
     + "\n\n【MARKET_CONTEXT / 延迟历史市场上下文】\n"
     + JSON.stringify(marketContextRAG, null, 2)
     + "\n" + uiSummaryInstructions;
 
   try {
-    // 优先尝试 Pro 模型，但通过 config 覆盖其底层重试机制，使其“只试错1次”，失败立刻跳出！
+    // 优先尝试 Pro 模型
     const responseStream = await ai.models.generateContentStream({
-      model: "gemini-3.1-pro-preview", // 注意：如果你有配置，最好用 gemini-2.5-pro 替代这个可能不存在的预览版
+      model: "gemini-2.5-pro",
       contents: summaryPrompt,
       config: { temperature: 0.1, maxRetries: 1, baseDelay: 300 }
     });
     return responseStream;
   } catch (e: any) {
     console.warn("[降级保护] Pro模型高负载或无响应，毫秒级无缝降级至 Flash 模型...");
-    if (onProgress) onProgress(`⚡ [系统提示] 主力模型当前拥挤，已启动闪电节点(Flash)接管输出...`);
+    if (onProgress) onProgress(`⚡ [系统提示] 主力模型当前拥挤，已启动闪电节点(Flash)接管输出...
+etwork...`);
     
     try {
         // 无缝切回高并发 Flash 模型
