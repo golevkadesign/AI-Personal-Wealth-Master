@@ -203,12 +203,12 @@ export const AgentThinkingTrace: React.FC<AgentThinkingTraceProps> = ({
                     
                     return (
                       <div key={step.id || index} className="flex gap-3 items-start min-w-0 relative">
-                        {/* 局部的 Pipeline 线下延续 —— 深度利用 isLast 变量实现动态精准连线 */}
+                        {/* 根据节点位置渲染连接线 */}
                         {!isLast && (
                           <div className="absolute left-[10px] top-6 bottom-[-14px] w-px bg-white/[0.04]" />
                         )}
 
-                        {/* 左侧圆圈与连接线节点 —— 完美融合 getKindVisual 动态特质语义色 */}
+                        {/* 左侧状态节点 —— 使用共享 Agent 视觉语义 */}
                         <div className="relative flex items-center justify-center shrink-0 w-5 h-5 mt-0.5">
                           {step.status === 'running' ? (
                             <div className="w-4 h-4 bg-amber-500/20 border border-amber-500/40 rounded-full flex items-center justify-center animate-pulse">

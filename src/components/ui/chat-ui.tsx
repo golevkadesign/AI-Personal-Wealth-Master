@@ -121,7 +121,7 @@ export const ChatList = React.memo(function ChatList({
   ];
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-5 custom-scroll pb-[200px]" ref={containerRef} onScroll={handleScroll}>
+    <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-5 custom-scroll pb-[176px]" ref={containerRef} onScroll={handleScroll}>
       {messages.length === 0 ? (
         <div className="h-full flex flex-col items-center justify-center text-center opacity-65 py-16 px-4">
           <Sparkles className="w-6 h-6 mb-3 text-[#C9B284]" />
@@ -180,9 +180,9 @@ export const ChatList = React.memo(function ChatList({
             );
           } else {
             return (
-              <div key={i} className="flex flex-col items-start gap-1 w-full max-w-[95%]">
-                <div className="flex items-center gap-1.5 text-[10px] font-mono text-dash-tertiary uppercase tracking-wider mb-1 font-semibold">
-                  <span className="font-bold text-[#C9B284]">Arbitra AI</span>
+              <div key={i} className="flex flex-col items-start gap-2 w-full max-w-[95%]">
+                <div className="flex items-center gap-1.5 text-[10px] font-mono text-[#8C8370] uppercase tracking-wider mb-0.5">
+                  <span className="font-semibold text-current">Arbitra</span>
                 </div>
                 
                 {/* Thinking Section styled to be elegant and progressive */}
@@ -191,19 +191,29 @@ export const ChatList = React.memo(function ChatList({
                     rawThinking={msg.thinking}
                     isStreaming={isTyping && i === messages.length - 1}
                     defaultExpanded={false}
-                    className="mb-2"
+                    className="w-full"
                   />
                 )}
                 
                 {/* Custom Private Wealth Advisor Memo Card */}
                 <div className="w-full bg-[#16181A] border border-[#C9B284]/15 rounded-2xl p-4 sm:p-5 shadow-sm font-sans">
                   {(!msg.content && isTyping && i === messages.length - 1) ? (
+                    msg.thinking ? (
+                      <div className="flex items-center gap-2.5 text-[#8C8370]/80 font-sans text-xs py-1">
+                        <span className="relative flex h-1.5 w-1.5 shrink-0">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C9B284] opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#C9B284]"></span>
+                        </span>
+                        <span>等待最终答复...</span>
+                      </div>
+                    ) : (
                       <div className="flex items-center gap-2.5 text-dash-tertiary font-mono text-xs py-1">
                         <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2, ease: "linear" }}>
                           <Loader2 className="w-3.5 h-3.5 text-[#C9B284]" />
                         </motion.div>
-                        <span>SYNTHESIZING STRATEGY...</span>
+                        <span>正在建立分析链路...</span>
                       </div>
+                    )
                   ) : (
                       <div className="text-[13px] sm:text-sm leading-relaxed text-[#E7D7B0] space-y-3 font-sans ai-message">
                         <AssistantResponseRenderer
@@ -343,12 +353,12 @@ export const ChatList = React.memo(function ChatList({
                         )}
 
                         {msg.content && (
-                           <div className="mt-6 pt-4 border-t border-[#C9B284]/10 flex flex-col gap-3 font-sans">
+                           <div className="mt-3 pt-3 border-t border-white/[0.04] flex flex-col gap-2 font-sans text-[11px]">
                              {/* Metric Badges Info */}
-                             <div className="flex flex-wrap gap-2 items-center">
+                             <div className="flex flex-wrap gap-2 items-center text-[9px]">
                                {msg._liveSources?.includes('longbridge') && (
-                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#6B8E6B]/10 text-[#6B8E6B] border border-[#6B8E6B]/20">
-                                   <Activity className="w-3 h-3" />
+                                 <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-medium bg-white/[0.03] text-[#8C8370] border border-white/[0.05]">
+                                   <Activity className="w-2.5 h-2.5 text-emerald-600/60 animate-pulse" />
                                    实盘数据源
                                  </span>
                                )}
@@ -356,28 +366,27 @@ export const ChatList = React.memo(function ChatList({
                                  <motion.span 
                                    initial={{ opacity: 0, y: 5 }}
                                    animate={{ opacity: 1, y: 0 }}
-                                   className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium text-[#C9B284] bg-[#C9B284]/10 border border-[#C9B284]/20 relative overflow-hidden group/memory"
+                                   className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-medium text-[#C9B284]/85 bg-white/[0.03] border border-white/[0.05] relative overflow-hidden group/memory"
                                  >
-                                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#C9B284]/10 to-transparent -translate-x-full group-hover/memory:animate-[shimmer_1.5s_infinite]" />
-                                   <Sparkles className="w-3 h-3 opacity-80" />
+                                   <Sparkles className="w-2.5 h-2.5 text-amber-500/60" />
                                    已刷新长期记忆
                                  </motion.span>
                                )}
                                {msg.timeTaken !== undefined && (
-                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono tracking-wider text-dash-tertiary bg-[#1D1F21] border border-[#C9B284]/10">
+                                 <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-mono tracking-wider text-dash-tertiary bg-white/[0.01] border border-white/[0.05]">
                                    {(msg.timeTaken / 1000).toFixed(1)}s
                                  </span>
                                )}
                              </div>
 
                              {/* Memo Toolbar utilities */}
-                             <div className="flex items-center gap-3 opacity-50 hover:opacity-100 transition-opacity mt-1">
-                               <button onClick={() => handleCopy(msg.content, i)} className="flex items-center gap-1 text-[11px] font-mono text-[#8C8270] hover:text-white transition-colors uppercase tracking-wider">
+                             <div className="flex items-center gap-3 opacity-40 hover:opacity-100 transition-opacity mt-0.5">
+                               <button onClick={() => handleCopy(msg.content, i)} className="flex items-center gap-1 text-[10px] font-mono text-[#8C8370] hover:text-white transition-colors uppercase tracking-wider">
                                  {copiedIndex === i ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
                                  {copiedIndex === i ? <span className="text-emerald-400 font-sans">Copied</span> : 'Copy'}
                                </button>
                                {i === messages.length - 1 && onRegenerate && (
-                                 <button onClick={onRegenerate} className="flex items-center gap-1 text-[11px] font-mono text-[#8C8270] hover:text-white transition-colors uppercase tracking-wider">
+                                 <button onClick={onRegenerate} className="flex items-center gap-1 text-[10px] font-mono text-[#8C8370] hover:text-white transition-colors uppercase tracking-wider">
                                    <RefreshCw className="w-3 h-3" /> Re-run
                                  </button>
                                )}
@@ -390,7 +399,7 @@ export const ChatList = React.memo(function ChatList({
                                      a.download = `terminal-node-data-${Date.now()}.json`;
                                      a.click();
                                      URL.revokeObjectURL(url);
-                                 }} className="flex items-center gap-1 text-[11px] font-mono text-[#8C8270] hover:text-white transition-colors uppercase tracking-wider">
+                                 }} className="flex items-center gap-1 text-[10px] font-mono text-[#8C8370] hover:text-white transition-colors uppercase tracking-wider">
                                      <Download className="w-3 h-3" /> JSON Data
                                  </button>
                                )}
