@@ -334,12 +334,21 @@ export async function streamSynthesis(
 }, null, 2)}
 \${temporalContext}
 
-注意！你的末尾 JSON Patch 必须符合以下严格结构示例：
+========================================
+【前端渲染与状态更新规范说明】
+- ⚠️ 上述 JSON 示例仅展示最小安全结构，不代表每轮都必须强制输出 dynamicWidgets 字段。
+- ⚠️ 默认情况下请不要输出 dynamicWidgets。只有当本轮分析中存在明确、非重复、可行动、短期内用户极其需要警惕或关注的高价值 Top Insights，或者面临极端危险场景需要显示 InterventionCard 时，才按照克制原则下发 dynamicWidgets 数组，最大数量不得超过 3 张。
+- ⚠️ metrics, userPersona, goal, distributions, lifeStrategiesShort, lifeStrategiesLong 等其它业务状态字段，只有当用户在对话中明确提出了相关重构、清仓、开支变更，或者有可信的真实上下文数据增量需要状态变更时，才允许包含在 updateGlobalState 中下发。对于没有实质变化的板块，请直接省略该字段，严禁使用空列表、空字符串或过往的 mock 假数据进行不正确的状态重置！
+- ⚠️ 绝对不要为了凑齐或补全 JSON 结构而凭空捏造、生成或假设任何 mock 资产金额、虚拟目标进度（如 netWorth, goal.current、流动持仓比例等）。任何虚假数值的引入在真实的财务系统生产中均属于严重的违规捏造。
+- ⚠️ 无论在正文内容还是 dynamicWidgets 组件设计中，绝对禁止、任何情况下都严禁在 updateGlobalState 中输出或 Partial Patch 任何名为 "dashboardSchema" 的字段！
+- ⚠️ 【数组全量替换原则 (CRITICAL)】：生命策略历史、日常或阶段性开支支出、债务账目明细等属于列表数组结构的字段，如有修改，必须在 JSON 中下发更新后的完整列表，前端会直接整体覆盖，切不可下发只包含增量的半成品数组切片。
+
+注意！你的末尾 JSON Patch 必须符合以下严格可解析的结构规范示例（代码块内绝不能包含任何 JSON 规范之外的 // 注释，确保能直接被底层 JSON.parse 鲁棒地还原解析）：
 \`\`\`json
 {
   "updateGlobalState": {
-    "insights": { 
-      "global": "在这里输出全局资产战略总结..."
+    "insights": {
+      "global": "在这里输出基于会话与真实数据高度提炼的全局财务资产雷达总结，拒绝捏造与幻觉分析，字数不少于50字。"
     },
     "dynamicWidgets": [
       {
@@ -379,19 +388,12 @@ export async function streamSynthesis(
             "props": {
               "variant": "outline",
               "label": "检查集中度",
-              "actionIntent": "请基于当前公开市场持仓，检查我的组合在单一资产、行业和主题上的集中度，并给出保守/中性/进攻三种调整建议。"
+              "actionIntent": "请基于当前公开市场持仓，检查我的组合在单一资产、行业和主题上的集中度，并给出保守、中性、进攻三种调整建议。"
             }
           }
         ]
       }
-    ],
-    "metrics": { "netWorth": 1000000, "netWorthSummary": "总结短句..." },
-    "userPersona": { "tags": ["稳健型", "高薪资"], "description": "您的核心画像..." },
-    "goal": { "name": "核心破局目标", "current": 1000, "target": 5000, "index": 0.2 },
-    "distributions": { "liquidity": [{"name": "现金", "value": 100}] },
-    "lifeStrategiesShort": [ { "timeNode": "2024-2025", "title": "节点1", "description": "描述" } ],
-    "lifeStrategiesLong": [ { "timeNode": "未来 10 年", "title": "高维规划", "description": "描述" } ]
-    // 注意：updateGlobalState 中绝对禁止出现 dashboardSchema 字段。
+    ]
   }
 }
 \`\`\`
