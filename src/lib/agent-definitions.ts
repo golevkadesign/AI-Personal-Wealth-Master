@@ -221,46 +221,31 @@ export function getSharedAgentDefinition(kind: SharedAgentKind | string): Shared
 export function detectSharedAgentKind(line: string): SharedAgentKind {
   const safeLine = typeof line === 'string' ? line.toLowerCase() : '';
   
+  const matches = (kind: SharedAgentKind) => {
+    const def = getSharedAgentDefinition(kind);
+    return def.keywords.some(kw => safeLine.includes(kw));
+  };
+
   // 1. memory
-  if (SHARED_AGENT_DEFINITIONS[8].keywords.some(kw => safeLine.includes(kw))) {
-    return 'memory';
-  }
+  if (matches('memory')) return 'memory';
   // 2. external
-  if (SHARED_AGENT_DEFINITIONS[9].keywords.some(kw => safeLine.includes(kw))) {
-    return 'external';
-  }
+  if (matches('external')) return 'external';
   // 3. orchestrator
-  if (SHARED_AGENT_DEFINITIONS[7].keywords.some(kw => safeLine.includes(kw))) {
-    return 'orchestrator';
-  }
+  if (matches('orchestrator')) return 'orchestrator';
   // 4. devil
-  if (SHARED_AGENT_DEFINITIONS[6].keywords.some(kw => safeLine.includes(kw))) {
-    return 'devil';
-  }
+  if (matches('devil')) return 'devil';
   // 5. market
-  if (SHARED_AGENT_DEFINITIONS[5].keywords.some(kw => safeLine.includes(kw))) {
-    return 'market';
-  }
+  if (matches('market')) return 'market';
   // 6. debt
-  if (SHARED_AGENT_DEFINITIONS[4].keywords.some(kw => safeLine.includes(kw))) {
-    return 'debt';
-  }
+  if (matches('debt')) return 'debt';
   // 7. hnw
-  if (SHARED_AGENT_DEFINITIONS[3].keywords.some(kw => safeLine.includes(kw))) {
-    return 'hnw';
-  }
+  if (matches('hnw')) return 'hnw';
   // 8. general
-  if (SHARED_AGENT_DEFINITIONS[2].keywords.some(kw => safeLine.includes(kw))) {
-    return 'general';
-  }
+  if (matches('general')) return 'general';
   // 9. hydrator
-  if (SHARED_AGENT_DEFINITIONS[1].keywords.some(kw => safeLine.includes(kw))) {
-    return 'hydrator';
-  }
+  if (matches('hydrator')) return 'hydrator';
   // 10. rag
-  if (SHARED_AGENT_DEFINITIONS[0].keywords.some(kw => safeLine.includes(kw))) {
-    return 'rag';
-  }
+  if (matches('rag')) return 'rag';
   
   return 'unknown';
 }

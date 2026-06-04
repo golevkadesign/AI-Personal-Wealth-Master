@@ -123,7 +123,6 @@ export function buildAgentThinkingTrace(rawThinking: string, options?: {
       if (s.status === 'error') {
         const errLine = s.messages.find(m => {
           const ml = m.toLowerCase();
-          ml;
           return ['error', 'failed', '异常', '失败', 'timeout'].some(kw => ml.includes(kw));
         });
         if (errLine) {
