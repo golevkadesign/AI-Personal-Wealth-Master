@@ -29,7 +29,7 @@ router.post('/', async (req: Request, res: Response) => {
     try {
       // 1. 优先尝试高智商 Pro 模型，设置极速失败策略 (重试 1 次，延迟 300ms)
       responseStream = await ai.models.generateContentStream({
-        model: settings?.provider === 'openai' ? (settings?.openaiAdvancedModel || 'gpt-4o') : 'gemini-3.1-pro-preview',
+        model: settings?.provider === 'openai' ? (settings?.openaiAdvancedModel || 'gpt-4o') : 'gemini-2.5-pro',
         contents: prompt,
         config: { temperature: 0.3, maxRetries: 1, baseDelay: 300 }
       });

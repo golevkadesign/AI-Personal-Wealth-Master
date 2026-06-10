@@ -36,10 +36,10 @@ export const SettingsModal = ({ isOpen, onClose, onClearData }: { isOpen: boolea
   const { t } = useTranslation();
   const [settings, setSettings] = useState<AppSettings>(getSettings());
   const [availableGeminiModels, setAvailableGeminiModels] = useState<string[]>([
-    'gemini-3.1-pro-preview',
-    'gemini-3-flash-preview',
     'gemini-2.5-pro',
     'gemini-2.5-flash',
+    'gemini-3.1-pro-preview',
+    'gemini-3-flash-preview',
     'gemini-1.5-pro',
     'gemini-1.5-flash'
   ]);
@@ -72,10 +72,10 @@ export const SettingsModal = ({ isOpen, onClose, onClearData }: { isOpen: boolea
 
     if (normalizedSettings.provider === 'gemini') {
       if (!normalizedSettings.geminiFastModel) {
-        normalizedSettings.geminiFastModel = 'gemini-3-flash-preview';
+        normalizedSettings.geminiFastModel = 'gemini-2.5-flash';
       }
       if (!normalizedSettings.geminiAdvancedModel) {
-        normalizedSettings.geminiAdvancedModel = 'gemini-3.1-pro-preview';
+        normalizedSettings.geminiAdvancedModel = 'gemini-2.5-pro';
       }
     } else if (normalizedSettings.provider === 'openai') {
       if (!normalizedSettings.openaiFastModel) {
@@ -313,8 +313,8 @@ export const SettingsModal = ({ isOpen, onClose, onClearData }: { isOpen: boolea
                         onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSettings({ ...settings, geminiFastModel: e.target.value })}
                         className="font-mono"
                       >
-                        {buildModelOptions(settings.geminiFastModel, ['gemini-3-flash-preview', 'gemini-2.5-flash'], availableGeminiModels).map(model => (
-                          <option key={model} value={model}>{getModelLabel(model, settings.geminiFastModel, 'gemini-3-flash-preview', t)}</option>
+                        {buildModelOptions(settings.geminiFastModel, ['gemini-2.5-flash', 'gemini-3-flash-preview'], availableGeminiModels).map(model => (
+                          <option key={model} value={model}>{getModelLabel(model, settings.geminiFastModel, 'gemini-2.5-flash', t)}</option>
                         ))}
                       </Select>
                     ) : (
@@ -337,8 +337,8 @@ export const SettingsModal = ({ isOpen, onClose, onClearData }: { isOpen: boolea
                         onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSettings({ ...settings, geminiAdvancedModel: e.target.value })}
                         className="font-mono"
                       >
-                        {buildModelOptions(settings.geminiAdvancedModel, ['gemini-3.1-pro-preview', 'gemini-2.5-pro'], availableGeminiModels).map(model => (
-                          <option key={model} value={model}>{getModelLabel(model, settings.geminiAdvancedModel, 'gemini-3.1-pro-preview', t)}</option>
+                        {buildModelOptions(settings.geminiAdvancedModel, ['gemini-2.5-pro', 'gemini-3.1-pro-preview'], availableGeminiModels).map(model => (
+                          <option key={model} value={model}>{getModelLabel(model, settings.geminiAdvancedModel, 'gemini-2.5-pro', t)}</option>
                         ))}
                       </Select>
                     ) : (
