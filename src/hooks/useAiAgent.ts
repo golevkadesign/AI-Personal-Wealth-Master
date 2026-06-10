@@ -28,6 +28,111 @@ function normalizeMarketContextForStore(marketContext: any) {
   return marketContext;
 }
 
+const AGENT_HISTORY_LIMIT = 6;
+const AGENT_TEXT_LIMIT = 1800;
+const AGENT_CONTEXT_STRING_LIMIT = 3000;
+const AGENT_CONTEXT_ARRAY_LIMIT = 60;
+const AGENT_CONTEXT_DEPTH_LIMIT = 7;
+const AGENT_REQUEST_TIMEOUT_MS = 115000;
+
+function compactAgentText(value: unknown, limit = AGENT_TEXT_LIMIT): string {
+  if (typeof value !== 'string') return '';
+  if (value.includes('<!DOCTYPE html') || value.includes('<html')) {
+    if (value.includes('502') || value.includes('Server Error')) {
+      return '[Previous assistant response omitted: backend returned a temporary 502 HTML error page.]';
+    }
+    return '[Previous assistant response omitted: HTML error page.]';
+  }
+  return value.length > limit ? `${value.slice(0, limit)}\n...[truncated]` : value;
+}
+
+function compactAgentHistory(history: { user: string; ai: string }[]) {
+  return history.slice(-AGENT_HISTORY_LIMIT).map((item) => ({
+    user: compactAgentText(item.user),
+    ai: compactAgentText(item.ai),
+  }));
+}
+
+function compactAgentContext(value: any, depth = 0, seen = new WeakSet<object>()): any {
+  if (value == null || typeof value !== 'object') {
+    if (typeof value === 'string') {
+      if (value.startsWith('data:image/')) return '[Stripped image payload]';
+      return compactAgentText(value, AGENT_CONTEXT_STRING_LIMIT);
+    }
+    return value;
+  }
+
+  if (seen.has(value)) return '[Circular]';
+  if (depth >= AGENT_CONTEXT_DEPTH_LIMIT) return '[Max depth reached]';
+  seen.add(value);
+
+  if (Array.isArray(value)) {
+    const compacted = value.slice(0, AGENT_CONTEXT_ARRAY_LIMIT).map((item) => compactAgentContext(item, depth + 1, seen));
+    if (value.length > AGENT_CONTEXT_ARRAY_LIMIT) {
+      compacted.push(`[${value.length - AGENT_CONTEXT_ARRAY_LIMIT} additional items truncated]`);
+    }
+    return compacted;
+  }
+
+  const omittedKeys = new Set([
+    'chartOptions',
+    'dashboardSchema',
+    'debugData',
+    'thinking',
+    'rawText',
+    'img',
+    'image',
+    'base64',
+    'data',
+  ]);
+  const next: any = {};
+  for (const key of Object.keys(value)) {
+    if (omittedKeys.has(key)) {
+      next[key] = '[Stripped for Agent Payload]';
+      continue;
+    }
+    next[key] = compactAgentContext(value[key], depth + 1, seen);
+  }
+  return next;
+}
+
+function formatAgentErrorMessage(error: any, didTimeout: boolean): string {
+  if (didTimeout) {
+    return '本轮分析请求超过 115 秒仍未完成，已自动停止以避免界面卡死。请缩短问题或稍后重试。';
+  }
+
+  const raw = error?.message || String(error || 'Unknown error');
+  const statusMatch = raw.match(/BFF Request Failed \((\d+)\)/);
+  const status = statusMatch?.[1];
+  const isHtmlError = raw.includes('<!DOCTYPE html') || raw.includes('<html');
+
+  if (status === '502' || raw.includes('502')) {
+    return '后端分析服务临时不可用 (502)。这通常是 Cloud Run 或上游模型临时拥挤，不会再把 HTML 错误页写入对话；请稍后重试。';
+  }
+  if (status === '504' || raw.includes('504')) {
+    return '后端分析服务响应超时 (504)。请缩短上下文或稍后重试。';
+  }
+  if (isHtmlError) {
+    return `后端返回了异常 HTML 页面${status ? ` (${status})` : ''}，本轮已安全停止。`;
+  }
+  if (raw.includes('503') || raw.includes('high demand') || raw.includes('UNAVAILABLE')) {
+    return 'API 当前负载较高 (503 Service Unavailable)。需求激增通常是暂时的，请您稍后重试。';
+  }
+  if (raw.includes('API key not valid') || raw.includes('API_KEY_INVALID')) {
+    return '获取到的 API Key 无效。请点击环境的 Settings -> Secrets 面板，检查并清除或同步更新您自定义的 API_KEY。';
+  }
+  if (raw.includes('exceeded your current quota') || raw.includes('rate limits') || raw.includes('Quota exceeded') || raw.includes('429') || raw.includes('RESOURCE_EXHAUSTED') || raw.includes('monthly spending cap')) {
+    return 'API 额度已耗尽 (Resource Exhausted - Quota Exceeded)。您配置的 API Key 免费额度/速率或可用资金余额已达上限，请检查计费层级或更换 Key 后重试。';
+  }
+  if (raw.includes('{')) {
+    try {
+      const parsed = JSON.parse(raw.substring(raw.indexOf('{')));
+      if (parsed.error?.message) return parsed.error.message;
+    } catch {}
+  }
+  return raw;
+}
+
 export function useAiAgent({ setIsSynthesizing }: any) {
   const { user, data, commitData } = useWealthStore();
   const [inputMsg, setInputMsg] = useState('');
@@ -215,24 +320,14 @@ export function useAiAgent({ setIsSynthesizing }: any) {
 
     abortControllerRef.current = new AbortController();
     const signal = abortControllerRef.current.signal;
+    let didTimeout = false;
+    const requestTimeoutId = window.setTimeout(() => {
+      didTimeout = true;
+      abortControllerRef.current?.abort();
+    }, AGENT_REQUEST_TIMEOUT_MS);
 
     try {
-      // 1. Gather Context from BFF & Strip heavy data
-      const stripHeavyData = (obj: any): any => {
-         if (!obj || typeof obj !== 'object') return obj;
-         if (Array.isArray(obj)) return obj.map(stripHeavyData);
-         const newObj: any = {};
-         for (const key in obj) {
-            if (key === 'chartOptions' || (typeof obj[key] === 'string' && obj[key].startsWith('data:image/'))) {
-               newObj[key] = '[Stripped for Agent Payload]';
-            } else {
-               newObj[key] = stripHeavyData(obj[key]);
-            }
-         }
-         return newObj;
-      };
-      
-      const cleanedContextData = stripHeavyData(data);
+      const cleanedContextData = compactAgentContext(data);
       const publicHoldingAccounts = cleanedContextData?.publicHoldingAccounts || cleanedContextData?.distributions?.publicHoldingAccounts;
       if (publicHoldingAccounts && publicHoldingAccounts.length > 0) {
         cleanedContextData.livePortfolioAccounts = publicHoldingAccounts;
@@ -243,7 +338,7 @@ export function useAiAgent({ setIsSynthesizing }: any) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
            message: userMsg,
-           history: chatHistory.map(c => ({ user: c.user, ai: c.ai })),
+           history: compactAgentHistory(chatHistory.map(c => ({ user: c.user, ai: c.ai }))),
            contextData: cleanedContextData,
            settings: getSettings(),
            userId: user?.uid,
@@ -550,29 +645,29 @@ export function useAiAgent({ setIsSynthesizing }: any) {
 
     } catch (error: any) {
       if (error.message === 'AbortError' || error.name === 'AbortError') {
+          if (didTimeout) {
+            setChatHistory(prev => {
+              const newHist = [...prev];
+              if (newHist.length === 0) return newHist;
+              const currentAiText = newHist[newHist.length - 1].ai || '';
+              newHist[newHist.length - 1].ai = currentAiText + (currentAiText ? '\n\n' : '') + `⚠️ **通信中断**: ${formatAgentErrorMessage(error, didTimeout)}`;
+              return newHist;
+            });
+            return;
+          }
           console.log('AI Generation Stopped.');
           return;
       }
       setChatHistory(prev => {
         const newHist = [...prev];
-        let errMsg = error.message;
-        if (errMsg.includes('503') || errMsg.includes('high demand') || errMsg.includes('UNAVAILABLE')) {
-           errMsg = "API 当前负载较高 (503 Service Unavailable)。需求激增通常是暂时的，请您稍后重试。";
-        } else if (errMsg.includes('API key not valid') || errMsg.includes('API_KEY_INVALID')) {
-           errMsg = "获取到的 API Key 无效。请点击环境的 Settings -> Secrets 面板，检查并清除或同步更新您自定义的 API_KEY。";
-        } else if (errMsg.includes('exceeded your current quota') || errMsg.includes('rate limits') || errMsg.includes('Quota exceeded') || errMsg.includes('429') || errMsg.includes('RESOURCE_EXHAUSTED') || errMsg.includes('monthly spending cap')) {
-           errMsg = "API 额度已耗尽 (Resource Exhausted - Quota Exceeded)。您配置的 API Key 免费额度/速率或可用资金余额已达上限，请检查计费层级或更换 Key 后重试。";
-        } else if (errMsg.includes('{')) {
-            try {
-                const parsed = JSON.parse(errMsg.substring(errMsg.indexOf('{')));
-                if (parsed.error?.message) errMsg = parsed.error.message;
-            } catch {}
-        }
+        if (newHist.length === 0) return newHist;
+        const errMsg = formatAgentErrorMessage(error, didTimeout);
         const currentAiText = newHist[newHist.length - 1].ai || '';
         newHist[newHist.length - 1].ai = currentAiText + (currentAiText ? '\n\n' : '') + `⚠️ **通信中断**: ${errMsg}`;
         return newHist;
       });
     } finally {
+      window.clearTimeout(requestTimeoutId);
       const endTime = Date.now();
       const diff = endTime - startTime;
       setChatHistory(prev => {

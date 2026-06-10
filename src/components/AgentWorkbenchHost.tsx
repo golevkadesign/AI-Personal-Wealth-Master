@@ -243,20 +243,23 @@ function AgentWorkbenchContent({
         attachments: item.attachments || [],
       });
     }
-    nextMessages.push({
-      role: 'assistant',
-      content: item.ai || '',
-      thinking: item.thinking,
-      hasMemoryUpdate: item.hasMemoryUpdate,
-      _liveSources: item._liveSources,
-      timeTaken: item.timeTaken,
-      debugData: item.debugData,
-      aiSuggestedState: item.aiSuggestedState,
-      suggestedStateApplied: item.suggestedStateApplied,
-      sourceChatIndex: index,
-    });
+    const isLastLoadingMessage = isLoading && index === chatHistory.length - 1;
+    if (item.ai || item.thinking || item.debugData || item.aiSuggestedState || isLastLoadingMessage) {
+      nextMessages.push({
+        role: 'assistant',
+        content: item.ai || '',
+        thinking: item.thinking,
+        hasMemoryUpdate: item.hasMemoryUpdate,
+        _liveSources: item._liveSources,
+        timeTaken: item.timeTaken,
+        debugData: item.debugData,
+        aiSuggestedState: item.aiSuggestedState,
+        suggestedStateApplied: item.suggestedStateApplied,
+        sourceChatIndex: index,
+      });
+    }
     return nextMessages;
-  }), [chatHistory]);
+  }), [chatHistory, isLoading]);
 
   const handleSubmit = useCallback((event?: React.FormEvent) => {
     event?.preventDefault();

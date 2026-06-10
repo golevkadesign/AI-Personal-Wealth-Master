@@ -9,6 +9,22 @@ import { DEFAULT_RAG_SCHEMA } from "../../src/lib/defaultPrompts";
 
 export const chatRouter = Router();
 
+function buildSynthesisFallback(expertAnalysis: Record<string, any>) {
+  const entries = Object.entries(expertAnalysis || {})
+    .filter(([, value]) => typeof value === 'string' && value.trim().length > 0)
+    .map(([section, value]) => `### ${section}\n${value.trim()}`);
+
+  if (entries.length === 0) {
+    return "\n\n> ⚠️ **数据流中断**：最终 Synthesizer 暂时不可用。本轮已停止，没有收到可展示的专家节点结论。请稍后重试。";
+  }
+
+  return [
+    "\n\n> ⚠️ **数据流中断**：最终 Synthesizer 暂时不可用，以下为已经完成回流的专家节点结论，未经过最终 CIO 统筹压缩。",
+    "",
+    ...entries,
+  ].join("\n\n");
+}
+
 // Existing legacy route (We keep this intact to avoid breaking anything)
 chatRouter.post("/", async (req, res) => {
   let isResponseEnded = false;
@@ -226,7 +242,7 @@ chatRouter.post("/", async (req, res) => {
         console.error("流式读取被强制阻断:", streamError.stack || streamError);
         
         // 不要抛出异常！而是向前端推送一条“优雅的终端提示”并结束流
-        const fallbackText = "\n\n> ⚠️ **数据流中断**：由于当前 AI 推理集群需求激增（503），流式输出被截断。上方为已生成的安全结论，您可稍后点击重试重新生成完整报告。";
+        const fallbackText = buildSynthesisFallback(expertAnalysis);
         res.write(`data: ${JSON.stringify({ type: 'summary_chunk', text: fallbackText })}\n\n`);
         
         // 记录已生成的部分，防止全盘丢失
