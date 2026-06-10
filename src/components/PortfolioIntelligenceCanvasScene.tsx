@@ -1,4 +1,5 @@
 import React from 'react';
+import { AW_REFERENCE_TOKENS } from '../lib/design-tokens';
 import {
   PortfolioExposureAxisId,
   PortfolioIntelligenceMap,
@@ -26,13 +27,15 @@ const AXIS_ORBIT: Record<PortfolioExposureAxisId, number> = {
   hedge: 0.82,
 };
 
+const SCENE_COLORS = AW_REFERENCE_TOKENS.color;
+
 function hexToRgb(hex: string) {
   const normalized = hex.replace('#', '').trim();
   const value = normalized.length === 3
     ? normalized.split('').map((item) => item + item).join('')
     : normalized;
   const numeric = Number.parseInt(value, 16);
-  if (Number.isNaN(numeric)) return { r: 0, g: 240, b: 156 };
+  if (Number.isNaN(numeric)) return hexToRgb(SCENE_COLORS.line);
   return {
     r: (numeric >> 16) & 255,
     g: (numeric >> 8) & 255,
@@ -76,21 +79,21 @@ function drawGlowLine(
   opacity = 0.84,
 ) {
   ctx.save();
-  ctx.globalCompositeOperation = 'lighter';
-  ctx.shadowColor = alpha(color, 0.72);
-  ctx.shadowBlur = 18;
-  ctx.lineWidth = width + 7;
-  ctx.strokeStyle = alpha(color, 0.08);
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.shadowColor = alpha(color, 0.22);
+  ctx.shadowBlur = 8;
+  ctx.lineWidth = width + 3;
+  ctx.strokeStyle = alpha(color, 0.045);
   ctx.beginPath();
   ctx.moveTo(start.x, start.y);
   ctx.lineTo(end.x, end.y);
   ctx.stroke();
-  ctx.shadowBlur = 12;
+  ctx.shadowBlur = 5;
   ctx.lineWidth = width;
   const gradient = ctx.createLinearGradient(start.x, start.y, end.x, end.y);
-  gradient.addColorStop(0, alpha(color, 0.06));
-  gradient.addColorStop(0.5, alpha(color, opacity));
-  gradient.addColorStop(1, alpha(color, 0.98));
+  gradient.addColorStop(0, alpha(color, 0.045));
+  gradient.addColorStop(0.5, alpha(color, opacity * 0.58));
+  gradient.addColorStop(1, alpha(color, 0.66));
   ctx.strokeStyle = gradient;
   ctx.beginPath();
   ctx.moveTo(start.x, start.y);
@@ -111,11 +114,11 @@ function drawGrid(ctx: CanvasRenderingContext2D, width: number, height: number, 
   });
 
   ctx.save();
-  ctx.globalCompositeOperation = 'lighter';
+  ctx.globalCompositeOperation = 'source-over';
   ctx.lineWidth = 1;
   for (let i = -depth; i <= depth; i += 1) {
     const fade = 1 - Math.abs(i) / (depth + 1);
-    ctx.strokeStyle = `rgb(0 240 156 / ${0.055 + fade * 0.12})`;
+    ctx.strokeStyle = alpha(SCENE_COLORS.line, 0.028 + fade * 0.060);
     ctx.beginPath();
     const a = project(i, -depth);
     const b = project(i, depth);
@@ -135,9 +138,9 @@ function drawGrid(ctx: CanvasRenderingContext2D, width: number, height: number, 
     const v = -depth + deterministicNoise(i + 9) * depth * 2;
     const dot = project(u, v);
     const radius = 0.8 + deterministicNoise(i + 31) * 1.9;
-    ctx.fillStyle = `rgb(0 240 156 / ${0.12 + deterministicNoise(i + 44) * 0.42})`;
-    ctx.shadowColor = 'rgb(0 240 156 / 0.68)';
-    ctx.shadowBlur = 8;
+    ctx.fillStyle = alpha(SCENE_COLORS.line, 0.07 + deterministicNoise(i + 44) * 0.18);
+    ctx.shadowColor = alpha(SCENE_COLORS.line, 0.16);
+    ctx.shadowBlur = 4;
     ctx.beginPath();
     ctx.arc(dot.x, dot.y, radius, 0, Math.PI * 2);
     ctx.fill();
@@ -153,7 +156,7 @@ function drawRadialField(
   map: PortfolioIntelligenceMap,
 ) {
   ctx.save();
-  ctx.globalCompositeOperation = 'lighter';
+  ctx.globalCompositeOperation = 'source-over';
   map.axes.forEach((axis, index) => {
     const start = toRadians(AXIS_ANGLES[axis.id] - 36);
     const end = toRadians(AXIS_ANGLES[axis.id] + 36);
@@ -167,19 +170,19 @@ function drawRadialField(
     ctx.moveTo(0, 0);
     ctx.arc(0, 0, radiusX * currentRadius, start, end);
     ctx.closePath();
-    ctx.fillStyle = alpha(axis.color, 0.07);
+    ctx.fillStyle = alpha(axis.color, 0.040);
     ctx.fill();
     ctx.lineWidth = 1.4;
-    ctx.strokeStyle = alpha(axis.color, 0.36);
+    ctx.strokeStyle = alpha(axis.color, 0.22);
     ctx.stroke();
 
     ctx.beginPath();
     ctx.arc(0, 0, radiusX * projectedRadius, start, end);
     ctx.lineWidth = 2;
     ctx.setLineDash([4 + index, 7]);
-    ctx.strokeStyle = alpha(axis.color, 0.62);
-    ctx.shadowColor = alpha(axis.color, 0.76);
-    ctx.shadowBlur = 12;
+    ctx.strokeStyle = alpha(axis.color, 0.34);
+    ctx.shadowColor = alpha(axis.color, 0.18);
+    ctx.shadowBlur = 6;
     ctx.stroke();
     ctx.restore();
   });
@@ -188,7 +191,7 @@ function drawRadialField(
     ctx.beginPath();
     ctx.ellipse(center.x, center.y, radiusX * (i / 7), radiusY * (i / 7), 0, 0, Math.PI * 2);
     ctx.lineWidth = i === 7 ? 1.2 : 0.8;
-    ctx.strokeStyle = `rgb(255 255 255 / ${i === 7 ? 0.16 : 0.07})`;
+    ctx.strokeStyle = `rgb(238 243 234 / ${i === 7 ? 0.12 : 0.055})`;
     ctx.stroke();
   }
   ctx.restore();
@@ -214,12 +217,12 @@ function drawPositionColumn(
   drawGlowLine(ctx, start, end, color, lineWidth, 0.88);
 
   ctx.save();
-  ctx.globalCompositeOperation = 'lighter';
-  ctx.shadowColor = alpha(color, 0.9);
-  ctx.shadowBlur = 16;
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.shadowColor = alpha(color, 0.24);
+  ctx.shadowBlur = 8;
   const topGradient = ctx.createRadialGradient(end.x - 1, end.y - 1, 0, end.x, end.y, 7 + lineWidth);
-  topGradient.addColorStop(0, 'rgb(255 255 255 / 0.98)');
-  topGradient.addColorStop(0.25, alpha(color, 0.96));
+  topGradient.addColorStop(0, 'rgb(238 243 234 / 0.82)');
+  topGradient.addColorStop(0.25, alpha(color, 0.64));
   topGradient.addColorStop(1, alpha(color, 0));
   ctx.fillStyle = topGradient;
   ctx.beginPath();
@@ -238,15 +241,15 @@ function drawMissingNodes(
   if (map.missingPieces.length === 0) return;
 
   ctx.save();
-  ctx.globalCompositeOperation = 'lighter';
+  ctx.globalCompositeOperation = 'source-over';
   map.missingPieces.slice(0, 5).forEach((piece, index) => {
-    const color = map.axes.find((axis) => axis.id === piece.axis)?.color || '#FFB000';
+    const color = map.axes.find((axis) => axis.id === piece.axis)?.color || SCENE_COLORS.amber;
     const point = orbitPoint(center, radiusX, radiusY, piece.axis, piece.targetValue + 22 + index * 4);
     ctx.setLineDash([5, 5]);
     ctx.lineWidth = 1.4;
-    ctx.strokeStyle = alpha(color, piece.severity === 'high' ? 0.64 : 0.42);
-    ctx.shadowColor = alpha(color, 0.65);
-    ctx.shadowBlur = 13;
+    ctx.strokeStyle = alpha(color, piece.severity === 'high' ? 0.38 : 0.26);
+    ctx.shadowColor = alpha(color, 0.16);
+    ctx.shadowBlur = 6;
     ctx.beginPath();
     ctx.arc(point.x, point.y, piece.severity === 'high' ? 12 : 9, 0, Math.PI * 2);
     ctx.stroke();
@@ -273,18 +276,18 @@ function drawCore(ctx: CanvasRenderingContext2D, center: ScenePoint, radius: num
     center.y,
     radius,
   );
-  sphere.addColorStop(0, 'rgb(255 255 255 / 0.72)');
-  sphere.addColorStop(0.24, 'rgb(0 240 156 / 0.52)');
-  sphere.addColorStop(0.58, 'rgb(6 21 18 / 0.92)');
+  sphere.addColorStop(0, 'rgb(238 243 234 / 0.66)');
+  sphere.addColorStop(0.24, alpha(SCENE_COLORS.line, 0.30));
+  sphere.addColorStop(0.58, 'rgb(18 20 19 / 0.92)');
   sphere.addColorStop(1, 'rgb(0 0 0 / 0.96)');
   ctx.fillStyle = sphere;
-  ctx.shadowColor = 'rgb(0 240 156 / 0.45)';
-  ctx.shadowBlur = 26;
+  ctx.shadowColor = alpha(SCENE_COLORS.line, 0.16);
+  ctx.shadowBlur = 12;
   ctx.beginPath();
   ctx.arc(center.x, center.y, radius, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.strokeStyle = 'rgb(255 255 255 / 0.20)';
+  ctx.strokeStyle = 'rgb(238 243 234 / 0.16)';
   ctx.lineWidth = 1;
   ctx.stroke();
   ctx.restore();
@@ -301,10 +304,10 @@ function drawScene(
   ctx.clearRect(0, 0, width, height);
 
   const background = ctx.createRadialGradient(width * 0.48, height * 0.42, 0, width * 0.5, height * 0.55, width * 0.72);
-  background.addColorStop(0, 'rgb(0 240 156 / 0.14)');
-  background.addColorStop(0.32, 'rgb(0 42 28 / 0.16)');
+  background.addColorStop(0, alpha(SCENE_COLORS.line, 0.045));
+  background.addColorStop(0.32, 'rgb(18 20 19 / 0.22)');
   background.addColorStop(1, 'rgb(0 0 0 / 0)');
-  ctx.fillStyle = '#000';
+  ctx.fillStyle = SCENE_COLORS.card;
   ctx.fillRect(0, 0, width, height);
   ctx.fillStyle = background;
   ctx.fillRect(0, 0, width, height);
@@ -326,7 +329,7 @@ function drawScene(
   const topPositions = map.positions.slice(0, compact ? 8 : 14);
   if (topPositions.length > 0) {
     topPositions.forEach((position, index) => {
-      const color = map.axes.find((axis) => axis.id === position.axis)?.color || '#00F09C';
+      const color = map.axes.find((axis) => axis.id === position.axis)?.color || SCENE_COLORS.line;
       const heightScale = compact ? 0.86 : 1;
       const columnHeight = (18 + clamp(position.weight, 0, 42) * 2.2 + deterministicNoise(index + 5) * 14) * heightScale;
       drawPositionColumn(ctx, position, index, center, radiusX, radiusY, color, columnHeight);

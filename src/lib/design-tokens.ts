@@ -6,20 +6,21 @@ export function readCssToken(tokenName: string, fallback: string): string {
 
 export const AW_REFERENCE_TOKENS = {
   color: {
-    stage: '#505050',
-    card: '#000000',
-    cardRaised: '#050505',
-    cardMuted: 'rgb(255 255 255 / 0.055)',
-    text: '#FFFFFF',
-    textMuted: 'rgb(255 255 255 / 0.66)',
-    textDim: 'rgb(255 255 255 / 0.42)',
-    neon: '#00F09C',
-    amber: '#FFB000',
-    purple: '#8F42FF',
-    blue: '#5B7CFF',
-    danger: '#FF5C7A',
-    border: 'rgb(255 255 255 / 0.13)',
-    borderStrong: 'rgb(255 255 255 / 0.22)',
+    stage: '#101311',
+    card: '#121413',
+    cardRaised: '#171A18',
+    cardMuted: 'rgb(238 243 234 / 0.035)',
+    text: '#EEF3EA',
+    textMuted: 'rgb(221 232 216 / 0.72)',
+    textDim: 'rgb(174 190 170 / 0.62)',
+    mist: '#DDE8D8',
+    sage: '#AEBEAA',
+    line: '#A8C9A3',
+    amber: '#D8C27A',
+    blue: '#9FB6D9',
+    danger: '#D98F85',
+    border: 'rgb(238 243 234 / 0.12)',
+    borderStrong: 'rgb(238 243 234 / 0.18)',
   },
   fontSize: {
     caption: '11px',
@@ -43,8 +44,8 @@ export const AW_REFERENCE_TOKENS = {
     lg: '12px',
   },
   shadow: {
-    card: '0 46px 84px rgb(0 0 0 / 0.46), 0 10px 22px rgb(0 0 0 / 0.36)',
-    glow: '0 0 40px rgb(0 240 156 / 0.24)',
+    card: '0 24px 56px rgb(0 0 0 / 0.38), inset 0 1px 0 rgb(238 243 234 / 0.035)',
+    glow: '0 0 0 1px rgb(238 243 234 / 0.12), 0 14px 28px rgb(0 0 0 / 0.24)',
   },
 } as const;
 
@@ -52,29 +53,29 @@ export const AW_CHART_TOKENS = {
   surface: AW_REFERENCE_TOKENS.color.card,
   surfaceMuted: AW_REFERENCE_TOKENS.color.cardMuted,
   border: AW_REFERENCE_TOKENS.color.border,
-  borderSubtle: 'rgb(255 255 255 / 0.08)',
+  borderSubtle: 'rgb(238 243 234 / 0.06)',
   text: AW_REFERENCE_TOKENS.color.text,
   textMuted: AW_REFERENCE_TOKENS.color.textMuted,
-  accent: AW_REFERENCE_TOKENS.color.neon,
+  accent: AW_REFERENCE_TOKENS.color.mist,
   accentMuted: AW_REFERENCE_TOKENS.color.textMuted,
-  accentLine: AW_REFERENCE_TOKENS.color.neon,
-  success: AW_REFERENCE_TOKENS.color.neon,
+  accentLine: AW_REFERENCE_TOKENS.color.line,
+  success: AW_REFERENCE_TOKENS.color.line,
   warning: AW_REFERENCE_TOKENS.color.amber,
   danger: AW_REFERENCE_TOKENS.color.danger,
   info: AW_REFERENCE_TOKENS.color.blue,
   palette: [
-    AW_REFERENCE_TOKENS.color.neon,
-    AW_REFERENCE_TOKENS.color.amber,
-    AW_REFERENCE_TOKENS.color.purple,
+    AW_REFERENCE_TOKENS.color.line,
+    AW_REFERENCE_TOKENS.color.sage,
     AW_REFERENCE_TOKENS.color.blue,
+    AW_REFERENCE_TOKENS.color.amber,
   ],
 } as const;
 
 export function getAwChartPalette(): string[] {
   return [
-    readCssToken('--aw-neon-green', AW_REFERENCE_TOKENS.color.neon),
+    readCssToken('--aw-neon-green', AW_REFERENCE_TOKENS.color.line),
+    readCssToken('--aw-neon-purple', AW_REFERENCE_TOKENS.color.sage),
     readCssToken('--aw-neon-amber', AW_REFERENCE_TOKENS.color.amber),
-    readCssToken('--aw-neon-purple', AW_REFERENCE_TOKENS.color.purple),
     readCssToken('--aw-neon-blue', AW_REFERENCE_TOKENS.color.blue),
   ];
 }

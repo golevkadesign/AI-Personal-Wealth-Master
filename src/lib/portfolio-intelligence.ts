@@ -1,4 +1,5 @@
 import { AccountPortfolio, AccountPosition, DistributionItem, TerminalState } from '../types/terminal';
+import { AW_REFERENCE_TOKENS } from './design-tokens';
 import {
   PortfolioExposureAxis,
   PortfolioExposureAxisId,
@@ -9,10 +10,10 @@ import {
 } from '../types/portfolio-intelligence';
 
 const AXIS_META: Record<PortfolioExposureAxisId, Pick<PortfolioExposureAxis, 'id' | 'labelKey' | 'color'>> = {
-  growth: { id: 'growth', labelKey: 'portfolioIntelligence.axes.growth', color: '#00F09C' },
-  defense: { id: 'defense', labelKey: 'portfolioIntelligence.axes.defense', color: '#2EA8FF' },
-  liquidity: { id: 'liquidity', labelKey: 'portfolioIntelligence.axes.liquidity', color: '#8F42FF' },
-  hedge: { id: 'hedge', labelKey: 'portfolioIntelligence.axes.hedge', color: '#FFB000' },
+  growth: { id: 'growth', labelKey: 'portfolioIntelligence.axes.growth', color: AW_REFERENCE_TOKENS.color.line },
+  defense: { id: 'defense', labelKey: 'portfolioIntelligence.axes.defense', color: AW_REFERENCE_TOKENS.color.blue },
+  liquidity: { id: 'liquidity', labelKey: 'portfolioIntelligence.axes.liquidity', color: AW_REFERENCE_TOKENS.color.sage },
+  hedge: { id: 'hedge', labelKey: 'portfolioIntelligence.axes.hedge', color: AW_REFERENCE_TOKENS.color.amber },
 };
 
 const SYMBOL_AXIS: Record<string, PortfolioExposureAxisId> = {
