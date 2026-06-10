@@ -10,12 +10,14 @@
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
+    "check:i18n-hardcoded": "node scripts/check-i18n-hardcoded.mjs",
     "check:market-context": "node scripts/check-market-context.mjs",
     "check:market-context:force": "node scripts/check-market-context.mjs --force"
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.64",
     "@ai-sdk/react": "^3.0.170",
+    "@fontsource/material-symbols-rounded": "^5.2.45",
     "@google/genai": "^1.29.0",
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
@@ -29,8 +31,7 @@
     "express": "^4.21.2",
     "firebase": "^12.12.1",
     "lodash-es": "^4.18.1",
-    "longbridge": "^4.0.5",
-    "lucide-react": "^0.546.0",
+    "longbridge": "^4.3.0",
     "motion": "^12.38.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -52,6 +53,7 @@
     "autoprefixer": "^10.4.21",
     "esbuild": "^0.28.0",
     "eslint": "^10.4.0",
+    "firebase-tools": "^15.19.1",
     "puppeteer": "^24.43.1",
     "tailwindcss": "^4.1.14",
     "typescript": "~5.8.2"

@@ -11,18 +11,10 @@
 import React, { useMemo, useState } from 'react';
 import Markdown from 'react-markdown';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Clock, 
-  ChevronDown, 
-  Copy, 
-  Sparkles,
-  Check,
-  Bot,
-  Activity,
-  Layers
-} from 'lucide-react';
+import { MaterialIcon } from '@/src/components/ui/MaterialIcon';
 import { buildAssistantResponseViewModel } from '../../lib/chat-response-parser';
 import { AssistantResponseBlock } from '../../lib/chat-response-types';
+import { useTranslation } from '../../hooks/useTranslation';
 
 export interface AssistantResponseRendererProps {
   content: string;
@@ -39,22 +31,22 @@ export interface AssistantResponseRendererProps {
 
 // 默认的高清 Markdown 渲染配置
 const DefaultP = React.memo(({ children }: any) => (
-  <p className="mb-3 text-[13px] text-[#A0A5AF] leading-relaxed font-sans">{children}</p>
+  <p className="mb-3 aw-body aw-text-secondary leading-relaxed font-sans">{children}</p>
 ));
 DefaultP.displayName = 'DefaultP';
 
 const DefaultLi = React.memo(({ children }: any) => (
-  <li className="mb-1 text-[13px] text-[#A0A5AF] list-disc ml-5 leading-relaxed font-sans">{children}</li>
+  <li className="mb-1 aw-body aw-text-secondary list-disc ml-5 leading-relaxed font-sans">{children}</li>
 ));
 DefaultLi.displayName = 'DefaultLi';
 
 const DefaultStrong = React.memo(({ children }: any) => (
-  <strong className="font-semibold text-[#E7D7B0] font-sans">{children}</strong>
+  <strong className="font-semibold aw-text-primary font-sans">{children}</strong>
 ));
 DefaultStrong.displayName = 'DefaultStrong';
 
 const DefaultPre = React.memo(({ children }: any) => (
-  <pre className="my-3 p-4 rounded-xl bg-[#0B0D10] text-[#E7D7B0] text-[12px] font-mono border border-[#1C2026] overflow-x-auto selection:bg-[#C9B284]/20">
+  <pre className="aw-panel-muted my-3 p-4 aw-body aw-text-primary font-mono overflow-x-auto">
     {children}
   </pre>
 ));
@@ -63,12 +55,12 @@ DefaultPre.displayName = 'DefaultPre';
 const DefaultCode = React.memo(({ inline, children, ...props }: any) => {
   if (inline) {
     return (
-      <code className="bg-[#12151A] text-[#C9B284] px-1.5 py-0.5 rounded text-[11px] font-mono border border-[#1C2026] mx-0.5 font-medium" {...props}>
+      <code className="aw-state-chip mx-0.5 font-medium normal-case" {...props}>
         {children}
       </code>
     );
   }
-  return <code className="text-[#E7D7B0] text-[12px] font-mono" {...props}>{children}</code>;
+  return <code className="aw-text-primary aw-body font-mono" {...props}>{children}</code>;
 });
 DefaultCode.displayName = 'DefaultCode';
 
@@ -80,6 +72,7 @@ export const AssistantResponseRenderer: React.FC<AssistantResponseRendererProps>
   isInteractionDisabled = false,
   onQuickPrompt,
 }) => {
+  const { t } = useTranslation();
   const [isCopied, setIsCopied] = useState(false);
   const [isRawExpanded, setIsRawExpanded] = useState(false);
   const [expandedAccordionIndexes, setExpandedAccordionIndexes] = useState<Record<number, boolean>>({});
@@ -220,18 +213,18 @@ export const AssistantResponseRenderer: React.FC<AssistantResponseRendererProps>
     switch (block.type) {
       case 'summary':
         return (
-          <div key={idx} className="rounded-xl border border-[#C9B284]/20 bg-[#12151A]/80 p-4 relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-3 text-[14px] text-[#C9B284]/15 font-mono select-none pointer-events-none uppercase tracking-widest font-bold">
-              SUMMARY
+          <div key={idx} className="aw-structured-card p-4 relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-3 aw-caption text-aw-accent-mist/20 font-mono select-none pointer-events-none uppercase font-bold">
+              {t('chat.summaryFallbackTitle')}
             </div>
             <div className="flex items-center gap-2 mb-2">
-              <Sparkles className="w-4 h-4 text-[#C9B284]" />
-              <h4 className="text-[13px] font-semibold text-[#E7D7B0] tracking-wide">{block.title || '核心判断'}</h4>
+              <MaterialIcon name="auto_awesome" size={16} className="text-aw-accent-mist" />
+              <h4 className="aw-body font-semibold aw-text-primary tracking-normal">{block.title || t('chat.summaryFallbackTitle')}</h4>
             </div>
             <div className="space-y-2">
               {block.items.slice(0, 2).map((item, itemIdx) => (
-                <div key={itemIdx} className="flex items-start gap-2 text-[12.5px] leading-relaxed text-[#D0D4DC]">
-                  <span className="text-[#C9B284] select-none font-semibold mt-0.5">▪</span>
+                <div key={itemIdx} className="flex items-start gap-2 aw-body leading-relaxed aw-text-secondary">
+                  <span className="text-aw-accent-mist select-none font-semibold mt-0.5">▪</span>
                   <p>{item}</p>
                 </div>
               ))}
@@ -243,8 +236,8 @@ export const AssistantResponseRenderer: React.FC<AssistantResponseRendererProps>
         return (
           <div key={idx} className="space-y-2">
             {block.title && (
-              <div className="text-[12px] font-serif text-[#C9B284] font-medium tracking-wider uppercase mb-1 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#C9B284]"></span>
+              <div className="aw-section-kicker mb-1 flex items-center gap-1.5">
+                <span className="aw-status-dot aw-status-success"></span>
                 {block.title}
               </div>
             )}
@@ -252,56 +245,52 @@ export const AssistantResponseRenderer: React.FC<AssistantResponseRendererProps>
               {block.cards.slice(0, 3).map((card) => {
                 const toneConfig = {
                   risk: {
-                    border: 'border-rose-500/20',
-                    bg: 'bg-rose-500/5',
-                    text: 'text-rose-400',
-                    labelColor: 'text-[#E7D7B0]',
-                    badge: 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                    card: 'aw-danger-panel',
+                    text: 'text-aw-danger',
+                    labelColor: 'aw-text-primary',
+                    badge: 'aw-state-chip-danger'
                   },
                   opportunity: {
-                    border: 'border-emerald-500/20',
-                    bg: 'bg-emerald-500/5',
-                    text: 'text-emerald-400',
-                    labelColor: 'text-[#E7D7B0]',
-                    badge: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                    card: 'aw-success-panel',
+                    text: 'text-aw-success',
+                    labelColor: 'aw-text-primary',
+                    badge: 'aw-state-chip-success'
                   },
                   action: {
-                    border: 'border-[#C9B284]/25',
-                    bg: 'bg-[#C9B284]/5',
-                    text: 'text-[#C9B284]',
-                    labelColor: 'text-[#E7D7B0]',
-                    badge: 'bg-[#C9B284]/10 text-[#C9B284] border-[#C9B284]/20'
+                    card: 'aw-structured-card',
+                    text: 'text-aw-accent-mist',
+                    labelColor: 'aw-text-primary',
+                    badge: 'aw-state-chip'
                   },
                   neutral: {
-                    border: 'border-[#1C2026]',
-                    bg: 'bg-[#12151A]/60',
-                    text: 'text-neutral-400',
-                    labelColor: 'text-neutral-300',
-                    badge: 'bg-[#1C2026] text-neutral-400 border-neutral-700/10'
+                    card: 'aw-structured-card-muted',
+                    text: 'aw-text-tertiary',
+                    labelColor: 'aw-text-secondary',
+                    badge: 'aw-state-chip'
                   }
                 }[card.tone || 'neutral'];
 
                 return (
                   <div 
                     key={card.id} 
-                    className={`flex flex-col p-4 rounded-xl border ${toneConfig.border} ${toneConfig.bg} relative transition-all duration-200 hover:scale-[1.01]`}
+                    className={`flex flex-col p-4 relative transition-colors ${toneConfig.card}`}
                   >
                     <div className="flex items-center justify-between gap-2 mb-2">
-                      <span className="text-[12px] font-semibold text-[#E7D7B0]">
+                      <span className="aw-body font-semibold aw-text-primary">
                         {card.title}
                       </span>
-                      <span className={`text-[9px] px-1.5 py-0.5 rounded border uppercase tracking-widest font-mono font-bold ${toneConfig.badge}`}>
+                      <span className={`aw-state-chip ${toneConfig.badge}`}>
                         {card.tone}
                       </span>
                     </div>
                     
-                    <div className="text-[12px] text-neutral-300 leading-relaxed font-sans mb-2 flex-grow">
+                    <div className="aw-body aw-text-secondary leading-relaxed font-sans mb-2 flex-grow">
                       {card.body}
                     </div>
 
                     {card.evidence && (
-                      <div className="mt-2 pt-2 border-t border-[#1C2026] text-[10px] font-mono text-[#8C8370] leading-normal truncate" title={card.evidence}>
-                        Evidence: {card.evidence}
+                      <div className="mt-2 pt-2 border-t border-aw-border-subtle aw-caption font-mono aw-text-tertiary leading-normal truncate" title={card.evidence}>
+                        {t('chat.evidence')}: {card.evidence}
                       </div>
                     )}
                   </div>
@@ -315,15 +304,15 @@ export const AssistantResponseRenderer: React.FC<AssistantResponseRendererProps>
         return (
           <div key={idx} className="space-y-1.5">
             {block.title && (
-              <div className="text-[12px] font-serif text-[#C9B284] font-medium tracking-wider uppercase mb-1 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#C9B284]"></span>
+              <div className="aw-section-kicker mb-1 flex items-center gap-1.5">
+                <span className="aw-status-dot aw-status-success"></span>
                 {block.title}
               </div>
             )}
-            <div className="overflow-auto max-h-[260px] custom-scroll rounded-xl border border-[#1C2026] bg-[#0E1114]">
-              <table className="w-full text-left border-collapse text-[11.5px] font-mono whitespace-nowrap">
+            <div className="aw-table-shell overflow-auto max-h-[260px] custom-scroll">
+              <table className="aw-table text-left font-mono whitespace-nowrap">
                 <thead>
-                  <tr className="bg-[#12151A] border-b border-[#1C2026] text-[#8C8370]">
+                  <tr>
                     {block.headers.map((h, hIdx) => (
                       <th key={hIdx} className="px-3.5 py-2 font-semibold">
                         {h}
@@ -331,11 +320,11 @@ export const AssistantResponseRenderer: React.FC<AssistantResponseRendererProps>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#1C2026]">
+                <tbody>
                   {block.rows.map((row, rIdx) => (
-                    <tr key={rIdx} className="hover:bg-[#12151A]/60 transition-colors">
+                    <tr key={rIdx}>
                       {row.map((cell, cIdx) => (
-                        <td key={cIdx} className="px-3.5 py-2 text-neutral-300">
+                        <td key={cIdx} className="px-3.5 py-2 aw-text-secondary">
                           {cell}
                         </td>
                       ))}
@@ -355,27 +344,27 @@ export const AssistantResponseRenderer: React.FC<AssistantResponseRendererProps>
         return (
           <div key={idx} className="space-y-2">
             {block.title && (
-              <div className="text-[12px] font-serif text-[#C9B284] font-medium tracking-wider uppercase mb-1 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#C9B284]"></span>
+              <div className="aw-section-kicker mb-1 flex items-center gap-1.5">
+                <span className="aw-status-dot aw-status-success"></span>
                 {block.title}
               </div>
             )}
-            <div className="space-y-1.5 bg-[#12151A]/40 rounded-xl border border-[#1C2026]/80 p-3.5">
+            <div className="aw-structured-card-muted space-y-1.5 p-3.5">
               {bulletsToShow.map((bullet, bIdx) => (
-                <div key={bIdx} className="flex items-start gap-2.5 text-[12.5px] leading-relaxed text-neutral-300">
-                  <span className="font-mono text-[#C9B284] select-none font-semibold mt-0.5 text-[11px]">[{bIdx + 1}]</span>
+                <div key={bIdx} className="flex items-start gap-2.5 aw-body leading-relaxed aw-text-secondary">
+                  <span className="font-mono text-aw-accent-mist select-none font-semibold mt-0.5 aw-caption">[{bIdx + 1}]</span>
                   <div className="font-sans flex-1">{bullet}</div>
                 </div>
               ))}
               {hasMoreBullets && (
-                <div className="mt-2 pt-1 border-t border-[#1C2026]/30 flex justify-end">
+                <div className="mt-2 pt-1 border-t border-aw-border-subtle flex justify-end">
                   <button
                     type="button"
                     onClick={() => setExpandedBullets(prev => ({ ...prev, [idx]: !prev[idx] }))}
-                    className="text-[11px] font-mono text-[#C9B284] hover:text-[#E7D7B0] transition-colors flex items-center gap-1 cursor-pointer"
+                    className="aw-chat-meta-action cursor-pointer"
                   >
-                    <span>{isBulletsExpanded ? '收起局部内容' : `展开全部 ${block.items.length} 条`}</span>
-                    <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${isBulletsExpanded ? 'rotate-180' : ''}`} />
+                    <span>{isBulletsExpanded ? t('chat.collapseLocal') : `${t('chat.expandAllPrefix')} ${block.items.length} ${t('chat.expandAllSuffix')}`}</span>
+                    <MaterialIcon name="keyboard_arrow_down" size={16} className={`transition-transform duration-200 ${isBulletsExpanded ? 'rotate-180' : ''}`} />
                   </button>
                 </div>
               )}
@@ -386,17 +375,17 @@ export const AssistantResponseRenderer: React.FC<AssistantResponseRendererProps>
 
       case 'chips':
         return (
-          <div key={idx} className="space-y-1.5 bg-[#12151A]/40 p-3 rounded-xl border border-[#1C2026] flex flex-col gap-1">
+          <div key={idx} className="aw-structured-card-muted space-y-1.5 p-3 flex flex-col gap-1">
             {block.title && (
-              <div className="text-[10px] font-mono text-[#8C8370] uppercase tracking-wider">{block.title}:</div>
+              <div className="aw-caption font-mono aw-text-tertiary uppercase">{block.title}:</div>
             )}
             <div className="flex flex-wrap gap-1.5">
               {block.chips.map((chip, cIdx) => (
                 <span 
                   key={cIdx} 
-                  className="text-[11px] font-mono text-[#E7D7B0] bg-[#12151A]/90 border border-[#1C2026] rounded-full px-2.5 py-0.5 inline-flex items-center gap-1"
+                  className="aw-status-pill font-mono"
                 >
-                  <span className="w-1 h-1 rounded-full bg-[#C9B284]" />
+                  <span className="aw-status-dot aw-status-success" />
                   {chip}
                 </span>
               ))}
@@ -409,12 +398,12 @@ export const AssistantResponseRenderer: React.FC<AssistantResponseRendererProps>
         const validPrompts = block.prompts.filter(p => typeof p === 'string' && p.trim().length > 0);
         if (validPrompts.length === 0) return null;
         return (
-          <div key={idx} className="space-y-2 border-t border-[#1C2026] pt-3">
+          <div key={idx} className="space-y-2 border-t border-aw-border-subtle pt-3">
             {block.title && (
-              <div className="text-[10px] font-mono text-[#8C8370] uppercase tracking-widest font-semibold flex items-center gap-1.5">
-                <span className="flex-1 border-t border-[#1C2026]"></span>
+              <div className="aw-caption font-mono aw-text-tertiary uppercase font-semibold flex items-center gap-1.5">
+                <span className="flex-1 border-t border-aw-border-subtle"></span>
                 {block.title}
-                <span className="flex-1 border-t border-[#1C2026]"></span>
+                <span className="flex-1 border-t border-aw-border-subtle"></span>
               </div>
             )}
             <div className="flex flex-col gap-1.5">
@@ -429,20 +418,20 @@ export const AssistantResponseRenderer: React.FC<AssistantResponseRendererProps>
                     type="button"
                     disabled={isDisabled}
                     onClick={() => handleFollowupPrompt(safePrompt)}
-                    className={`text-left w-full text-[12px] rounded-xl px-4 py-2 transition-all duration-200 flex items-center justify-between gap-3 group border ${
+                    className={`text-left w-full aw-body rounded-xl px-4 py-2 transition-all duration-200 flex items-center justify-between gap-3 group border ${
                       isDisabled
-                        ? 'bg-[#12151A]/40 text-neutral-500 border-[#1C2026] cursor-not-allowed opacity-50'
-                        : 'bg-[#12151A] hover:bg-[#1C2026] text-neutral-300 hover:text-white border-[#1C2026] hover:border-[#C9B284]/20 cursor-pointer'
+                        ? 'bg-aw-surface-2 aw-text-tertiary border-aw-border-subtle cursor-not-allowed opacity-50'
+                        : 'bg-aw-surface-2 hover:bg-aw-surface-3 aw-text-secondary hover:text-aw-text-primary border-aw-border-subtle hover:border-aw-border-strong cursor-pointer'
                     }`}
                   >
                     <span className="font-sans font-medium line-clamp-1">{safePrompt}</span>
                     {isCurrentSubmitted ? (
-                      <span className="flex items-center gap-1 text-[11px] font-mono text-[#C9B284] shrink-0">
-                        <Check className="w-3.5 h-3.5 text-[#C9B284]" />
-                        <span>已发送</span>
+                      <span className="flex items-center gap-1 aw-caption font-mono text-aw-accent-mist shrink-0">
+                        <MaterialIcon name="check" size={16} className="text-aw-accent-mist" />
+                        <span>{t('chat.sent')}</span>
                       </span>
                     ) : (
-                      <ChevronDown className="w-3.5 h-3.5 rotate-270 opacity-30 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all text-[#C9B284] shrink-0" />
+                      <MaterialIcon name="keyboard_arrow_down" size={16} className="rotate-270 opacity-30 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all text-aw-accent-mist shrink-0" />
                     )}
                   </button>
                 );
@@ -455,13 +444,13 @@ export const AssistantResponseRenderer: React.FC<AssistantResponseRendererProps>
       case 'accordion': {
         const isExpanded = !!expandedAccordionIndexes[idx];
         return (
-          <div key={idx} className="rounded-xl border border-[#1C2026] bg-[#0E1114] overflow-hidden">
+          <div key={idx} className="aw-structured-card overflow-hidden">
             <button
               onClick={() => toggleAccordion(idx)}
-              className="w-full flex items-center justify-between px-4 py-2.5 text-[12px] font-serif text-[#E7D7B0] bg-[#12151A]/60 font-medium tracking-wide hover:bg-[#12151A] transition-colors"
+              className="w-full flex items-center justify-between px-4 py-2.5 aw-body aw-text-primary font-medium tracking-normal hover:bg-aw-surface-3 transition-colors"
             >
-              <span>{block.title || '展开额外明细'}</span>
-              <ChevronDown className={`w-4 h-4 text-[#8C8370] transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+              <span>{block.title || t('chat.accordionFallbackTitle')}</span>
+              <MaterialIcon name="keyboard_arrow_down" size={16} className={`aw-text-tertiary transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
             </button>
             <AnimatePresence initial={false}>
               {isExpanded && (
@@ -469,9 +458,9 @@ export const AssistantResponseRenderer: React.FC<AssistantResponseRendererProps>
                   initial={{ height: 0 }}
                   animate={{ height: 'auto' }}
                   exit={{ height: 0 }}
-                  className="overflow-hidden border-t border-[#1C2026]"
+                  className="overflow-hidden border-t border-aw-border-subtle"
                 >
-                  <div className="p-4 text-[12.5px] leading-relaxed">
+                  <div className="p-4 aw-body leading-relaxed">
                     {renderMarkdown(block.content)}
                   </div>
                 </motion.div>
@@ -483,7 +472,7 @@ export const AssistantResponseRenderer: React.FC<AssistantResponseRendererProps>
 
       case 'markdownFallback':
         return (
-          <div key={idx} className="text-[13px] leading-relaxed text-neutral-300">
+          <div key={idx} className="aw-body leading-relaxed aw-text-secondary">
             {renderMarkdown(block.content)}
           </div>
         );
@@ -504,18 +493,18 @@ export const AssistantResponseRenderer: React.FC<AssistantResponseRendererProps>
             <button
               type="button"
               onClick={handleCopyRaw}
-              className="inline-flex items-center gap-1.5 text-[10px] font-mono text-[#8C8370] hover:text-[#C9B284] transition-colors cursor-pointer"
-              title="复制原文"
+              className="aw-chat-meta-action cursor-pointer"
+              title={t('chat.copyOriginal')}
             >
               {isCopied ? (
                 <>
-                  <Check className="w-3 h-3 text-emerald-400" />
-                  <span className="text-emerald-400">Copied</span>
+                  <MaterialIcon name="check" size={16} className="text-aw-success" />
+                  <span className="text-aw-success">{t('chat.copied')}</span>
                 </>
               ) : (
                 <>
-                  <Copy className="w-3 h-3" />
-                  <span>Copy</span>
+                  <MaterialIcon name="content_copy" size={16} />
+                  <span>{t('chat.copy')}</span>
                 </>
               )}
             </button>
@@ -528,43 +517,43 @@ export const AssistantResponseRenderer: React.FC<AssistantResponseRendererProps>
   return (
     <div className="w-full text-left font-sans flex flex-col space-y-4 select-text">
       {/* Container header / Terminal Meta Header info */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#1C2026] pb-3 text-[11px] font-mono tracking-tight text-[#8C8370]">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-aw-border-subtle pb-3 aw-caption font-mono aw-text-tertiary">
         <div className="flex items-center gap-1.5">
-          <Bot className="w-4 h-4 text-[#C9B284]" />
-          <span className="font-serif text-[#E7D7B0] font-medium tracking-wide">ARBITRA ANALYSIS</span>
+          <MaterialIcon name="smart_toy" size={16} className="text-aw-accent-mist" />
+          <span className="aw-text-primary font-medium tracking-normal">{t('chat.analysisTitle')}</span>
         </div>
         
         <div className="flex flex-wrap items-center gap-1.5">
           {metadata?.timeTaken && (
-            <span className="bg-[#12151A] px-2 py-0.5 rounded border border-[#1C2026] flex items-center gap-1 text-[#8C8370]" title={`Took ${metadata.timeTaken}ms`}>
-              <Activity className="w-3 h-3 text-[#C9B284]" />
+            <span className="aw-state-chip" title={`${t('chat.took')} ${metadata.timeTaken}ms`}>
+              <MaterialIcon name="monitoring" size={16} className="text-aw-accent-mist" />
               {(metadata.timeTaken / 1000).toFixed(1)}s
             </span>
           )}
           {viewModel.meta.confidence && (
-            <span className={`px-2 py-0.5 rounded border flex items-center gap-1 ${
+            <span className={`aw-state-chip ${
               viewModel.meta.confidence === 'high' 
-                ? 'bg-emerald-500/5 text-emerald-400 border-emerald-500/20' 
-                : 'bg-amber-500/5 text-amber-400 border-amber-500/15'
+                ? 'aw-state-chip-success' 
+                : 'aw-state-chip-warning'
             }`}>
-              Parsed: {viewModel.meta.confidence}
+              {t('chat.parsed')}: {viewModel.meta.confidence}
             </span>
           )}
           {viewModel.meta.estimatedReadMinutes && (
-            <span className="bg-[#12151A] px-2 py-0.5 rounded border border-[#1C2026] flex items-center gap-1 text-[#8C8370]">
-              <Clock className="w-3 h-3" />
-              约 {viewModel.meta.estimatedReadMinutes} 分钟
+            <span className="aw-state-chip">
+              <MaterialIcon name="schedule" size={16} />
+              {t('chat.readMinutesPrefix')} {viewModel.meta.estimatedReadMinutes} {t('chat.readMinutesSuffix')}
             </span>
           )}
           {metadata?.liveSources?.includes('longbridge') && (
-            <span className="bg-emerald-500/5 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded flex items-center gap-1">
-              ● 实盘行情源已激活
+            <span className="aw-state-chip aw-state-chip-success">
+              <span className="aw-status-dot aw-status-success" /> {t('chat.liveSourceActive')}
             </span>
           )}
           {metadata?.hasMemoryUpdate && (
-            <span className="bg-[#12151A] border border-[#1C2026] px-2 py-0.5 rounded text-[#C9B284] flex items-center gap-1">
-              <Layers className="w-3 h-3" />
-              记忆快照刷新
+            <span className="aw-state-chip">
+              <MaterialIcon name="layers" size={16} />
+              {t('chat.memorySnapshotRefreshed')}
             </span>
           )}
         </div>
@@ -576,14 +565,14 @@ export const AssistantResponseRenderer: React.FC<AssistantResponseRendererProps>
 
         {/* Collapsible Secondary Blocks */}
         {secondaryBlocks.length > 0 && (
-          <div className="rounded-xl border border-[#1C2026] bg-[#0E1114] overflow-hidden">
+          <div className="aw-structured-card overflow-hidden">
             <button
               type="button"
               onClick={() => setIsSecondaryExpanded(!isSecondaryExpanded)}
-              className="w-full flex items-center justify-between px-4 py-2.5 text-[12px] font-serif text-[#E7D7B0] bg-[#12151A]/60 font-medium tracking-wide hover:bg-[#12151A] transition-colors cursor-pointer"
+              className="w-full flex items-center justify-between px-4 py-2.5 aw-body aw-text-primary font-medium tracking-normal hover:bg-aw-surface-3 transition-colors cursor-pointer"
             >
-              <span>更多分析细节</span>
-              <ChevronDown className={`w-4 h-4 text-[#8C8370] transition-transform duration-200 ${isSecondaryExpanded ? 'rotate-180' : ''}`} />
+              <span>{t('chat.moreDetails')}</span>
+              <MaterialIcon name="keyboard_arrow_down" size={16} className={`aw-text-tertiary transition-transform duration-200 ${isSecondaryExpanded ? 'rotate-180' : ''}`} />
             </button>
             <AnimatePresence initial={false}>
               {isSecondaryExpanded && (
@@ -591,7 +580,7 @@ export const AssistantResponseRenderer: React.FC<AssistantResponseRendererProps>
                   initial={{ height: 0 }}
                   animate={{ height: 'auto' }}
                   exit={{ height: 0 }}
-                  className="overflow-hidden border-t border-[#1C2026]"
+                  className="overflow-hidden border-t border-aw-border-subtle"
                 >
                   <div className="p-4 space-y-4">
                     {secondaryBlocks.map((block, sIdx) => renderBlock(block, sIdx + 100))}
@@ -604,38 +593,38 @@ export const AssistantResponseRenderer: React.FC<AssistantResponseRendererProps>
       </div>
 
       {/* Persistent Original text display Accordion at footer container */}
-      <div className="border-t border-[#1C2026] pt-3 mt-1 text-left">
+      <div className="border-t border-aw-border-subtle pt-3 mt-1 text-left">
         <div className="flex items-center justify-between">
           <button
             onClick={() => setIsRawExpanded(!isRawExpanded)}
-            className="inline-flex items-center gap-1.5 text-[11px] font-mono text-[#8C8370] hover:text-[#C9B284] transition-colors cursor-pointer"
+            className="aw-chat-meta-action cursor-pointer"
           >
-            <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isRawExpanded ? 'rotate-180' : ''}`} />
-            <span>{isRawExpanded ? '收起完整原文' : '查看完整原文 / Raw'}</span>
+            <MaterialIcon name="keyboard_arrow_down" size={16} className={`transition-transform duration-200 ${isRawExpanded ? 'rotate-180' : ''}`} />
+            <span>{isRawExpanded ? t('chat.collapseFullRaw') : t('chat.viewFullRaw')}</span>
           </button>
 
           <button
             onClick={handleCopyRaw}
-            className="inline-flex items-center gap-1 text-[11px] font-mono text-[#8C8370] hover:text-[#C9B284] transition-colors cursor-pointer"
-            title="复制 AI 分析原文"
+            className="aw-chat-meta-action cursor-pointer"
+            title={t('chat.copyAiRaw')}
           >
             {isCopied ? (
               <>
-                <Check className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-emerald-400">Copied</span>
+                <MaterialIcon name="check" size={16} className="text-aw-success" />
+                <span className="text-aw-success">{t('chat.copied')}</span>
               </>
             ) : (
               <>
-                <Copy className="w-3.5 h-3.5" />
-                <span>Copy</span>
+                <MaterialIcon name="content_copy" size={16} />
+                <span>{t('chat.copy')}</span>
               </>
             )}
           </button>
         </div>
 
         {isRawExpanded && (
-          <div className="mt-1 text-[10px] font-mono text-[#8C8370]/70 pl-5">
-            包装层不会改写原始回答，可在此查看完整内容。
+          <div className="mt-1 aw-caption font-mono aw-text-tertiary pl-5">
+            {t('chat.rawWrapperDesc')}
           </div>
         )}
 
@@ -647,7 +636,7 @@ export const AssistantResponseRenderer: React.FC<AssistantResponseRendererProps>
               exit={{ height: 0, opacity: 0 }}
               className="overflow-hidden mt-2.5"
             >
-              <div className="bg-[#0B0D10]/80 p-4 rounded-xl border border-[#1C2026] text-[12.5px] leading-relaxed text-neutral-300 max-h-[350px] overflow-y-auto custom-scroll selection:bg-[#C9B284]/20">
+              <div className="aw-panel-muted p-4 aw-body leading-relaxed aw-text-secondary max-h-[350px] overflow-y-auto custom-scroll">
                 {renderMarkdown(viewModel.rawText || content)}
               </div>
             </motion.div>

@@ -19,6 +19,7 @@ export interface PublicAppSettings {
   ragSchema?: string;
   sentinelCooldown?: number;
   heartbeatInterval?: number;
+  financeRefreshInterval?: string;
   liquidityBufferMonths?: number;
   strategicDebtThreshold?: number;
 }
@@ -57,6 +58,7 @@ export const defaultSettings: AppSettings = {
   sentinelModel: 'gemini-2.5-flash',
   sentinelCooldown: 60,
   heartbeatInterval: 180,
+  financeRefreshInterval: '15 minutes',
   liquidityBufferMonths: 6,
   strategicDebtThreshold: 40,
 };
@@ -87,6 +89,7 @@ export const getPublicSettings = (): PublicAppSettings => {
         ragSchema: full.ragSchema ?? defaultSettings.ragSchema,
         sentinelCooldown: full.sentinelCooldown ?? defaultSettings.sentinelCooldown,
         heartbeatInterval: full.heartbeatInterval ?? defaultSettings.heartbeatInterval,
+        financeRefreshInterval: full.financeRefreshInterval ?? defaultSettings.financeRefreshInterval,
         liquidityBufferMonths: full.liquidityBufferMonths ?? defaultSettings.liquidityBufferMonths,
         strategicDebtThreshold: full.strategicDebtThreshold ?? defaultSettings.strategicDebtThreshold,
       };
@@ -110,6 +113,7 @@ export const savePublicSettings = (settings: PublicAppSettings) => {
       ragSchema: settings.ragSchema,
       sentinelCooldown: settings.sentinelCooldown,
       heartbeatInterval: settings.heartbeatInterval,
+      financeRefreshInterval: settings.financeRefreshInterval,
       liquidityBufferMonths: settings.liquidityBufferMonths,
       strategicDebtThreshold: settings.strategicDebtThreshold,
     };

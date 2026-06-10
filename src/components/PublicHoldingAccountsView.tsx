@@ -1,10 +1,17 @@
 import React from 'react';
-import { Sparkles } from 'lucide-react';
 import { ChartWidget } from './ChartWidget';
 import { ReactECharts } from './ReactECharts';
 import { getCurrencySymbol, getHoldingMarketValue } from './chart-configs';
 import { useWealthStore } from '../hooks/useWealthStore';
 import { AccountPortfolio } from '../types/terminal';
+import { MaterialIcon } from './ui/MaterialIcon';
+import { getAwChartPalette, readCssToken } from '../lib/design-tokens';
+import { useInteractionStore } from '../hooks/useInteractionStore';
+import {
+  createPortfolioIntelligenceWorkbenchSession,
+  createPortfolioReviewWorkbenchSession,
+} from '../lib/workbench-session';
+import { PortfolioIntelligenceMapView } from './PortfolioIntelligenceMapView';
 
 interface PublicHoldingAccountsViewProps {
   title: string;
@@ -39,6 +46,7 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
   const [ctaError, setCtaError] = React.useState<string | null>(null);
   const fetchLongbridgeAccountPortfolios = useWealthStore(state => state.fetchLongbridgeAccountPortfolios);
   const createPortfolioReviewSession = useWealthStore(state => state.createPortfolioReviewSession);
+  const openWorkbench = useInteractionStore(state => state.openWorkbench);
 
   const handleReload = async () => {
     setIsRefreshing(true);
@@ -53,10 +61,22 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
     setCtaError(null);
     const session = createPortfolioReviewSession();
     if (session) {
+      openWorkbench(createPortfolioReviewWorkbenchSession({
+        sessionId: session.id,
+        accountPortfolios,
+        terminalState: useWealthStore.getState().data,
+      }));
       window.dispatchEvent(new CustomEvent('open-portfolio-review', { detail: { sessionId: session.id } }));
     } else {
-      setCtaError('当前没有可复盘的持仓数据，请先同步券商账户或录入公开市场持仓。');
+      setCtaError(t('dashboard.reviewUnavailable'));
     }
+  };
+
+  const handleOpenPortfolioIntelligence = () => {
+    openWorkbench(createPortfolioIntelligenceWorkbenchSession({
+      accountPortfolios,
+      terminalState: useWealthStore.getState().data,
+    }));
   };
 
   const hasData = accountPortfolios && accountPortfolios.length > 0;
@@ -68,50 +88,57 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
   else if (syncStatus === 'error' && !hasData) widgetStatus = 'error';
   else if (!hasData) widgetStatus = 'empty'; // fallback
 
-  const colors = ['#C9B284', '#6B8E6B', '#4A7FB0', '#A87BB0', '#D39C5E', '#A1A658', '#428C8C', '#8C8C8C'];
+  const colors = getAwChartPalette();
 
   // Header status badge and subtitle logic
-  let statusText = '已同步';
-  let badgeStyle = "bg-emerald-950/40 text-emerald-400 border border-emerald-900/30";
-  let statusSubText = '持仓与估值已刷新';
+  let statusText = t('nav.synced');
+  let badgeStyle = "border-aw-border-subtle text-aw-success bg-aw-surface-3";
+  let statusDotClass = "aw-status-success";
+  let statusSubText = t('dashboard.refreshed');
 
   if (isRefreshing || syncStatus === 'loading') {
-    statusText = '同步中...';
-    badgeStyle = "bg-amber-950/40 text-amber-400 border border-amber-900/30 animate-pulse";
-    statusSubText = '正在从第三方券商刷新持仓与实时行情';
+    statusText = t('nav.syncing');
+    badgeStyle = "border-aw-border-subtle text-aw-warning bg-aw-surface-3 animate-pulse";
+    statusDotClass = "aw-status-warning";
+    statusSubText = t('dashboard.refreshingBroker');
   } else if (syncStatus === 'error' || accountPortfolios.some(a => a.meta?.error)) {
-    statusText = '部分异常';
-    badgeStyle = "bg-rose-950/40 text-rose-400 border border-rose-900/30";
-    statusSubText = '部分账户连接异常，请检查 API 凭证或网络';
+    statusText = t('dashboard.partialException');
+    badgeStyle = "border-aw-border-subtle text-aw-danger bg-aw-surface-3";
+    statusDotClass = "aw-status-danger";
+    statusSubText = t('dashboard.partialError');
   } else if (!hasData || syncStatus === 'empty') {
-    statusText = '暂无持仓';
-    badgeStyle = "bg-zinc-800/40 text-zinc-400 border border-zinc-700/30";
-    statusSubText = '暂无同步持仓数据';
+    statusText = t('dashboard.noHoldings');
+    badgeStyle = "border-aw-border-subtle aw-text-tertiary bg-aw-surface-3";
+    statusDotClass = "";
+    statusSubText = t('dashboard.noHoldingsSynced');
   } else if (accountPortfolios.some(a => a.meta?.valuationCoverage !== undefined && a.meta.valuationCoverage < 1)) {
-    statusText = '估值不完整';
-    badgeStyle = "bg-orange-950/40 text-orange-400 border border-orange-900/30";
-    statusSubText = '部分标的缺少行情和成本估值';
+    statusText = t('dashboard.partialValuation');
+    badgeStyle = "border-aw-border-subtle text-aw-warning bg-aw-surface-3";
+    statusDotClass = "aw-status-warning";
+    statusSubText = t('dashboard.valuationIncomplete');
   } else if (accountPortfolios.some(a => a.meta?.estimatedValuationSymbols && a.meta.estimatedValuationSymbols.length > 0)) {
-    statusText = '部分估算';
-    badgeStyle = "bg-blue-950/40 text-blue-400 border border-blue-900/30";
-    statusSubText = '部分标的使用成本价估算，等待实时行情';
+    statusText = t('dashboard.estimatedValuation');
+    badgeStyle = "border-aw-border-subtle text-aw-info bg-aw-surface-3";
+    statusDotClass = "aw-status-info";
+    statusSubText = t('dashboard.valuationEstimated');
   }
 
   return (
-    <div className="w-full min-w-0 space-y-6">
+    <div className="w-full min-w-0 space-y-2">
       {/* Unified Multi-Account Group Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 sm:p-5 bg-[#16181A] border border-white/[0.03] rounded-2xl">
+      <div className="aw-panel flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 sm:p-4">
         <div className="space-y-0.5">
           <div className="flex items-center gap-2.5">
-            <h2 className="text-sm md:text-base font-bold text-[#E7D7B0] tracking-tight">多账户公开市场持仓</h2>
+            <h2 className="aw-label font-semibold aw-text-primary tracking-normal">{t('dashboard.multiAccountHoldings')}</h2>
             {/* Unified Status Badge */}
-            <span className={`text-[10px] ${badgeStyle} px-2.5 py-0.5 rounded-[4px] font-mono font-medium select-none`}>
+            <span className={`aw-status-pill ${badgeStyle} font-mono select-none`}>
+              <span className={`aw-status-dot ${statusDotClass}`} />
               {statusText}
             </span>
           </div>
-          <p className="text-[11px] text-zinc-400 select-none">按券商账户拆分展示，不做跨账户合并</p>
-          <p className="text-[10px] text-[#A39167] font-semibold select-none mt-0.5 flex items-center gap-1.5">
-            <span className="inline-block w-1 h-1 rounded-full bg-[#A39167]" />
+          <p className="aw-caption aw-text-secondary select-none">{t('dashboard.splitByBroker')}</p>
+          <p className="aw-caption aw-text-tertiary font-medium select-none mt-0.5 flex items-center gap-1.5">
+            <span className="inline-block w-1 h-1 rounded-full bg-aw-accent-sage" />
             {statusSubText}
           </p>
         </div>
@@ -121,43 +148,56 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
           <button
             onClick={handleReload}
             disabled={isRefreshing}
-            className="border border-[#C9B284]/25 hover:border-[#C9B284]/50 disabled:border-[#C9B284]/12 bg-[#16181A]/80 hover:bg-[#C9B284]/10 disabled:bg-transparent text-[#C9B284] disabled:text-[#C9B284]/40 px-3 py-1.5 text-[11px] font-mono rounded-[8px] transition-all cursor-pointer flex items-center gap-1.5 shadow-sm font-medium select-none"
+            className="aw-button aw-button-ghost !min-h-8 !px-3 font-mono cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed select-none"
           >
-            <span>🔄</span>
-            <span>{isRefreshing ? '同步中...' : '刷新实盘'}</span>
+            <MaterialIcon name="refresh" size={16} className={isRefreshing ? 'animate-spin' : ''} />
+            <span>{isRefreshing ? t('nav.syncing') : t('dashboard.refreshLive')}</span>
           </button>
 
           <button
             onClick={handleCreatePortfolioReview}
-            className="bg-[#C9B284]/10 hover:bg-[#C9B284]/20 border border-[#C9B284]/25 hover:border-[#C9B284]/45 text-[#C9B284] hover:text-[#E7D7B0] px-3 py-1.5 text-[11px] font-mono rounded-[8px] transition-all cursor-pointer flex items-center gap-1.5 shadow-sm font-medium select-none"
+            className="aw-button aw-button-primary !min-h-8 !px-3 font-mono cursor-pointer select-none"
           >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>生成本轮复盘</span>
+            <MaterialIcon name="auto_awesome" size={16} filled />
+            <span>{t('dashboard.generateReview')}</span>
           </button>
         </div>
       </div>
 
       {ctaError && (
-        <div className="text-[10.5px] text-rose-400 font-mono bg-rose-950/10 border border-rose-900/20 rounded-lg px-3 py-1.5">
-          ⚠️ {ctaError}
+        <div className="aw-status-pill text-aw-danger font-mono px-3 py-1.5">
+          <MaterialIcon name="warning" size={16} filled />
+          {ctaError}
         </div>
       )}
 
       {/* Global Insight for Public Holdings if available */}
       {globalData?.insights?.public && (
-        <div className="p-4 bg-[#1C1812] border border-[#C9B284]/10 rounded-xl relative overflow-hidden">
-          <div className="absolute right-3 top-3 text-[10px] font-mono text-[#A39167]/30 uppercase tracking-widest font-bold select-none">INSIGHT</div>
-          <p className="text-xs text-[#DECBA2] leading-relaxed pr-16">{globalData.insights.public}</p>
+        <div className="aw-panel p-4 relative overflow-hidden">
+          <div className="absolute right-3 top-3 aw-caption font-mono aw-text-tertiary uppercase font-bold select-none">{t('dashboard.insight')}</div>
+          <p className="aw-body aw-text-secondary leading-relaxed pr-16">{globalData.insights.public}</p>
         </div>
       )}
 
+      <PortfolioIntelligenceMapView
+        accountPortfolios={accountPortfolios}
+        terminalState={globalData}
+        showAction
+        onOpenWorkbench={handleOpenPortfolioIntelligence}
+      />
+
       <div className={
         accountPortfolios.length >= 2
-          ? "grid grid-cols-1 min-[1536px]:grid-cols-2 gap-6 min-w-0"
-          : "grid grid-cols-1 gap-6 min-w-0"
+          ? "aw-account-holdings-grid grid grid-cols-1 min-[1440px]:grid-cols-2 gap-2 min-w-0"
+          : "aw-account-holdings-grid grid grid-cols-1 gap-2 min-w-0"
       }>
         {accountPortfolios.map((account, accIdx) => {
           const positions = account.positions || [];
+          const accountStatus: 'loading' | 'empty' | 'error' | 'success' =
+            account.meta?.error ? 'error' :
+            (syncStatus === 'loading' || isRefreshing) && positions.length === 0 ? 'loading' :
+            positions.length === 0 ? 'empty' :
+            'success';
           const sortedArr = [...positions].sort((a, b) => getHoldingMarketValue(b) - getHoldingMarketValue(a));
           const totalVal = sortedArr.reduce((sum, h) => sum + getHoldingMarketValue(h), 0);
           const currSym = getCurrencySymbol(sortedArr[0]?.currency || 'CNY');
@@ -171,10 +211,10 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
             backgroundColor: 'transparent',
             tooltip: {
               trigger: 'item',
-              backgroundColor: 'rgba(26, 29, 31, 0.95)',
-              borderColor: 'rgba(201, 178, 132, 0.28)',
+              backgroundColor: readCssToken('--aw-surface-1', 'rgb(18 20 19 / 0.95)'),
+              borderColor: readCssToken('--aw-border-strong', 'rgb(238 243 234 / 0.28)'),
               borderWidth: 1,
-              textStyle: { color: '#E7D7B0', fontFamily: 'Inter', fontSize: 11 },
+              textStyle: { color: readCssToken('--aw-text-primary', 'rgb(238 243 234)'), fontFamily: 'Inter', fontSize: 11 },
               formatter: (p: any) => {
                 const item = sortedArr[p.dataIndex];
                 const sym = getCurrencySymbol(item?.currency);
@@ -187,14 +227,14 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
               radius: ['55%', '78%'],
               center: ['50%', '50%'],
               avoidLabelOverlap: false,
-              itemStyle: { borderRadius: 4, borderColor: '#121415', borderWidth: 2 },
+              itemStyle: { borderRadius: 4, borderColor: readCssToken('--aw-surface-0', 'rgb(18 20 19)'), borderWidth: 2 },
               label: { show: false },
               emphasis: { 
                 scale: true,
                 scaleSize: 6,
                 label: { show: false } 
               },
-              data: validPieData.length > 0 ? validPieData : [{ name: t('charts.noData') || '无持仓', value: 0 }]
+              data: validPieData.length > 0 ? validPieData : [{ name: t('charts.noData'), value: 0 }]
             }]
           };
 
@@ -215,21 +255,21 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
           };
 
           const hasEstimated = account.meta?.estimatedValuationSymbols && account.meta.estimatedValuationSymbols.length > 0;
-          const displayAccountName = account.accountName || account.accountId || '证券账户';
+          const displayAccountName = account.accountName || account.accountId || t('dashboard.accountFallback');
           const cardBadge = (
             <div className="flex flex-wrap items-center gap-2 relative mr-1 max-w-[240px] md:max-w-xs justify-end">
               {account.meta?.error && (
-                <span className="text-[10px] bg-rose-950/40 text-rose-400 border border-rose-900/30 px-2.5 py-0.5 rounded-[4px] font-mono font-medium whitespace-nowrap shrink-0">
-                  同步异常
+                <span className="aw-status-pill !min-h-5 text-aw-danger font-mono whitespace-nowrap shrink-0">
+                  {t('dashboard.syncException')}
                 </span>
               )}
               {hasEstimated && (
-                <span className="text-[10px] bg-blue-950/40 text-blue-400 border border-blue-900/30 px-2 py-0.5 rounded-[4px] font-mono font-medium whitespace-nowrap shrink-0">
-                  估算估值
+                <span className="aw-status-pill !min-h-5 text-aw-info font-mono whitespace-nowrap shrink-0">
+                  {t('dashboard.estimated')}
                 </span>
               )}
               <span 
-                className="text-[10px] text-[#A39167] font-mono font-semibold tracking-wider truncate max-w-[120px] sm:max-w-[160px]"
+                className="aw-caption aw-text-tertiary font-mono font-semibold truncate max-w-[120px] sm:max-w-[160px]"
                 title={account.accountName && account.accountId ? `${account.accountName} (${account.accountId})` : account.accountId}
               >
                 {displayAccountName}
@@ -239,8 +279,8 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
 
           const cardTitle = (
             <div className="flex items-center gap-2 select-none shrink-0">
-              <div className="w-1.5 h-3 bg-[#C9B284] rounded-sm" />
-              <span className="text-[12px] md:text-[13px] font-bold text-[#E7D7B0] tracking-tight">公开市场持仓</span>
+              <div className="w-1.5 h-3 bg-aw-accent-mist rounded-sm" />
+              <span className="aw-body font-semibold aw-text-primary tracking-normal">{t('dashboard.holdings')}</span>
             </div>
           );
 
@@ -254,41 +294,53 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
               delay={delay}
               chartHeight="auto"
               size="auto"
-              className="h-auto min-h-[320px] overflow-hidden"
+              className="aw-account-card h-auto overflow-hidden"
               badge={cardBadge}
-              status={account.meta?.error ? 'error' : 'success'}
+              status="success"
               onReload={undefined}
               showReload={false}
               isReloading={false}
             >
               {/* Synchronization alert banner specifically visible on this account */}
               {account.meta?.error && (
-                <div className="absolute top-0 inset-x-0 py-1.5 min-h-[24px] bg-amber-500/10 border-b border-amber-500/20 flex items-center justify-center -mx-6 sm:-mx-8 z-20 px-4">
-                  <span className="text-[9px] font-mono text-amber-400 font-medium tracking-wide text-center">
-                    {account.meta?.error || '证券账户同步异常 (Showing Cached State)'}
+                <div className="absolute top-0 inset-x-0 py-1.5 min-h-[24px] bg-aw-warning/10 border-b border-aw-warning/30 flex items-center justify-center -mx-4 sm:-mx-5 z-20 px-4">
+                  <span className="aw-caption font-mono text-aw-warning font-medium tracking-wide text-center">
+                    {account.meta?.error || t('dashboard.accountSyncErrorCached')}
                   </span>
                 </div>
               )}
 
               {isRefreshing && (
-                <div className="absolute top-0 inset-x-0 h-1 bg-[#121415] z-50">
-                   <div className="h-full bg-[#C9B284]/50 animate-pulse w-full origin-left" />
+                <div className="absolute top-0 inset-x-0 h-1 bg-aw-bg z-50">
+                   <div className="h-full bg-aw-accent-mist/50 animate-pulse w-full origin-left" />
                 </div>
               )}
 
               {positions.length === 0 ? (
-                <div className="flex items-center justify-center p-6 bg-slate-900/10 border border-dashed border-white/[0.02] rounded-2xl min-h-[160px]">
-                  <span className="text-[11px] font-mono text-zinc-500">{t('charts.noData') || '该账户暂无可用资产或同步数据'}</span>
+	                <div className="aw-panel-muted aw-holding-empty-state flex flex-col items-center justify-center text-center gap-2 p-4">
+                  <MaterialIcon
+                    name={accountStatus === 'error' ? 'sync_problem' : accountStatus === 'loading' ? 'progress_activity' : 'inventory_2'}
+                    size={24}
+                    className={accountStatus === 'error' ? 'text-aw-danger' : accountStatus === 'loading' ? 'text-aw-warning animate-spin' : 'aw-text-tertiary'}
+                  />
+                  <span className={`aw-body font-semibold ${accountStatus === 'error' ? 'text-aw-danger' : 'aw-text-secondary'}`}>
+                    {accountStatus === 'error' ? t('dashboard.accountErrorTitle') :
+                     accountStatus === 'loading' ? t('dashboard.accountLoadingTitle') :
+                     t('dashboard.accountEmptyTitle')}
+                  </span>
+                  <span className="aw-caption font-mono aw-text-tertiary max-w-[320px] leading-relaxed">
+                    {account.meta?.error || t('dashboard.accountEmptyDesc')}
+                  </span>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 min-[1180px]:grid-cols-[170px_minmax(0,1fr)] gap-5 items-center min-w-0 relative z-10">
-                  {/* Left: Donut Chart */}
-                  <div className="w-full flex items-center justify-center min-w-0 relative min-h-[160px]">
-                    <div className="w-[150px] h-[150px] sm:w-[160px] sm:h-[160px] relative shrink-0">
+	                <div className="grid grid-cols-1 min-[1180px]:grid-cols-[150px_minmax(0,1fr)] gap-2 items-center min-w-0 relative z-10">
+	                  {/* Left: Donut Chart */}
+	                  <div className="w-full flex items-center justify-center min-w-0 relative min-h-[136px]">
+	                    <div className="w-[132px] h-[132px] sm:w-[140px] sm:h-[140px] relative shrink-0">
                       <ReactECharts option={pieOption} onEvents={chartEvents} className="w-full h-full" />
                       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                        <span className="text-[9px] font-mono text-[#8C8370] uppercase tracking-widest leading-none mb-1">Total</span>
-                        <span className="text-[11px] font-extrabold text-[#E7D7B0] font-mono leading-none tracking-tight">
+                        <span className="aw-caption font-mono aw-text-tertiary uppercase leading-none mb-1">{t('dashboard.total')}</span>
+                        <span className="aw-body font-bold aw-text-primary font-mono leading-none tracking-normal">
                           {formattedTotal}
                         </span>
                       </div>
@@ -297,13 +349,13 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
 
                   {/* Right: Interactive Holdings List */}
                   <div className="w-full min-w-0 overflow-hidden flex flex-col justify-start custom-scroll pr-1 pb-1">
-                    <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(100px,0.85fr)_minmax(56px,0.45fr)] gap-2 items-center text-[9px] font-mono font-bold tracking-widest text-[#8C8370] uppercase pb-2 border-b border-[#C9B284]/12 mb-2 px-3">
-                      <div className="min-w-0 truncate">{t('dashboard.instrument') || '标的'}</div>
-                      <div className="min-w-0 text-right truncate">{t('dashboard.estValue') || '预估市值'}</div>
-                      <div className="text-right whitespace-nowrap">{t('dashboard.ratio') || '占比'}</div>
+                    <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(100px,0.85fr)_minmax(56px,0.45fr)] gap-2 items-center aw-caption font-mono font-semibold aw-text-tertiary uppercase pb-2 border-b border-aw-border-subtle mb-2 px-3">
+                      <div className="min-w-0 truncate">{t('dashboard.instrument')}</div>
+                      <div className="min-w-0 text-right truncate">{t('dashboard.estValue')}</div>
+                      <div className="text-right whitespace-nowrap">{t('dashboard.ratio')}</div>
                     </div>
 
-                    <div className="space-y-1.5 max-h-[180px] overflow-y-auto custom-scroll pr-1">
+	                    <div className="space-y-1.5 max-h-[148px] overflow-y-auto custom-scroll pr-1">
                       {sortedArr.map((item, idx) => {
                         const isSelected = selectedHolding && 
                           (selectedHolding.symbol === item.symbol || selectedHolding.name === item.name) &&
@@ -321,47 +373,45 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
                               accountId: account.accountId,
                               accountName: account.accountName
                             })}
-                            className={`grid grid-cols-[minmax(0,1.4fr)_minmax(100px,0.85fr)_minmax(56px,0.45fr)] gap-2 items-center px-3 py-2 cursor-pointer rounded-xl transition-all border ${
+	                            className={`aw-holding-row grid grid-cols-[minmax(0,1.4fr)_minmax(100px,0.85fr)_minmax(56px,0.45fr)] gap-2 items-center px-3 py-2 cursor-pointer transition-all border ${
                               isSelected 
-                                ? 'bg-[#C9B284]/10 border-[#C9B284]/45 shadow-[0_2px_12px_rgba(201,178,132,0.12)] text-[#E7D7B0]' 
-                                : 'border-white/[0.02] hover:bg-white/5 text-slate-300'
+                                ? 'bg-aw-surface-3 border-aw-border-strong aw-text-primary'
+                                : 'border-aw-border-subtle hover:bg-aw-surface-3 aw-text-secondary'
                             }`}
                           >
                             {/* Name with Dot */}
                             <div className="min-w-0 flex items-center gap-2">
                               <span className="w-2 rounded-full h-2 shrink-0 shadow-sm" style={{ backgroundColor: itemColor }} />
-                              <span className={`text-[12px] truncate ${isSelected ? 'font-bold text-[#E7D7B0] tracking-tight' : 'font-medium'}`}>
+                              <span className={`aw-body truncate ${isSelected ? 'font-bold aw-text-primary tracking-normal' : 'font-medium'}`}>
                                 {item.name || item.symbol}
                               </span>
                             </div>
 
                             {/* Value */}
-                            <div className={`min-w-0 flex items-center justify-end gap-1 text-right font-mono ${val > 0 ? 'text-xs font-semibold text-slate-200' : 'text-[10px] text-rose-400 font-medium'}`}>
+                            <div className={`min-w-0 flex items-center justify-end gap-1 text-right font-mono ${val > 0 ? 'aw-caption font-semibold aw-text-primary' : 'aw-caption text-aw-danger font-medium'}`}>
                               {val > 0 ? (
                                 <>
                                   <span className="truncate">{currSym}{val.toLocaleString('en-US', { maximumFractionDigits: 0 })}</span>
-                                  {(item._staleQuote || item.valuationSource === 'cost_basis_estimate') && (
-                                    <span className="text-[9px] font-sans font-normal px-1 py-0.5 rounded bg-amber-950/40 text-amber-400 border border-amber-900/30 scale-90 origin-right whitespace-nowrap select-none shrink-0">
-                                      估
+                                  {(item._staleQuote || item.valuationSource === 'cost_basis_estimate' || item.valuationSource === 'negative_cost_basis_estimate') && (
+                                    <span className="aw-caption font-sans font-normal px-1 py-0.5 aw-mini-token bg-aw-surface-3 text-aw-warning border border-aw-border-subtle scale-90 origin-right whitespace-nowrap select-none shrink-0">
+                                      {t('dashboard.estimateShort')}
                                     </span>
                                   )}
                                   {(!item._staleQuote && item.valuationSource === 'longbridge_position_value') && (
-                                    <span className="text-[9px] font-sans font-normal px-1 py-0.5 rounded bg-emerald-950/40 text-emerald-400 border border-emerald-900/30 scale-90 origin-right whitespace-nowrap select-none shrink-0">
-                                      持仓值
+                                    <span className="aw-caption font-sans font-normal px-1 py-0.5 aw-mini-token bg-aw-surface-3 text-aw-success border border-aw-border-subtle scale-90 origin-right whitespace-nowrap select-none shrink-0">
+                                      {t('dashboard.positionValue')}
                                     </span>
                                   )}
                                 </>
                               ) : (
-                                <span className="truncate">估值缺失</span>
+                                <span className="truncate">{t('dashboard.valuationMissing')}</span>
                               )}
                             </div>
 
                             {/* Percentage / Arrow */}
-                            <div className={`text-right font-mono text-[11px] font-semibold whitespace-nowrap flex items-center justify-end gap-1 ${val > 0 ? 'text-[#C9B284]/90' : 'text-slate-500'}`}>
+                            <div className={`text-right font-mono aw-caption font-semibold whitespace-nowrap flex items-center justify-end gap-1 ${val > 0 ? 'aw-text-secondary' : 'aw-text-tertiary'}`}>
                               <span>{val > 0 ? pct : '--'}</span>
-                              <svg className={`w-3 h-3 text-[#C9B284]/65 transition-transform ${isSelected ? 'translate-x-[2px]' : 'opacity-30'} shrink-0`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.8} d="M9 5l7 7-7 7" />
-                              </svg>
+                              <MaterialIcon name="chevron_right" size={16} className={`transition-transform ${isSelected ? 'translate-x-0.5' : 'opacity-30'} shrink-0`} />
                             </div>
                           </div>
                         );

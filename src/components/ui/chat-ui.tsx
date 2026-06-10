@@ -1,10 +1,11 @@
 import React, { useRef, useEffect, useMemo, useState } from 'react';
 import { cn } from '../../lib/utils';
-import { Send, FileText, Bot, User as UserIcon, Loader2, Activity, Sparkles, StopCircle, Check, Copy, RefreshCw, MessageSquare, X, Mic, Maximize2, Cpu, Download } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { motion, AnimatePresence } from 'motion/react';
 import { AssistantResponseRenderer } from '../chat/AssistantResponseRenderer';
 import { AgentThinkingTrace } from '../chat/AgentThinkingTrace';
+import { MaterialIcon } from './MaterialIcon';
+import { useTranslation } from '../../hooks/useTranslation';
 
 const CodeBlock = React.memo(({ inline, className, children, setFullScreenCode, isBlock }: any) => {
   const match = /language-(\w+)/.exec(className || '');
@@ -12,27 +13,27 @@ const CodeBlock = React.memo(({ inline, className, children, setFullScreenCode, 
   const [copied, setCopied] = useState(false);
 
   if (!isBlock) {
-    return <code className="bg-dash-surface-hover text-dash-primary font-semibold px-2 py-1 rounded-[6px] border border-dash-subtle text-[0.85em] font-mono whitespace-pre-wrap tracking-wide">{children}</code>;
+    return <code className="aw-chat-code-inline">{children}</code>;
   }
 
   return (
-    <div className="relative group/code my-6 rounded-[20px] bg-dash-surface border border-dash-subtle overflow-hidden shadow-sm">
-      <div className="flex items-center justify-between px-5 py-3 bg-dash-surface-hover border-b border-dash-subtle">
-        <span className="text-xs font-mono font-semibold uppercase tracking-widest text-dash-tertiary">{match?.[1] || 'Code'}</span>
+    <div className="aw-chat-code-block relative group/code my-6">
+      <div className="flex items-center justify-between px-5 py-3 border-b border-aw-border-subtle bg-aw-surface-3">
+        <span className="aw-caption aw-text-tertiary font-mono font-semibold uppercase">{match?.[1] || 'Code'}</span>
         <div className="flex gap-1.5 opacity-70 hover:opacity-100 transition-opacity">
             <button onClick={() => {
                 navigator.clipboard.writeText(codeString);
                 setCopied(true);
                 setTimeout(() => setCopied(false), 2000);
-            }} className="text-dash-tertiary hover:text-dash-primary p-2 rounded-lg hover:bg-dash-subtle transition-colors">
-                {copied ? <Check className="w-4 h-4 text-dash-green" /> : <Copy className="w-4 h-4" />}
+            }} className="aw-icon-button">
+                <MaterialIcon name={copied ? 'check' : 'content_copy'} size={20} className={copied ? 'text-aw-success' : ''} />
             </button>
-            <button onClick={() => setFullScreenCode({ code: codeString, language: match?.[1] || 'Code' })} className="text-dash-tertiary hover:text-dash-primary p-2 rounded-lg hover:bg-dash-subtle transition-colors hidden sm:block">
-                <Maximize2 className="w-4 h-4" />
+            <button onClick={() => setFullScreenCode({ code: codeString, language: match?.[1] || 'Code' })} className="aw-icon-button hidden sm:inline-flex">
+                <MaterialIcon name="open_in_full" size={20} />
             </button>
         </div>
       </div>
-      <pre className="p-5 sm:p-6 overflow-x-auto text-[13px] sm:text-[14px] font-mono text-dash-primary leading-relaxed custom-scroll">
+      <pre className="aw-body p-5 sm:p-6 overflow-x-auto font-mono text-aw-accent-mist leading-relaxed custom-scroll">
         <code className={className}>{children}</code>
       </pre>
     </div>
@@ -44,6 +45,7 @@ const LiComponent = React.memo(({ children }: any) => <li className="mb-1 text-d
 const StrongComponent = React.memo(({ children }: any) => <strong className="font-bold text-dash-primary">{children}</strong>);
 
 const LiveTimer = () => {
+  const { t } = useTranslation();
   const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
     const start = Date.now();
@@ -53,8 +55,8 @@ const LiveTimer = () => {
     return () => clearInterval(interval);
   }, []);
   return (
-    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-wider font-semibold bg-white/5 text-dash-tertiary border border-white/10">
-      <Cpu className="w-3.5 h-3.5 animate-pulse text-emerald-400" /> { (elapsed / 1000).toFixed(1) }s 耗时
+    <span className="aw-status-pill font-mono uppercase">
+      <MaterialIcon name="memory" size={16} className="animate-pulse text-aw-success" /> { (elapsed / 1000).toFixed(1) }s {t('chat.elapsed')}
     </span>
   );
 };
@@ -72,6 +74,7 @@ export const ChatList = React.memo(function ChatList({
   onQuickPrompt?: (p: string) => void,
   onApplySuggestedState?: (patch: any, sourceChatIndex?: number) => void
 }) {
+  const { t } = useTranslation();
   const containerRef = React.useRef<HTMLDivElement>(null);
   const chatEndRef = React.useRef<HTMLDivElement>(null);
   const [expandedUserMsg, setExpandedUserMsg] = React.useState<Record<number, boolean>>({});
@@ -114,20 +117,20 @@ export const ChatList = React.memo(function ChatList({
   }, [messages, isTyping]);
 
   const quickPrompts = [
-    "解析我的核心开支并在大盘中找出现金流最优打法",
-    "利用我的现有被动收入做二次风险对冲",
-    "提供未来一年基于当前行情的防御型资产配置计划",
-    "审查我的非公开投资并给出清退或加码建议"
+    t('prompts.cashflow'),
+    t('prompts.hedge'),
+    t('prompts.defensive'),
+    t('prompts.privateReview')
   ];
 
   return (
     <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-5 custom-scroll pb-[176px]" ref={containerRef} onScroll={handleScroll}>
       {messages.length === 0 ? (
         <div className="h-full flex flex-col items-center justify-center text-center opacity-65 py-16 px-4">
-          <Sparkles className="w-6 h-6 mb-3 text-[#C9B284]" />
-          <p className="text-[10px] font-mono tracking-[0.2em] mb-2 text-[#A39167] uppercase font-bold">Awaiting wealth strategy parameters</p>
-          <p className="text-dash-tertiary max-w-sm tracking-tight leading-relaxed font-sans text-xs">
-            Enter a quantitative command, attach financial records, or execute a Suggested Prompt above to synthesize AI strategies.
+          <MaterialIcon name="auto_awesome" size={32} className="mb-3 text-aw-accent-mist" />
+          <p className="aw-section-kicker mb-2">{t('chat.awaiting')}</p>
+          <p className="aw-caption aw-text-tertiary max-w-sm tracking-tight leading-relaxed font-sans">
+            {t('chat.awaitingDesc')}
           </p>
         </div>
       ) : (
@@ -135,19 +138,19 @@ export const ChatList = React.memo(function ChatList({
           if (msg.role === 'user') {
             return (
               <div key={i} className="flex flex-col items-end gap-1 w-full max-w-[90%] ml-auto">
-                <div className="flex items-center gap-1.5 text-[10px] font-mono text-dash-tertiary uppercase tracking-wider mb-0.5 font-semibold">
-                  <span>You</span>
+                <div className="aw-caption aw-text-tertiary flex items-center gap-1.5 font-mono uppercase mb-0.5 font-semibold">
+                  <span>{t('chat.you')}</span>
                 </div>
-                <div className="relative group bg-[#16181A] border border-[#C9B284]/20 text-white rounded-2xl rounded-tr-sm px-4 py-2.5 text-[13px] leading-relaxed shadow-sm font-sans w-full">
+                <div className="aw-chat-bubble-user relative group px-4 py-2.5 aw-body font-sans">
                   {msg.attachments && msg.attachments.length > 0 && (
                     <div className="flex flex-wrap gap-2 mb-3">
                         {msg.attachments.map((att: any, attIdx: number) => (
-                          <div key={attIdx} className="relative shadow-sm rounded-lg overflow-hidden border border-white/5 bg-dash-surface">
+                          <div key={attIdx} className="aw-panel-muted relative overflow-hidden">
                               {att.mimeType?.startsWith('image/') ? (
                                 <img src={att.url || `data:${att.mimeType};base64,${att.data}`} alt="attachment" className="w-16 h-16 object-cover hover:scale-105 transition-transform" />
                               ) : (
-                                <div className="w-16 h-16 bg-white/5 flex flex-col items-center justify-center p-2 text-[9px] text-dash-secondary font-sans text-center font-medium">
-                                    <FileText className="w-5 h-5 mb-1 text-[#8C8270]" />
+                                <div className="w-16 h-16 bg-aw-surface-3 flex flex-col items-center justify-center p-2 aw-caption aw-text-secondary font-sans text-center font-medium">
+                                    <MaterialIcon name="description" size={20} className="mb-1 aw-text-tertiary" />
                                     <span className="truncate w-full">{att.name}</span>
                                 </div>
                               )}
@@ -156,24 +159,24 @@ export const ChatList = React.memo(function ChatList({
                     </div>
                   )}
                   {msg.content.length > 500 ? (
-                      <div className="text-[13px] leading-relaxed text-dash-primary">
+                      <div className="aw-body aw-text-primary">
                         <motion.div layout className="relative">
                           <div className={cn("overflow-hidden transition-all duration-300", expandedUserMsg[i] ? "max-h-[5000px]" : "max-h-[120px]")}>
                             <div className="whitespace-pre-wrap">{msg.content}</div>
                           </div>
                           {!expandedUserMsg[i] && (
-                            <div className="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-[#16181A] to-transparent pointer-events-none" />
+                            <div className="absolute bottom-0 left-0 w-full h-8 pointer-events-none bg-gradient-to-t from-aw-bg to-transparent" />
                           )}
                         </motion.div>
                         <button 
                           onClick={() => setExpandedUserMsg(prev => ({ ...prev, [i]: !prev[i] }))} 
-                          className="text-[10px] text-dash-secondary hover:text-dash-primary mt-2 font-mono uppercase tracking-widest w-full text-left transition-colors font-bold"
+                          className="aw-caption aw-text-secondary hover:text-aw-accent-mist mt-2 font-mono uppercase w-full text-left transition-colors font-bold"
                         >
-                            {expandedUserMsg[i] ? "收起" : "展开"}
+                            {expandedUserMsg[i] ? t('chat.collapse') : t('chat.expand')}
                         </button>
                       </div>
                   ) : (
-                      <div className="text-[13px] leading-relaxed whitespace-pre-wrap break-words text-dash-primary">{msg.content}</div>
+                      <div className="aw-body whitespace-pre-wrap break-words aw-text-primary">{msg.content}</div>
                   )}
                 </div>
               </div>
@@ -181,8 +184,8 @@ export const ChatList = React.memo(function ChatList({
           } else {
             return (
               <div key={i} className="flex flex-col items-start gap-2 w-full max-w-[95%]">
-                <div className="flex items-center gap-1.5 text-[10px] font-mono text-[#8C8370] uppercase tracking-wider mb-0.5">
-                  <span className="font-semibold text-current">Arbitra</span>
+                <div className="aw-caption aw-text-tertiary flex items-center gap-1.5 font-mono uppercase mb-0.5">
+                  <span className="font-semibold text-current">{t('chat.arbitra')}</span>
                 </div>
                 
                 {/* Thinking Section styled to be elegant and progressive */}
@@ -196,26 +199,26 @@ export const ChatList = React.memo(function ChatList({
                 )}
                 
                 {/* Custom Private Wealth Advisor Memo Card */}
-                <div className="w-full bg-[#16181A] border border-[#C9B284]/15 rounded-2xl p-4 sm:p-5 shadow-sm font-sans">
+                <div className="aw-chat-bubble-assistant p-4 sm:p-5 font-sans">
                   {(!msg.content && isTyping && i === messages.length - 1) ? (
                     msg.thinking ? (
-                      <div className="flex items-center gap-2.5 text-[#8C8370]/80 font-sans text-xs py-1">
+                      <div className="aw-caption aw-text-secondary flex items-center gap-2.5 font-sans py-1">
                         <span className="relative flex h-1.5 w-1.5 shrink-0">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C9B284] opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#C9B284]"></span>
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-aw-accent-mist opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-aw-accent-mist"></span>
                         </span>
-                        <span>等待最终答复...</span>
+                        <span>{t('chat.awaitingFinal')}</span>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-2.5 text-dash-tertiary font-mono text-xs py-1">
+                      <div className="aw-caption aw-text-tertiary flex items-center gap-2.5 font-mono py-1">
                         <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2, ease: "linear" }}>
-                          <Loader2 className="w-3.5 h-3.5 text-[#C9B284]" />
+                          <MaterialIcon name="progress_activity" size={16} className="text-aw-accent-mist" />
                         </motion.div>
-                        <span>正在建立分析链路...</span>
+                        <span>{t('chat.buildingChain')}</span>
                       </div>
                     )
                   ) : (
-                      <div className="text-[13px] sm:text-sm leading-relaxed text-[#E7D7B0] space-y-3 font-sans ai-message">
+                      <div className="aw-body leading-relaxed aw-text-primary space-y-3 font-sans ai-message">
                         <AssistantResponseRenderer
                           content={msg.content || ''}
                           markdownComponents={markdownComponents}
@@ -230,42 +233,42 @@ export const ChatList = React.memo(function ChatList({
                         />
 
                         {msg.aiSuggestedState && (
-                          <div className="mt-4 p-4 bg-[#0B0D0F]/70 border border-[#C9B284]/20 rounded-xl space-y-3">
-                            <div className="flex items-center justify-between gap-2 border-b border-[#C9B284]/10 pb-2">
+                          <div className="aw-panel-muted mt-4 p-4 space-y-3">
+                            <div className="flex items-center justify-between gap-2 border-b border-aw-border-subtle pb-2">
                               <div>
-                                <h4 className="text-xs font-bold text-[#C9B284] flex items-center gap-1.5 font-sans">
-                                  <Sparkles className="w-3.5 h-3.5 text-[#C9B284]" />
-                                  AI 建议资产状态更新
+                                <h4 className="aw-body font-bold text-aw-accent-mist flex items-center gap-1.5 font-sans">
+                                  <MaterialIcon name="auto_awesome" size={16} />
+                                  {t('chat.suggestedUpdate')}
                                 </h4>
-                                <p className="text-[10px] text-[#8C8370]/80 mt-0.5">
-                                  这些内容尚未写入 Dashboard，需你确认后才会应用。
+                                <p className="aw-caption aw-text-tertiary mt-0.5">
+                                  {t('chat.suggestedUpdateDesc')}
                                 </p>
                               </div>
                               {msg.suggestedStateApplied ? (
-                                <span className="text-[10px] font-mono bg-emerald-950/30 text-emerald-400 border border-emerald-900/30 px-2 py-0.5 rounded flex items-center gap-1">
-                                  <Check className="w-3 h-3" /> 已应用到 Dashboard
+                                <span className="aw-status-pill font-mono text-aw-success">
+                                  <MaterialIcon name="check" size={16} /> {t('chat.applied')}
                                 </span>
                               ) : (
-                                <span className="text-[10px] font-mono bg-amber-950/20 text-amber-400 border border-amber-900/20 px-2 py-0.5 rounded">
-                                  待确认
+                                <span className="aw-status-pill font-mono text-aw-warning">
+                                  {t('chat.pending')}
                                 </span>
                               )}
                             </div>
 
                             {/* Details of metrics and distributions */}
-                            <div className="space-y-2 text-[11px] text-[#A39167]">
+                            <div className="space-y-2 aw-caption aw-text-secondary">
                               {msg.aiSuggestedState.metrics && Object.keys(msg.aiSuggestedState.metrics).length > 0 && (
                                 <div className="flex gap-2 items-start">
-                                  <span className="font-mono text-[10px] bg-white/5 px-1.5 py-0.5 rounded text-dash-tertiary shrink-0">Metrics</span>
+	                                  <span className="aw-status-pill font-mono shrink-0">{t('chat.metrics')}</span>
                                   <div className="flex-1 flex flex-wrap gap-1.5">
                                     {Object.keys(msg.aiSuggestedState.metrics).map(mKey => {
                                       let name = mKey;
-                                      if (mKey === 'netWorth') name = '净资产';
-                                      else if (mKey === 'liquidity') name = '流动资产';
-                                      else if (mKey === 'fcf') name = '自由现金流';
-                                      else if (mKey === 'safetyRatio') name = '安全保障系数';
+	                                      if (mKey === 'netWorth') name = t('chat.metricNetWorth');
+	                                      else if (mKey === 'liquidity') name = t('chat.metricLiquidity');
+	                                      else if (mKey === 'fcf') name = t('chat.metricFcf');
+	                                      else if (mKey === 'safetyRatio') name = t('chat.metricSafetyRatio');
                                       return (
-                                        <span key={mKey} className="bg-[#1A1D20] px-2 py-0.5 rounded border border-white/5 text-[#E7D7B0]">
+                                        <span key={mKey} className="aw-status-pill">
                                           {name}
                                         </span>
                                       );
@@ -276,17 +279,17 @@ export const ChatList = React.memo(function ChatList({
 
                               {msg.aiSuggestedState.distributions && Object.keys(msg.aiSuggestedState.distributions).length > 0 && (
                                 <div className="flex gap-2 items-start">
-                                  <span className="font-mono text-[10px] bg-white/5 px-1.5 py-0.5 rounded text-dash-tertiary shrink-0">Distributions</span>
+	                                  <span className="aw-status-pill font-mono shrink-0">{t('chat.distributions')}</span>
                                   <div className="flex-1 flex flex-wrap gap-1.5">
                                     {Object.keys(msg.aiSuggestedState.distributions).map(dKey => {
                                       let name = dKey;
-                                      if (dKey === 'liquidity') name = '流动性分布';
-                                      else if (dKey === 'expenses') name = '开支列表';
-                                      else if (dKey === 'privateAssets') name = '非公开资产';
-                                      else if (dKey === 'fixedAssets') name = '另类固定资产';
-                                      else if (dKey === 'options') name = '期权额度';
+	                                      if (dKey === 'liquidity') name = t('chat.distributionLiquidity');
+	                                      else if (dKey === 'expenses') name = t('chat.distributionExpenses');
+	                                      else if (dKey === 'privateAssets') name = t('chat.distributionPrivateAssets');
+	                                      else if (dKey === 'fixedAssets') name = t('chat.distributionFixedAssets');
+	                                      else if (dKey === 'options') name = t('chat.distributionOptions');
                                       return (
-                                        <span key={dKey} className="bg-[#1A1D20] px-2 py-0.5 rounded border border-white/5 text-[#E7D7B0]">
+                                        <span key={dKey} className="aw-status-pill">
                                           {name}
                                         </span>
                                       );
@@ -297,9 +300,9 @@ export const ChatList = React.memo(function ChatList({
 
                               {msg.aiSuggestedState.goal && (
                                 <div className="flex gap-2 items-start">
-                                  <span className="font-mono text-[10px] bg-white/5 px-1.5 py-0.5 rounded text-dash-tertiary shrink-0">Goal</span>
-                                  <span className="bg-[#1A1D20] px-2 py-0.5 rounded border border-white/5 text-[#E7D7B0] truncate max-w-xs">
-                                    财富目标: {msg.aiSuggestedState.goal.name || '更新'}
+	                                  <span className="aw-status-pill font-mono shrink-0">{t('chat.goal')}</span>
+                                  <span className="aw-status-pill truncate max-w-xs">
+	                                    {t('chat.wealthGoal')}: {msg.aiSuggestedState.goal.name || t('chat.update')}
                                   </span>
                                 </div>
                               )}
@@ -309,12 +312,13 @@ export const ChatList = React.memo(function ChatList({
                             <div className="pt-1">
                               <button
                                 onClick={() => setShowSuggestedJson(prev => ({ ...prev, [i]: !prev[i] }))}
-                                className="text-[10px] text-[#8C8370] hover:text-[#C9B284] font-mono flex items-center gap-1 transition-colors"
+                                className="aw-chat-meta-action"
                               >
-                                <span>{showSuggestedJson[i] ? '▲ 隐藏完整 JSON' : '▼ 查看完整 JSON'}</span>
+                                <MaterialIcon name={showSuggestedJson[i] ? 'expand_less' : 'expand_more'} size={16} />
+	                                <span>{showSuggestedJson[i] ? t('chat.hideJson') : t('chat.viewJson')}</span>
                               </button>
                               {showSuggestedJson[i] && (
-                                <pre className="mt-2 p-2 bg-[#050607] border border-white/5 rounded-lg text-[10px] font-mono text-emerald-500 max-h-48 overflow-y-auto custom-scroll w-full whitespace-pre-wrap break-words">
+                                <pre className="aw-panel-muted mt-2 p-3 aw-caption font-mono text-aw-success max-h-48 overflow-y-auto custom-scroll w-full whitespace-pre-wrap break-words">
                                   {JSON.stringify(msg.aiSuggestedState, null, 2)}
                                 </pre>
                               )}
@@ -330,21 +334,21 @@ export const ChatList = React.memo(function ChatList({
                                 }}
                                 disabled={msg.suggestedStateApplied}
                                 className={cn(
-                                  "px-4 py-2 rounded-lg text-xs font-mono tracking-wide font-semibold border transition-all flex items-center gap-1.5 cursor-pointer",
+                                  "aw-button font-mono cursor-pointer",
                                   msg.suggestedStateApplied
-                                    ? "bg-[#1A1D20] border-zinc-800 text-zinc-500 cursor-not-allowed"
-                                    : "bg-[#C9B284]/10 hover:bg-[#C9B284]/20 border-[#C9B284]/30 text-[#C9B284] hover:text-white"
+                                    ? "aw-button-ghost opacity-50 cursor-not-allowed"
+                                    : "aw-button-primary"
                                 )}
                               >
                                 {msg.suggestedStateApplied ? (
                                   <>
-                                    <Check className="w-3.5 h-3.5" />
-                                    已应用
+                                    <MaterialIcon name="check" size={16} />
+	                                    {t('chat.applied')}
                                   </>
                                 ) : (
                                   <>
-                                    <Sparkles className="w-3.5 h-3.5" />
-                                    应用到 Dashboard
+                                    <MaterialIcon name="auto_awesome" size={16} />
+	                                    {t('chat.applyToDashboard')}
                                   </>
                                 )}
                               </button>
@@ -353,27 +357,27 @@ export const ChatList = React.memo(function ChatList({
                         )}
 
                         {msg.content && (
-                           <div className="mt-3 pt-3 border-t border-white/[0.04] flex flex-col gap-2 font-sans text-[11px]">
+                           <div className="mt-3 pt-3 border-t border-aw-border-subtle flex flex-col gap-2 font-sans aw-caption">
                              {/* Metric Badges Info */}
-                             <div className="flex flex-wrap gap-2 items-center text-[9px]">
+                             <div className="flex flex-wrap gap-2 items-center">
                                {msg._liveSources?.includes('longbridge') && (
-                                 <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-medium bg-white/[0.03] text-[#8C8370] border border-white/[0.05]">
-                                   <Activity className="w-2.5 h-2.5 text-emerald-600/60 animate-pulse" />
-                                   实盘数据源
+                                 <span className="aw-status-pill">
+                                   <MaterialIcon name="monitoring" size={16} className="text-aw-success animate-pulse" />
+	                                   {t('chat.liveDataSource')}
                                  </span>
                                )}
                                {msg.hasMemoryUpdate && (
                                  <motion.span 
                                    initial={{ opacity: 0, y: 5 }}
                                    animate={{ opacity: 1, y: 0 }}
-                                   className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-medium text-[#C9B284]/85 bg-white/[0.03] border border-white/[0.05] relative overflow-hidden group/memory"
+                                   className="aw-status-pill relative overflow-hidden group/memory"
                                  >
-                                   <Sparkles className="w-2.5 h-2.5 text-amber-500/60" />
-                                   已刷新长期记忆
+                                   <MaterialIcon name="auto_awesome" size={16} className="text-aw-warning" />
+	                                   {t('chat.longMemoryRefreshed')}
                                  </motion.span>
                                )}
                                {msg.timeTaken !== undefined && (
-                                 <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-mono tracking-wider text-dash-tertiary bg-white/[0.01] border border-white/[0.05]">
+                                 <span className="aw-status-pill font-mono">
                                    {(msg.timeTaken / 1000).toFixed(1)}s
                                  </span>
                                )}
@@ -381,13 +385,13 @@ export const ChatList = React.memo(function ChatList({
 
                              {/* Memo Toolbar utilities */}
                              <div className="flex items-center gap-3 opacity-40 hover:opacity-100 transition-opacity mt-0.5">
-                               <button onClick={() => handleCopy(msg.content, i)} className="flex items-center gap-1 text-[10px] font-mono text-[#8C8370] hover:text-white transition-colors uppercase tracking-wider">
-                                 {copiedIndex === i ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                                 {copiedIndex === i ? <span className="text-emerald-400 font-sans">Copied</span> : 'Copy'}
+                               <button onClick={() => handleCopy(msg.content, i)} className="aw-chat-meta-action">
+                                 <MaterialIcon name={copiedIndex === i ? 'check' : 'content_copy'} size={16} className={copiedIndex === i ? 'text-aw-success' : ''} />
+	                                 {copiedIndex === i ? <span className="text-aw-success font-sans">{t('chat.copied')}</span> : t('chat.copy')}
                                </button>
                                {i === messages.length - 1 && onRegenerate && (
-                                 <button onClick={onRegenerate} className="flex items-center gap-1 text-[10px] font-mono text-[#8C8370] hover:text-white transition-colors uppercase tracking-wider">
-                                   <RefreshCw className="w-3 h-3" /> Re-run
+                                 <button onClick={onRegenerate} className="aw-chat-meta-action">
+	                                   <MaterialIcon name="refresh" size={16} /> {t('chat.rerun')}
                                  </button>
                                )}
                                {msg.debugData && (
@@ -399,8 +403,8 @@ export const ChatList = React.memo(function ChatList({
                                      a.download = `terminal-node-data-${Date.now()}.json`;
                                      a.click();
                                      URL.revokeObjectURL(url);
-                                 }} className="flex items-center gap-1 text-[10px] font-mono text-[#8C8370] hover:text-white transition-colors uppercase tracking-wider">
-                                     <Download className="w-3 h-3" /> JSON Data
+                                 }} className="aw-chat-meta-action">
+	                                     <MaterialIcon name="download" size={16} /> {t('chat.jsonData')}
                                  </button>
                                )}
                              </div>
@@ -423,26 +427,29 @@ export const ChatList = React.memo(function ChatList({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-[#0B0D0F]/90 backdrop-blur-md flex flex-col pt-4 sm:pt-10 px-0 sm:px-10 pb-0"
+            className="fixed inset-0 z-50 aw-modal-backdrop flex flex-col pt-4 sm:pt-10 px-0 sm:px-10 pb-0"
           >
-             <div className="flex-1 w-full max-w-7xl mx-auto flex flex-col bg-dash-bg border border-dash-subtle sm:rounded-t-3xl overflow-hidden shadow-2xl">
-                <div className="flex items-center justify-between px-6 py-4 border-b border-dash-subtle bg-dash-surface">
-                   <span className="text-sm font-mono font-bold text-dash-secondary uppercase tracking-widest">{fullScreenCode.language}</span>
+             <div className="aw-modal-shell flex-1 w-full max-w-7xl mx-auto flex flex-col sm:rounded-t-3xl overflow-hidden">
+                <div className="aw-modal-header flex items-center justify-between px-6 py-4 border-b">
+                   <span className="aw-body font-mono font-bold aw-text-secondary uppercase">{fullScreenCode.language}</span>
                    <div className="flex items-center gap-2">
-                      <button onClick={() => {
+                      <button
+                        onClick={() => {
                         navigator.clipboard.writeText(fullScreenCode.code);
                         handleCopy(fullScreenCode.code, -1);
-                      }} className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/5 transition-colors">
-                        {copiedIndex === -1 ? <Check className="w-3.5 h-3.5 text-dash-green" /> : <Copy className="w-3.5 h-3.5" />}
-                        {copiedIndex === -1 ? '已复制' : '复制代码'}
+                      }}
+                        className="aw-button aw-button-ghost"
+                      >
+                        <MaterialIcon name={copiedIndex === -1 ? 'check' : 'content_copy'} size={16} className={copiedIndex === -1 ? 'text-aw-success' : ''} />
+	                        {copiedIndex === -1 ? t('chat.copied') : t('chat.copyCode')}
                       </button>
-                      <button onClick={() => setFullScreenCode(null)} className="flex items-center gap-1 text-xs text-rose-400 hover:text-rose-300 px-3 py-1.5 rounded-lg border border-rose-500/20 hover:bg-rose-500/10 transition-colors ml-2">
-                        <X className="w-4 h-4" /> 关闭
+                      <button onClick={() => setFullScreenCode(null)} className="aw-button aw-button-ghost ml-2 text-aw-danger">
+	                        <MaterialIcon name="close" size={16} /> {t('chat.close')}
                       </button>
                    </div>
                 </div>
-                <div className="flex-1 overflow-auto p-6 bg-[#0B0D0F]">
-                   <pre className="text-sm font-mono text-slate-300 leading-relaxed break-words whitespace-pre-wrap">
+                <div className="flex-1 overflow-auto p-6 bg-aw-bg">
+                   <pre className="aw-body font-mono aw-text-secondary leading-relaxed break-words whitespace-pre-wrap">
                       <code>{fullScreenCode.code}</code>
                    </pre>
                 </div>
@@ -456,6 +463,7 @@ export const ChatList = React.memo(function ChatList({
 
 export function ChatInput({ input, handleInputChange, handleSubmit, isLoading, onKeyDown, onStop, onPaste, hasAttachments = false }: any) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -481,16 +489,16 @@ export function ChatInput({ input, handleInputChange, handleSubmit, isLoading, o
   };
 
   return (
-    <form onSubmit={handleSubmit} className="relative group w-full flex items-end gap-2 bg-dash-surface-hover/80 backdrop-blur-xl border border-dash-subtle rounded-[24px] p-2 transition-all focus-within:border-dash-primary/30 focus-within:ring-4 focus-within:ring-dash-primary/5 shadow-sm">
+    <form onSubmit={handleSubmit} className="aw-chat-input relative group">
       <textarea
         ref={textareaRef}
         value={input}
         onChange={handleInputChange}
         onKeyDown={handleCustomKeyDown}
         onPaste={onPaste}
-        placeholder="发送消息..."
+        placeholder={t('chat.sendMessagePlaceholder')}
         rows={1}
-        className="flex-1 bg-transparent border-none py-3 px-4 text-[15px] text-dash-primary placeholder:text-dash-tertiary focus:outline-none resize-none custom-scroll h-auto leading-relaxed"
+        className="aw-chat-textarea custom-scroll"
         style={{ minHeight: '48px', maxHeight: '200px' }}
       />
       <div className="flex self-end mb-1 mr-1">
@@ -504,10 +512,10 @@ export function ChatInput({ input, handleInputChange, handleSubmit, isLoading, o
               transition={{ type: "spring", stiffness: 400, damping: 25 }}
               type="button"
               onClick={onStop}
-              className="w-10 h-10 sm:w-11 sm:h-11 bg-dash-surface text-dash-secondary hover:text-dash-red hover:bg-dash-red/10 rounded-xl flex items-center justify-center transition-colors shadow-sm active:scale-95 border border-dash-subtle"
+              className="aw-icon-button w-10 h-10 sm:w-11 sm:h-11 text-aw-danger border border-aw-border-subtle"
               title="Stop Generation"
             >
-              <StopCircle className="w-5 h-5" />
+              <MaterialIcon name="stop_circle" size={24} />
             </motion.button>
           ) : (input.trim() || hasAttachments) ? (
               <motion.button
@@ -517,9 +525,9 @@ export function ChatInput({ input, handleInputChange, handleSubmit, isLoading, o
               exit={{ scale: 0.8, opacity: 0 }}
               transition={{ type: "spring", stiffness: 400, damping: 25 }}
               type="submit"
-              className="w-10 h-10 sm:w-11 sm:h-11 bg-dash-primary text-[#0B0D0F] hover:bg-white rounded-xl flex items-center justify-center transition-colors shadow-sm active:scale-95"
+              className="aw-button aw-button-primary w-10 h-10 sm:w-11 sm:h-11 !px-0 active:scale-95"
             >
-              <Send className="w-5 h-5 ml-0.5" />
+              <MaterialIcon name="send" size={24} />
             </motion.button>
           ) : (
             <motion.button
@@ -529,10 +537,10 @@ export function ChatInput({ input, handleInputChange, handleSubmit, isLoading, o
               exit={{ scale: 0.8, opacity: 0 }}
               transition={{ type: "spring", stiffness: 400, damping: 25 }}
               type="button"
-              className="w-10 h-10 sm:w-11 sm:h-11 bg-transparent text-dash-tertiary hover:text-dash-primary hover:bg-dash-surface rounded-xl flex items-center justify-center transition-colors active:scale-95"
+              className="aw-icon-button w-10 h-10 sm:w-11 sm:h-11 active:scale-95"
               title="Voice Input (Coming soon)"
             >
-              <Mic className="w-5 h-5" />
+              <MaterialIcon name="mic" size={24} />
             </motion.button>
           )}
         </AnimatePresence>

@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "gen-lang-client-0273706712"
+  },
+  "targets": {
+    "gen-lang-client-0273706712": {
+      "hosting": {
+        "prd2-preview": [
+          "arbitra-prd2-preview"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

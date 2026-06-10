@@ -19,7 +19,7 @@ const __dirname = dirname(__filename);
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   // Rate Limiting Utility (Simple In-Memory)
   const createRateLimitMiddleware = (limit: number, windowMs: number) => {
@@ -58,7 +58,14 @@ async function startServer() {
   // Apply CORS
   const corsOptions = {
     origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-        if (!origin || origin.includes('localhost') || origin.includes('.run.app') || origin.includes('google.com')) {
+        if (
+          !origin ||
+          origin.includes('localhost') ||
+          origin.includes('.run.app') ||
+          origin.includes('.web.app') ||
+          origin.includes('.firebaseapp.com') ||
+          origin.includes('google.com')
+        ) {
             callback(null, true);
         } else {
             callback(new Error('Not allowed by CORS'));

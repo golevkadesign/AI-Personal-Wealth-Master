@@ -1,21 +1,23 @@
-import React, { useEffect, useState, Suspense, useRef } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Activity, Target, BrainCircuit, TrendingUp, TrendingDown, ArrowRight, ShieldAlert, Sparkles } from 'lucide-react';
+import { MaterialIcon } from './ui/MaterialIcon';
 import { useInteractionStore } from '../hooks/useInteractionStore';
 import { useWealthStore } from '../hooks/useWealthStore';
 import { WidgetCopilot } from './WidgetCopilot';
 import { getCurrencySymbol, getHoldingMarketValue } from './chart-configs';
+import { readCssToken } from '../lib/design-tokens';
 import { useTranslation } from '../hooks/useTranslation';
 import { PositionAnalysisResult, HoldingSnapshot, AgentAnalysisSnapshot } from '../types/portfolio';
 import { saveAgentAnalysisSnapshot, getAgentAnalysisSnapshots, getLatestAgentAnalysisSnapshot, buildAnalysisDiff } from '../lib/agentMemorySnapshots';
+import { createHoldingWorkbenchSession } from '../lib/workbench-session';
 
 const ReactEChartsLazy = React.lazy(() => import('./ReactECharts').then(m => ({ default: m.ReactECharts })));
 
-const ChartSkeleton = () => (
-  <div className="w-full h-full min-h-[140px] flex items-center justify-center bg-black/10 rounded-xl animate-pulse border border-[#C9B284]/10">
+const ChartSkeleton = ({ label = 'Syncing Trendline...' }: { label?: string }) => (
+  <div className="aw-panel-muted w-full h-full min-h-[140px] flex items-center justify-center animate-pulse">
     <div className="flex flex-col items-center gap-2">
-      <div className="w-4 h-4 rounded-full border border-[#C9B284]/30 border-t-[#C9B284] animate-spin" />
-      <span className="text-[9px] text-[#8C8270] font-mono tracking-widest uppercase">Syncing Trendline...</span>
+      <div className="w-4 h-4 rounded-full border border-aw-border-strong border-t-aw-accent-mist animate-spin" />
+      <span className="aw-caption aw-text-tertiary font-mono uppercase">{label}</span>
     </div>
   </div>
 );
@@ -34,9 +36,19 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
   const [analysisStatus, setAnalysisStatus] = useState<'idle' | 'loading' | 'success' | 'partial' | 'error'>('idle');
   const [loading, setLoading] = useState(false);
   const openCopilot = useInteractionStore(state => state.openDrawerWithIntent);
+  const openWorkbench = useInteractionStore(state => state.openWorkbench);
+  const closeWorkbenchForEntry = useInteractionStore(state => state.closeWorkbenchForEntry);
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
   const [mainAskInput, setMainAskInput] = useState('');
   const [copilotPrompt, setCopilotPrompt] = useState('');
+
+  useEffect(() => {
+    if (isOpen && holding) {
+      openWorkbench(createHoldingWorkbenchSession(holding, useWealthStore.getState().data));
+      return;
+    }
+    closeWorkbenchForEntry('holding');
+  }, [closeWorkbenchForEntry, holding, isOpen, openWorkbench]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -149,7 +161,7 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
       axisLine: { show: false },
       axisTick: { show: false },
       axisLabel: { 
-        color: '#8C8270', 
+        color: readCssToken('--aw-text-tertiary', 'rgb(238 243 234 / 0.42)'), 
         fontFamily: 'JetBrains Mono', 
         fontSize: 9,
         interval: Math.floor(scaledTrendData.length / 4) || 2,
@@ -163,7 +175,7 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
       axisLine: { show: false },
       axisTick: { show: false },
       axisLabel: {
-        color: '#8C8270',
+        color: readCssToken('--aw-text-tertiary', 'rgb(238 243 234 / 0.42)'),
         fontFamily: 'JetBrains Mono',
         fontSize: 9,
         formatter: (v: number) => {
@@ -178,15 +190,15 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
         type: 'line',
         smooth: true,
         symbol: 'none',
-        lineStyle: { color: '#C9B284', width: 2 },
+        lineStyle: { color: readCssToken('--aw-accent-mist', '#DDE8D8'), width: 2 },
         areaStyle: {
           color: {
             type: 'linear',
             x: 0, y: 0, x2: 0, y2: 1,
             colorStops: [
-              { offset: 0, color: 'rgba(201, 178, 132, 0.22)' },
-              { offset: 0.8, color: 'rgba(201, 178, 132, 0.01)' },
-              { offset: 1, color: 'rgba(201, 178, 132, 0)' }
+              { offset: 0, color: 'rgb(221 232 216 / 0.20)' },
+              { offset: 0.8, color: 'rgb(221 232 216 / 0.01)' },
+              { offset: 1, color: 'rgb(221 232 216 / 0)' }
             ]
           }
         },
@@ -212,7 +224,7 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
             initial={{ opacity: 0 }} 
             animate={{ opacity: 1 }} 
             exit={{ opacity: 0 }} 
-            className="fixed inset-0 bg-black/55 backdrop-blur-[1px] z-[99]" 
+            className="fixed inset-0 aw-drawer-backdrop z-[99]" 
             onClick={onClose} 
           />
           
@@ -222,7 +234,7 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
             animate={{ x: 0 }} 
             exit={{ x: '100%' }} 
             transition={{ type: 'spring', damping: 26, stiffness: 220 }} 
-            className="fixed top-0 right-0 h-screen w-full sm:max-w-[490px] bg-[#0E1012] border-l border-[#C9B284]/15 z-[101] shadow-2xl flex flex-col font-sans overflow-hidden"
+	            className="aw-drawer-shell aw-workbench-shell fixed top-0 right-0 h-screen w-full sm:max-w-[490px] z-[101] flex flex-col font-sans overflow-hidden"
           >
             <AnimatePresence mode="wait">
               {!isCopilotOpen ? (
@@ -234,58 +246,54 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
                   className="flex-1 flex flex-col h-full overflow-hidden"
                 >
                   {/* Drawer Header Area */}
-                  <div className="flex justify-between items-start px-6 pt-6 pb-4 border-b border-[#C9B284]/10 shrink-0">
+	                  <div className="aw-drawer-header aw-workbench-header flex justify-between items-start px-6 pt-6 pb-4 border-b shrink-0">
                     <div>
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="text-[9px] text-[#A39167] font-mono font-bold tracking-[0.2em] uppercase">{t('drawer.positionIntel')}</span>
-                        <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[8px] font-mono font-bold uppercase bg-[#C1A875]/10 text-[#C1A875] border border-[#C1A875]/20">{t('drawer.ai')}</span>
+                        <span className="aw-section-kicker">{t('drawer.positionIntel')}</span>
+                        <span className="aw-state-chip aw-state-chip-info">{t('drawer.ai')}</span>
                       </div>
-                      <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2.5">
+                      <h2 className="aw-title font-bold aw-text-primary tracking-normal flex items-center gap-2.5">
                         {holding.name || holding.symbol}
                       </h2>
                     </div>
                     {/* Exquisite Close Button */}
                     <button 
                       onClick={onClose} 
-                      className="border border-[#C9B284]/15 hover:border-[#C9B284]/30 bg-[#16181A]/40 hover:bg-[#C9B284]/10 text-[#C9B284] w-8 h-8 rounded-lg flex items-center justify-center transition-all cursor-pointer"
+                      className="aw-icon-button cursor-pointer"
                     >
-                      <X className="w-4 h-4" />
+                      <MaterialIcon name="close" size={20} />
                     </button>
                   </div>
 
                   {/* Main Scroller Content */}
-                  <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5 custom-scroll pb-24">
+	                  <div className="aw-workbench-scroll flex-1 overflow-y-auto px-6 py-5 space-y-5 custom-scroll pb-24">
                     
                     {/* Identity Info Panel Cards */}
-                    <div className="bg-[#121416]/90 rounded-xl p-4 border border-[#C9B284]/10 flex items-center gap-4">
+                    <div className="aw-panel p-4 flex items-center gap-4">
                       {/* Premium Logo Ring Segment Graphic */}
-                      <div className="w-11 h-11 rounded-xl border border-[#C9B284]/25 bg-[#16181A] flex items-center justify-center shrink-0 shadow-inner">
-                        <svg className="w-6 h-6 text-[#C9B284]/90" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                          <circle cx={12} cy={12} r={9} strokeDasharray="36 20" strokeDashoffset={5} />
-                          <circle cx={12} cy={12} r={4} strokeWidth={1} strokeDasharray="2 2" className="opacity-40" />
-                          <path d="M12 3v9h9" className="opacity-65" />
-                        </svg>
+                      <div className="aw-chart-state-icon w-11 h-11 shrink-0">
+                        <MaterialIcon name="donut_large" size={24} className="text-aw-accent-mist" />
                       </div>
                       
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <code className="text-xs font-bold font-mono px-2 py-0.5 rounded bg-[#C9B284]/10 text-[#E7D7B0] border border-[#C9B284]/15">
+                          <code className="aw-state-chip">
                             {holding.symbol || 'N/A'}
                           </code>
-                          <span className="text-[11px] text-[#8C8270] font-medium truncate">{instrumentType}</span>
+                          <span className="aw-caption aw-text-tertiary font-medium truncate">{instrumentType}</span>
                         </div>
-                        <div className="text-[11px] text-[#8D9096] flex items-center gap-1">
+                        <div className="aw-caption aw-text-tertiary flex items-center gap-1">
                           <span>{t('drawer.jurisdiction')}</span>
-                          <span className="text-slate-300 font-medium">{domicile}</span>
+                          <span className="aw-text-secondary font-medium">{domicile}</span>
                         </div>
                       </div>
                       
                       {/* Price Badge indicator on upper right card */}
                       <div className="text-right shrink-0">
-                        <div className="text-sm font-bold text-slate-100 font-mono">
+                        <div className="aw-body font-bold aw-text-primary font-mono">
                           {quant.currentPrice ? `$${quant.currentPrice.toFixed(2)}` : '---'}
                         </div>
-                        <div className={`text-[10px] font-bold font-mono mt-0.5 flex items-center justify-end ${quant.changePercent != null ? (isUp ? 'text-emerald-400' : 'text-rose-400') : 'text-slate-500'}`}>
+                        <div className={`aw-caption font-bold font-mono mt-0.5 flex items-center justify-end ${quant.changePercent != null ? (isUp ? 'text-aw-success' : 'text-aw-danger') : 'aw-text-tertiary'}`}>
                           {quant.changePercent != null ? `${isUp ? '+' : ''}${quant.changePercent.toFixed(2)}%` : '---'}
                         </div>
                       </div>
@@ -294,106 +302,106 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
                     {/* Numeric Parameter Metrics Section */}
                     <div className="grid grid-cols-2 gap-3.5">
                       {/* Value Item (Primary) */}
-                      <div className="bg-[#121416] p-4 rounded-xl border border-[#C9B284]/10">
-                        <span className="text-[10px] font-mono text-[#8C8370] uppercase tracking-wider block mb-1">{t('drawer.totalValuation')}</span>
-                        <div className="text-base font-extrabold text-[#E7D7B0] font-mono leading-none">
+                      <div className="aw-panel-muted p-4">
+                        <span className="aw-caption font-mono aw-text-tertiary uppercase block mb-1">{t('drawer.totalValuation')}</span>
+                        <div className="aw-label font-extrabold aw-text-primary font-mono leading-none">
                           {currSym}{val.toLocaleString('en-US', { maximumFractionDigits: 0 })}
                         </div>
-                        <span className="text-[10px] text-slate-500 font-mono mt-1.5 block min-h-[15px]">
+                        <span className="aw-caption aw-text-tertiary font-mono mt-1.5 block min-h-[15px]">
                           {exchangeRate != null ? `${conversionSym} ${conversionVal?.toLocaleString('en-US', { maximumFractionDigits: 0 })} ${t('drawer.approx')}` : ''}
                         </span>
                       </div>
 
                       {/* Allocation Item */}
-                      <div className="bg-[#121416] p-4 rounded-xl border border-[#C9B284]/10">
-                        <span className="text-[10px] font-mono text-[#8C8370] uppercase tracking-wider block mb-1">{t('drawer.portfolioAllocation')}</span>
-                        <div className="text-base font-extrabold text-[#E7D7B0] font-mono leading-none">
+                      <div className="aw-panel-muted p-4">
+                        <span className="aw-caption font-mono aw-text-tertiary uppercase block mb-1">{t('drawer.portfolioAllocation')}</span>
+                        <div className="aw-label font-extrabold aw-text-primary font-mono leading-none">
                           {holding.allocation || t('drawer.na')}
                         </div>
-                        <span className="text-[10px] text-[#8C8270] mt-1.5 block font-medium truncate min-h-[15px]">
+                        <span className="aw-caption aw-text-tertiary mt-1.5 block font-medium truncate min-h-[15px]">
                           {holding.allocation ? t('drawer.ofPublicMarkets') : ''}
                         </span>
                       </div>
                     </div>
 
                     {/* Context / Synchronize timestamp bar */}
-                    <div className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-[#16181A]/60 border border-[#C9B284]/8 text-[10px] font-mono text-[#8C8270]">
+                    <div className="aw-status-pill flex items-center justify-between py-1.5 px-3 w-full">
                       <div className="flex items-center gap-1.5">
-                        <span className={`w-1.5 h-1.5 rounded-full ${holding.lastSyncTime ? 'bg-emerald-500/80 animate-pulse' : 'bg-slate-500/80'}`} />
+                        <span className={`aw-status-dot ${holding.lastSyncTime ? 'aw-status-success animate-pulse' : ''}`} />
                         <span>{holding.lastSyncTime ? `${t('drawer.lastSynchronized')} ${new Date(holding.lastSyncTime).toISOString().slice(0, 16).replace('T', ' ')} UTC` : t('drawer.noSync')}</span>
                       </div>
                     </div>
 
                     {/* Sparkline historical trendline chart section */}
-                    <div className="bg-[#121416]/40 p-4 rounded-xl border border-[#C9B284]/10 space-y-3">
-                      <div className="flex justify-between items-center pb-2 border-b border-white/5">
-                        <span className="text-[11px] font-semibold text-[#8C8270] tracking-wider uppercase font-mono flex items-center gap-1.5">
-                          <Activity className="w-3.5 h-3.5 text-[#C9B284]" />
+                    <div className="aw-panel p-4 space-y-3">
+                      <div className="flex justify-between items-center pb-2 border-b border-aw-border-subtle">
+                        <span className="aw-section-kicker flex items-center gap-1.5">
+                          <MaterialIcon name="monitoring" size={16} className="text-aw-accent-mist" />
                           {t('drawer.trend1Y')} ({holding.currency || 'USD'})
                         </span>
                         
                         <div className="flex items-center gap-3">
-                          <span className="text-[10px] text-slate-400 font-medium">{t('drawer.day')} <span className={`font-mono font-semibold ${quant.changePercent != null ? (isUp ? 'text-emerald-400' : 'text-rose-400') : 'text-slate-500'}`}>{quant.changePercent != null ? `${isUp ? '+' : ''}${quant.changePercent}%` : '---'}</span></span>
-                          <span className="text-[10px] text-slate-400 font-medium font-mono border-l border-white/10 pl-2.5">{t('drawer.ytd')} <span className={`font-semibold ${quant.ytdPercent != null ? (quant.ytdPercent >= 0 ? 'text-emerald-400' : 'text-rose-400') : 'text-slate-500'}`}>{quant.ytdPercent != null ? `${quant.ytdPercent >= 0 ? '+' : ''}${quant.ytdPercent}%` : '---'}</span></span>
+                          <span className="aw-caption aw-text-secondary font-medium">{t('drawer.day')} <span className={`font-mono font-semibold ${quant.changePercent != null ? (isUp ? 'text-aw-success' : 'text-aw-danger') : 'aw-text-tertiary'}`}>{quant.changePercent != null ? `${isUp ? '+' : ''}${quant.changePercent}%` : '---'}</span></span>
+                          <span className="aw-caption aw-text-secondary font-medium font-mono border-l border-aw-border-subtle pl-2.5">{t('drawer.ytd')} <span className={`font-semibold ${quant.ytdPercent != null ? (quant.ytdPercent >= 0 ? 'text-aw-success' : 'text-aw-danger') : 'aw-text-tertiary'}`}>{quant.ytdPercent != null ? `${quant.ytdPercent >= 0 ? '+' : ''}${quant.ytdPercent}%` : '---'}</span></span>
                         </div>
                       </div>
 
                       <div className="h-[140px] relative w-full">
                         {loading ? (
-                          <ChartSkeleton />
+                          <ChartSkeleton label={t('drawer.syncingTrendline')} />
                         ) : hasHistory && sparklineOption ? (
-                          <Suspense fallback={<ChartSkeleton />}>
+                          <Suspense fallback={<ChartSkeleton label={t('drawer.syncingTrendline')} />}>
                             <ReactEChartsLazy option={sparklineOption} className="w-full h-full" />
                           </Suspense>
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center border border-dashed border-white/10 rounded-lg">
-                             <span className="text-[10px] text-[#8C8270] font-mono tracking-widest uppercase">{t('drawer.noTrendData')}</span>
+                          <div className="w-full h-full flex items-center justify-center border border-dashed border-aw-border-subtle rounded-lg">
+                             <span className="aw-caption aw-text-tertiary font-mono uppercase">{t('drawer.noTrendData')}</span>
                           </div>
                         )}
                       </div>
                     </div>
 
                     {/* Technical indicators section (BB low, BB high, RSI, ADX) */}
-                    <div className="bg-[#121416]/30 p-4 rounded-xl border border-[#C9B284]/10 space-y-3">
-                      <span className="text-[11px] font-semibold text-[#8C8270] tracking-wider uppercase font-mono flex items-center gap-1.5 pb-2 border-b border-white/5">
-                        <Target className="w-3.5 h-3.5 text-[#C9B284]" />
+                    <div className="aw-panel p-4 space-y-3">
+                      <span className="aw-section-kicker flex items-center gap-1.5 pb-2 border-b border-aw-border-subtle">
+                        <MaterialIcon name="track_changes" size={16} className="text-aw-accent-mist" />
                         {t('drawer.technicalIndicators')}
                       </span>
                       
                       {analysisStatus === 'loading' || loading ? (
                         <div className="p-4 flex items-center justify-center">
-                           <span className="text-[10px] text-[#8C8270] font-mono tracking-widest uppercase">正在计算技术指标...</span>
+                           <span className="aw-caption aw-text-tertiary font-mono uppercase">{t('drawer.calculatingIndicators')}</span>
                         </div>
                       ) : analysisStatus === 'error' ? (
-                        <div className="p-4 flex items-center justify-center border border-dashed border-white/10 rounded-lg">
-                           <span className="text-[10px] text-rose-500/70 font-mono tracking-widest uppercase">分析数据暂不可用</span>
+                        <div className="p-4 flex items-center justify-center border border-dashed border-aw-border-subtle rounded-lg">
+                           <span className="aw-caption text-aw-danger font-mono uppercase">{t('drawer.analysisUnavailable')}</span>
                         </div>
                       ) : (
                         <div className="grid grid-cols-4 gap-2">
-                          <div className="bg-black/25 rounded-lg p-2.5 border border-white/5 text-center">
-                            <span className="text-[8px] font-mono text-slate-500 uppercase block leading-none mb-1">BB Low</span>
-                            <span className="text-xs font-bold text-emerald-400 font-mono">{quant.buyPrice ? `$${parseFloat(quant.buyPrice).toFixed(1)}` : '---'}</span>
+                          <div className="aw-structured-card-muted p-2.5 text-center">
+                            <span className="aw-caption font-mono aw-text-tertiary uppercase block leading-none mb-1">BB Low</span>
+                            <span className="aw-caption font-bold text-aw-success font-mono">{quant.buyPrice ? `$${parseFloat(quant.buyPrice).toFixed(1)}` : '---'}</span>
                           </div>
-                          <div className="bg-black/25 rounded-lg p-2.5 border border-white/5 text-center">
-                            <span className="text-[8px] font-mono text-slate-500 uppercase block leading-none mb-1">BB High</span>
-                            <span className="text-xs font-bold text-rose-400 font-mono">{quant.sellPrice ? `$${parseFloat(quant.sellPrice).toFixed(1)}` : '---'}</span>
+                          <div className="aw-structured-card-muted p-2.5 text-center">
+                            <span className="aw-caption font-mono aw-text-tertiary uppercase block leading-none mb-1">BB High</span>
+                            <span className="aw-caption font-bold text-aw-danger font-mono">{quant.sellPrice ? `$${parseFloat(quant.sellPrice).toFixed(1)}` : '---'}</span>
                           </div>
-                          <div className="bg-black/25 rounded-lg p-2.5 border border-white/5 text-center relative overflow-hidden">
-                            <span className="text-[8px] font-mono text-slate-500 uppercase block leading-none mb-1">RSI</span>
+                          <div className="aw-structured-card-muted p-2.5 text-center relative overflow-hidden">
+                            <span className="aw-caption font-mono aw-text-tertiary uppercase block leading-none mb-1">RSI</span>
                             {quant.rsi != null ? (
-                              <span className={`text-xs font-extrabold font-mono ${quant.rsi > 70 ? 'text-rose-400' : quant.rsi < 30 ? 'text-emerald-400' : 'text-slate-200'}`}>
+                              <span className={`aw-caption font-extrabold font-mono ${quant.rsi > 70 ? 'text-aw-danger' : quant.rsi < 30 ? 'text-aw-success' : 'aw-text-primary'}`}>
                                 {parseFloat(quant.rsi).toFixed(1)}
                               </span>
                             ) : (
-                              <span className="text-[9px] font-mono text-[#8C8270] opacity-70">样本不足</span>
+                              <span className="aw-caption font-mono aw-text-tertiary opacity-70">{t('drawer.sampleInsufficient')}</span>
                             )}
                           </div>
-                          <div className="bg-black/25 rounded-lg p-2.5 border border-white/5 text-center relative overflow-hidden">
-                            <span className="text-[8px] font-mono text-slate-500 uppercase block leading-none mb-1">ADX</span>
+                          <div className="aw-structured-card-muted p-2.5 text-center relative overflow-hidden">
+                            <span className="aw-caption font-mono aw-text-tertiary uppercase block leading-none mb-1">ADX</span>
                             {quant.adx != null ? (
-                              <span className="text-xs font-bold text-[#C9B284] font-mono">{parseFloat(quant.adx).toFixed(1)}</span>
+                              <span className="aw-caption font-bold text-aw-accent-mist font-mono">{parseFloat(quant.adx).toFixed(1)}</span>
                             ) : (
-                              <span className="text-[9px] font-mono text-[#8C8270] opacity-70">样本不足</span>
+                              <span className="aw-caption font-mono aw-text-tertiary opacity-70">{t('drawer.sampleInsufficient')}</span>
                             )}
                           </div>
                         </div>
@@ -402,40 +410,40 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
 
                     {/* Advisory AI Intelligence Area (Risk, Opportunity, Suggested Actions) */}
                     {analysisStatus === 'loading' || loading ? (
-                       <div className="p-6 flex flex-col items-center justify-center gap-2 border border-dashed border-[#C9B284]/20 rounded-xl bg-[#121416]/50">
-                         <div className="w-4 h-4 rounded-full border border-[#C9B284]/50 border-t-[#C9B284] animate-spin" />
-                         <span className="text-[10px] text-[#8C8270] font-mono tracking-widest uppercase mt-2">正在计算策略区间...</span>
+                       <div className="aw-panel-muted p-6 flex flex-col items-center justify-center gap-2 border-dashed">
+                         <div className="w-4 h-4 rounded-full border border-aw-border-strong border-t-aw-accent-mist animate-spin" />
+                         <span className="aw-caption aw-text-tertiary font-mono uppercase mt-2">{t('drawer.calculatingStrategy')}</span>
                        </div>
                     ) : analysisStatus === 'error' ? (
-                       <div className="p-6 flex items-center justify-center border border-dashed border-rose-500/20 rounded-xl bg-[#121416]/50">
-                          <span className="text-[10px] text-rose-500/70 font-mono tracking-widest uppercase">由于缺少足够的历史行情，技术分析无法完成</span>
+                       <div className="aw-danger-panel p-6 flex items-center justify-center border-dashed">
+                          <span className="aw-caption text-aw-danger font-mono uppercase">{t('drawer.historyInsufficient')}</span>
                        </div>
                     ) : analysisStatus === 'partial' || dynamicRisks.length > 0 ? (
                     <div className="space-y-3 pt-1">
-                      <span className="text-[11px] font-semibold text-[#8C8270] tracking-wider uppercase font-mono flex items-center gap-1.5 pb-1 block">
-                        <BrainCircuit className="w-3.5 h-3.5 text-[#C9B284]" />
+                      <span className="aw-section-kicker flex items-center gap-1.5 pb-1 block">
+                        <MaterialIcon name="psychology" size={16} className="text-aw-accent-mist" />
                         {t('drawer.aiDiagnostics')}
                       </span>
 
                       {analysisStatus === 'partial' && (
-                        <div className="text-[10px] text-[#C9B284]/80 bg-[#C9B284]/10 p-2 rounded border border-[#C9B284]/20">
-                          由于历史行情样本不足，部分技术指标（{quant.missingIndicators?.join(', ')}）暂不可用，本次分析主要基于可用数据和估算值计算。
+                        <div className="aw-warning-panel aw-caption text-aw-warning p-2">
+                          {t('drawer.partialAnalysis')} {quant.missingIndicators?.length ? `(${quant.missingIndicators.join(', ')})` : ''}
                         </div>
                       )}
 
                       {/* Stacked Layout for extremely detailed Advisory diagnosis */}
                       <div className="grid grid-cols-1 gap-3">
                         {/* Risk Diagnosis */}
-                        <div className="bg-[#1C1415]/70 border border-red-500/10 hover:border-red-500/25 transition-colors p-4 rounded-xl flex flex-col justify-between">
+                        <div className="aw-danger-panel p-4 flex flex-col justify-between">
                           <div>
                             <div className="flex items-center gap-1.5 mb-2.5">
-                              <span className="w-2 h-2 rounded-full bg-red-500/80" />
-                              <span className="text-xs font-bold text-red-400">Security Portfolio Risks</span>
+                              <span className="aw-status-dot aw-status-danger" />
+                              <span className="aw-body font-bold text-aw-danger">{t('drawer.securityRisks')}</span>
                             </div>
-                            <ul className="space-y-1.5 text-slate-300 text-[11px] leading-relaxed">
+                            <ul className="space-y-1.5 aw-body aw-text-secondary leading-relaxed">
                               {dynamicRisks.map((txt, ii) => (
                                 <li key={ii} className="flex items-start gap-1">
-                                  <span className="text-red-500/60 font-medium select-none text-[10px] mt-[1.5px]">•</span>
+                                  <span className="text-aw-danger font-medium select-none aw-caption mt-[1.5px]">•</span>
                                   <span>{txt}</span>
                                 </li>
                               ))}
@@ -444,16 +452,16 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
                         </div>
 
                         {/* Opportunity Diagnosis */}
-                        <div className="bg-[#121915]/75 border border-emerald-500/10 hover:border-emerald-500/25 transition-colors p-4 rounded-xl flex flex-col justify-between">
+                        <div className="aw-success-panel p-4 flex flex-col justify-between">
                           <div>
                             <div className="flex items-center gap-1.5 mb-2.5">
-                              <span className="w-2 h-2 rounded-full bg-emerald-500/80 animate-pulse" />
-                              <span className="text-xs font-bold text-emerald-400">Technical Targets Opportunities</span>
+                              <span className="aw-status-dot aw-status-success animate-pulse" />
+                              <span className="aw-body font-bold text-aw-success">{t('drawer.technicalOpportunities')}</span>
                             </div>
-                            <ul className="space-y-1.5 text-slate-300 text-[11px] leading-relaxed">
+                            <ul className="space-y-1.5 aw-body aw-text-secondary leading-relaxed">
                               {dynamicOpportunities.map((txt, ii) => (
                                 <li key={ii} className="flex items-start gap-1">
-                                  <span className="text-emerald-500/60 font-medium select-none text-[10px] mt-[1.5px]">•</span>
+                                  <span className="text-aw-success font-medium select-none aw-caption mt-[1.5px]">•</span>
                                   <span>{txt}</span>
                                 </li>
                               ))}
@@ -462,15 +470,15 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
                         </div>
 
                         {/* Suggested Wealth Actions */}
-                        <div className="bg-[#1C1A16]/65 border border-[#C9B284]/12 hover:border-[#C9B284]/25 transition-colors p-4 rounded-xl">
+                        <div className="aw-panel p-4">
                           <div className="flex items-center gap-1.5 mb-2.5">
-                            <span className="w-2 h-2 rounded-full bg-[#C9B284]" />
-                            <span className="text-xs font-bold text-[#E7D7B0]">Suggested Advisory Actions</span>
+                            <span className="aw-status-dot aw-status-success" />
+                            <span className="aw-body font-bold aw-text-primary">{t('drawer.suggestedActions')}</span>
                           </div>
                           <div className="space-y-2.5">
                             {structuralSuggestedActions.map((txt, ii) => (
-                              <div key={ii} className="flex items-start gap-2.5 text-slate-300 text-[11px] leading-relaxed">
-                                <span className="w-4 h-4 rounded-full border border-[#C9B284]/30 bg-black/30 flex items-center justify-center text-[8px] font-mono text-[#C9B284] shrink-0 mt-[1.5px] font-bold">
+                              <div key={ii} className="flex items-start gap-2.5 aw-body aw-text-secondary leading-relaxed">
+                                <span className="aw-timeline-index !h-5 !w-5 shrink-0 mt-[1.5px]">
                                   {ii + 1}
                                 </span>
                                 <span>{txt}</span>
@@ -485,23 +493,23 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
                   </div>
 
                   {/* Ask Arbitra Bottom Input Section */}
-                  <div className="absolute bottom-0 left-0 right-0 bg-[#0E1012] border-t border-[#C9B284]/10 px-6 py-4 pb-6 shrink-0 z-25">
+	                  <div className="aw-drawer-footer aw-workbench-footer absolute bottom-0 left-0 right-0 border-t px-6 py-4 pb-6 shrink-0 z-25">
                     <form onSubmit={handleMainAskSubmit} className="relative flex items-center">
                       <input 
                         type="text"
                         placeholder={`${t('drawer.askArbitra')} ${holding.symbol || holding.name}...`}
                         value={mainAskInput}
                         onChange={(e) => setMainAskInput(e.target.value)}
-                        className="w-full bg-[#16181A] border border-[#C9B284]/20 hover:border-[#C9B284]/35 focus:border-[#C9B284]/65 px-4 py-2.5 pr-12 rounded-xl text-[12.5px] text-white placeholder-slate-500 focus:outline-none transition-all placeholder:font-sans font-sans"
+                        className="aw-form-input pr-12"
                       />
                       <button 
                         type="submit"
-                        className="absolute right-2 bg-[#C9B284] hover:bg-[#E7D7B0] text-[#121415] w-8 h-8 rounded-lg flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95"
+                        className="aw-button aw-button-primary !min-h-8 !px-2 absolute right-2 cursor-pointer"
                       >
-                        <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+                        <MaterialIcon name="arrow_forward" size={16} />
                       </button>
                     </form>
-                    <p className="text-[9px] font-mono text-slate-500 text-center mt-2.5 tracking-wide leading-none select-none">
+                    <p className="aw-caption font-mono aw-text-tertiary text-center mt-2.5 leading-none select-none">
                       {t('drawer.disclaimer')}
                     </p>
                   </div>
@@ -513,24 +521,24 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
                   initial={{ opacity: 0, x: 20 }} 
                   animate={{ opacity: 1, x: 0 }} 
                   exit={{ opacity: 0, x: -20 }}
-                  className="flex-1 flex flex-col h-full bg-[#0E1012] overflow-hidden"
+	                  className="aw-workbench-scroll flex-1 flex flex-col h-full overflow-hidden"
                 >
-                  <div className="flex justify-between items-center px-6 py-5 border-b border-[#C9B284]/15 shrink-0 bg-transparent">
-                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-[#C9B284]" />
+	                  <div className="aw-drawer-header aw-workbench-header flex justify-between items-center px-6 py-5 border-b shrink-0">
+                    <h3 className="aw-body font-bold aw-text-primary flex items-center gap-2">
+                      <MaterialIcon name="auto_awesome" size={16} className="text-aw-accent-mist" />
                       <span>{holding.symbol || holding.name} {t('drawer.analyticsStudio')}</span>
                     </h3>
                     
                     {/* Retro back trigger */}
                     <button 
                       onClick={() => { setIsCopilotOpen(false); setCopilotPrompt(''); }} 
-                      className="border border-[#C9B284]/20 hover:border-[#C9B284]/40 bg-[#16181A] hover:bg-[#C9B284]/10 text-[#C9B284] px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+                      className="aw-button aw-button-ghost !min-h-8 !px-3 cursor-pointer"
                     >
                       <span>←</span><span>{t('drawer.backToMetrics')}</span>
                     </button>
                   </div>
 
-                  <div className="flex-1 overflow-hidden relative min-h-0 bg-[#0E1012]">
+                  <div className="flex-1 overflow-hidden relative min-h-0 bg-aw-bg">
                     {(() => {
                       const allSnapshots = uid ? getAgentAnalysisSnapshots(uid) : [];
                       const symbolSnapshots = allSnapshots.filter(s => s.holdingSnapshot.symbol === holding.symbol);
@@ -574,7 +582,7 @@ export function PositionIntelligenceDrawer({ isOpen, holding, onClose }: Positio
                           isOpen={isCopilotOpen}
                           inline={true}
                           onClose={() => { setIsCopilotOpen(false); setCopilotPrompt(''); }}
-                          widgetTitle={`持仓分析: ${holding.symbol || holding.name}`} 
+                          widgetTitle={`${t('drawer.positionAnalysisTitle')}: ${holding.symbol || holding.name}`} 
                           initialMessage={copilotPrompt}
                           widgetData={{
                             holdingDetail: holding,

@@ -1,0 +1,452 @@
+<svg width="4300" height="7600" viewBox="0 0 4300 7600" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="softGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="16" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.2 0 0 0 0 1 0 0 0 0 0.62 0 0 0 0.65 0"/>
+      <feBlend in="SourceGraphic" mode="screen"/>
+    </filter>
+    <filter id="amberGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="12" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 1 0 0 0 0 0.74 0 0 0 0 0.18 0 0 0 0.55 0"/>
+      <feBlend in="SourceGraphic" mode="screen"/>
+    </filter>
+    <linearGradient id="panel" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#171B19"/>
+      <stop offset="1" stop-color="#0E100F"/>
+    </linearGradient>
+    <linearGradient id="pale" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#EEF7E9"/>
+      <stop offset="1" stop-color="#C8D7C1"/>
+    </linearGradient>
+    <linearGradient id="neonLine" x1="0" y1="0" x2="1" y2="0">
+      <stop stop-color="#DDE8D8"/>
+      <stop offset="0.5" stop-color="#14F2A3"/>
+      <stop offset="1" stop-color="#D8C27A"/>
+    </linearGradient>
+    <radialGradient id="cardAura" cx="50%" cy="0%" r="70%">
+      <stop stop-color="#14F2A3" stop-opacity="0.18"/>
+      <stop offset="0.6" stop-color="#14F2A3" stop-opacity="0.04"/>
+      <stop offset="1" stop-color="#14F2A3" stop-opacity="0"/>
+    </radialGradient>
+    <style>
+      .bg { fill:#0E100F; }
+      .panel { fill:url(#panel); stroke:rgba(238,247,233,.16); stroke-width:2; }
+      .panel2 { fill:#111513; stroke:rgba(238,247,233,.12); stroke-width:2; }
+      .pale { fill:url(#pale); stroke:rgba(14,16,15,.18); stroke-width:2; }
+      .hair { stroke:rgba(238,247,233,.10); stroke-width:2; }
+      .grid { stroke:rgba(238,247,233,.08); stroke-width:2; }
+      .txt { fill:#EEF3EA; font-family:Inter, Arial, sans-serif; }
+      .muted { fill:rgba(238,243,234,.58); font-family:Inter, Arial, sans-serif; }
+      .dim { fill:rgba(238,243,234,.38); font-family:Inter, Arial, sans-serif; }
+      .mono { font-family:"JetBrains Mono", "SF Mono", monospace; letter-spacing:.04em; }
+      .h1 { font-size:70px; font-weight:700; letter-spacing:0; }
+      .h2 { font-size:40px; font-weight:700; letter-spacing:0; }
+      .h3 { font-size:26px; font-weight:700; letter-spacing:0; }
+      .body { font-size:24px; font-weight:500; }
+      .cap { font-size:18px; font-weight:600; }
+      .micro { font-size:15px; font-weight:600; }
+      .metric { font-family:"JetBrains Mono", monospace; font-size:64px; font-weight:700; letter-spacing:0; }
+      .chip { fill:rgba(238,243,234,.045); stroke:rgba(238,243,234,.14); stroke-width:1.5; }
+      .success { fill:#A8C9A3; }
+      .warning { fill:#D8C27A; }
+      .danger { fill:#D98F85; }
+      .info { fill:#9FB6D9; }
+      .neon { stroke:#14F2A3; stroke-width:4; filter:url(#softGlow); }
+      .amber { stroke:#D8C27A; stroke-width:4; filter:url(#amberGlow); }
+    </style>
+  </defs>
+
+  <rect class="bg" width="4300" height="7600"/>
+  <rect x="0" y="0" width="4300" height="7600" fill="url(#cardAura)" opacity=".7"/>
+
+  <g id="header">
+    <text x="170" y="180" class="muted mono cap">ARBITRA 2.0 / PRD-DRIVEN FIGMA DESIGN OUTPUT</text>
+    <text x="170" y="270" class="txt h1">Sovereign Wealth Operating System</text>
+    <text x="170" y="330" class="muted body">New page design board: inherit existing convergence system, add CIO cockpit, three rails, portfolio intelligence, unified workbench.</text>
+    <rect x="3450" y="145" rx="22" ry="22" width="660" height="140" class="pale"/>
+    <text x="3500" y="205" fill="#0E100F" font-family="Inter, Arial" font-size="22" font-weight="800">NEXT FIGMA PAGE</text>
+    <text x="3500" y="248" fill="rgba(14,16,15,.72)" font-family="JetBrains Mono, monospace" font-size="18" font-weight="700">Arbitra 2.0 / PRD Design Draft</text>
+  </g>
+
+  <g id="baseline" transform="translate(170 470)">
+    <rect width="1260" height="720" rx="28" class="panel"/>
+    <text x="44" y="64" class="dim mono cap">STEP 1 / EXISTING FIGMA BASELINE</text>
+    <text x="44" y="116" class="txt h2">Convergence System Is The Spine</text>
+    <text x="44" y="164" class="muted body">Do not redraw from scratch. Extend the current Figma component definitions and migration discipline.</text>
+    <line x1="44" y1="210" x2="1216" y2="210" class="hair"/>
+    <g class="body">
+      <text x="60" y="276" class="txt">01  Arbitra Component System / Definitions &amp; Convergence</text>
+      <text x="60" y="342" class="txt">02  START HERE - Component System Definitions Added</text>
+      <text x="60" y="408" class="txt">03  START HERE - Arbitra Redesign Review</text>
+      <text x="60" y="474" class="txt">04  VISIBLE COPY - Arbitra Wealth / Redesign Review Board</text>
+    </g>
+    <rect x="44" y="545" width="1172" height="112" rx="20" class="chip"/>
+    <text x="70" y="590" class="muted body">Design rule: Layer 1 = existing convergence rules. Layer 2 = PRD 2.0 experience system.</text>
+    <text x="70" y="628" class="dim mono micro">OUTPUT: audit board, reusable baseline rules, PRD 2.0 delta list.</text>
+  </g>
+
+  <g id="tokens" transform="translate(1480 470)">
+    <rect width="1260" height="720" rx="28" class="panel"/>
+    <text x="44" y="64" class="dim mono cap">STEP 2 / FOUNDATION TOKENS 2.0</text>
+    <text x="44" y="116" class="txt h2">Black-First + Neon Analytical Layer</text>
+    <g transform="translate(44 170)">
+      <rect width="160" height="92" rx="16" fill="#0E100F" stroke="rgba(238,247,233,.18)" stroke-width="2"/>
+      <rect x="188" width="160" height="92" rx="16" fill="#111513" stroke="rgba(238,247,233,.18)" stroke-width="2"/>
+      <rect x="376" width="160" height="92" rx="16" fill="#EEF3EA"/>
+      <rect x="564" width="160" height="92" rx="16" fill="#14F2A3"/>
+      <rect x="752" width="160" height="92" rx="16" fill="#D8C27A"/>
+      <rect x="940" width="160" height="92" rx="16" fill="#9FB6D9"/>
+      <text x="0" y="132" class="dim mono micro">BASE #0E100F</text>
+      <text x="188" y="132" class="dim mono micro">PANEL #111513</text>
+      <text x="376" y="132" class="dim mono micro">TEXT #EEF3EA</text>
+      <text x="564" y="132" class="dim mono micro">NEON VALID</text>
+      <text x="752" y="132" class="dim mono micro">WATCH</text>
+      <text x="940" y="132" class="dim mono micro">SIMULATION</text>
+    </g>
+    <g transform="translate(44 365)">
+      <text class="txt metric">64</text>
+      <text x="155" y="0" class="txt h1">70</text>
+      <text x="310" y="0" class="txt h2">40</text>
+      <text x="450" y="0" class="txt h3">26</text>
+      <text x="560" y="0" class="txt body">24</text>
+      <text x="665" y="0" class="txt cap">18</text>
+      <text x="0" y="86" class="dim mono micro">5 text levels max in implementation: caption/body/label/title/metric.</text>
+    </g>
+    <g transform="translate(44 535)">
+      <rect width="92" height="36" rx="8" class="chip"/>
+      <rect x="118" width="124" height="36" rx="12" class="chip"/>
+      <rect x="268" width="156" height="36" rx="20" class="chip"/>
+      <rect x="450" width="188" height="36" rx="28" class="chip"/>
+      <text x="0" y="82" class="dim mono micro">Spacing: 4 / 8 / 12 / 16 / 24 / 32. Radius: 4 / 8 / 12 / 20.</text>
+    </g>
+  </g>
+
+  <g id="visual-ref" transform="translate(2790 470)">
+    <rect width="1340" height="720" rx="28" class="panel"/>
+    <text x="44" y="64" class="dim mono cap">VISUAL REFERENCE TRANSLATION</text>
+    <text x="44" y="116" class="txt h2">From Report Card To Wealth Cockpit</text>
+    <text x="44" y="164" class="muted body">Reference images imply: black cards, dimensional charts, glowing analytical geometry, compact financial readouts.</text>
+    <g transform="translate(70 230)">
+      <rect width="350" height="400" rx="26" fill="#050706" stroke="rgba(238,247,233,.18)" stroke-width="2"/>
+      <text x="32" y="52" class="txt h3">Sales Report</text>
+      <g transform="translate(175 180)">
+        <ellipse rx="110" ry="56" stroke="#14F2A3" stroke-width="4" fill="rgba(20,242,163,.08)" filter="url(#softGlow)"/>
+        <ellipse rx="56" ry="110" stroke="#14F2A3" stroke-width="4" fill="rgba(20,242,163,.08)" transform="rotate(60)" filter="url(#softGlow)"/>
+        <ellipse rx="56" ry="110" stroke="#D8C27A" stroke-width="4" fill="none" transform="rotate(120)" filter="url(#amberGlow)"/>
+      </g>
+      <text x="32" y="330" class="txt metric" font-size="46">$8,097</text>
+      <text x="32" y="366" fill="#14F2A3" font-family="JetBrains Mono" font-size="18" font-weight="700">+19.6%</text>
+    </g>
+    <g transform="translate(490 230)">
+      <rect width="760" height="400" rx="26" class="panel2"/>
+      <text x="34" y="52" class="txt h3">ARBITRA Translation</text>
+      <text x="34" y="92" class="muted body">Use generated-looking geometry only for data that has deterministic implementation.</text>
+      <g transform="translate(50 135)">
+        <text x="0" y="0" class="dim mono micro">IMPLEMENTABLE 3D CHART OPTIONS</text>
+        <text x="0" y="48" class="txt body">ECharts custom series / SVG path grid / Three.js mesh plane</text>
+        <text x="0" y="94" class="txt body">No fake numbers. No generated chart text. Data always owned by code.</text>
+        <text x="0" y="140" class="txt body">Figma can use vector placeholder; dev owns final chart geometry.</text>
+      </g>
+    </g>
+  </g>
+
+  <g id="dashboard" transform="translate(170 1330)">
+    <rect width="3960" height="1660" rx="34" fill="#0B0E0D" stroke="rgba(238,247,233,.16)" stroke-width="2"/>
+    <text x="60" y="80" class="dim mono cap">STEP 4-5 / DASHBOARD 2.0 DESKTOP FRAME</text>
+    <text x="60" y="142" class="txt h2">Command Dashboard: CIO Decision + Three Rails + Portfolio Intelligence</text>
+    <g transform="translate(60 215)">
+      <rect width="3840" height="96" rx="24" class="panel2"/>
+      <circle cx="48" cy="48" r="22" fill="#EEF3EA"/>
+      <text x="90" y="42" class="txt h3">ARBITRA</text>
+      <text x="90" y="70" class="dim mono micro">WEALTH OPERATING SYSTEM</text>
+      <g transform="translate(1200 25)">
+        <rect width="160" height="46" rx="23" class="chip"/><circle cx="25" cy="23" r="6" class="success"/><text x="45" y="30" class="muted mono micro">SYSTEM OK</text>
+        <rect x="180" width="160" height="46" rx="23" class="chip"/><circle cx="205" cy="23" r="6" class="success"/><text x="225" y="30" class="muted mono micro">SYNCED</text>
+        <rect x="360" width="160" height="46" rx="23" class="chip"/><circle cx="385" cy="23" r="6" class="warning"/><text x="405" y="30" class="muted mono micro">2 ACCTS</text>
+      </g>
+      <rect x="3360" y="18" width="300" height="60" rx="16" class="pale"/>
+      <text x="3430" y="56" fill="#0E100F" font-family="Inter" font-size="22" font-weight="800">Ask Arbitra</text>
+    </g>
+
+    <g transform="translate(60 350)">
+      <rect width="2100" height="470" rx="28" class="panel"/>
+      <text x="44" y="60" class="dim mono cap">CIO PROJECTION / UPDATED 11:37</text>
+      <text x="44" y="132" class="txt h1">HOLD &amp; SIMULATE</text>
+      <text x="44" y="188" class="muted body">Do not increase high-beta exposure until cash guardrail and concentration risk are reviewed.</text>
+      <line x1="44" y1="238" x2="2056" y2="238" class="hair"/>
+      <rect x="44" y="282" width="520" height="104" rx="18" class="chip"/>
+      <text x="76" y="324" class="dim mono micro">PRIMARY ACTION</text>
+      <text x="76" y="360" class="txt body">Open Workbench simulation</text>
+      <rect x="590" y="282" width="520" height="104" rx="18" class="chip"/>
+      <text x="622" y="324" class="dim mono micro">BLOCKED BY LIFE RAIL</text>
+      <text x="622" y="360" class="warning body">No direct risk expansion</text>
+      <rect x="1136" y="282" width="360" height="104" rx="18" class="chip"/>
+      <text x="1168" y="324" class="dim mono micro">CONFIDENCE</text>
+      <text x="1168" y="360" class="txt body">82 / 100</text>
+      <rect x="1716" y="44" width="310" height="64" rx="18" class="pale"/>
+      <text x="1765" y="84" fill="#0E100F" font-family="Inter" font-size="20" font-weight="800">Open Workbench</text>
+    </g>
+
+    <g transform="translate(2190 350)">
+      <rect width="1710" height="470" rx="28" class="panel"/>
+      <text x="44" y="60" class="dim mono cap">THREE AGENT RAILS</text>
+      <text x="44" y="110" class="txt h2">Parallel Readout</text>
+      <g transform="translate(44 160)">
+        <rect width="500" height="250" rx="22" class="panel2"/>
+        <circle cx="52" cy="52" r="10" class="warning"/>
+        <text x="78" y="62" class="txt h3">Equity</text>
+        <text x="36" y="116" class="muted body">High-beta cluster detected.</text>
+        <polyline points="40,192 120,150 200,178 280,120 360,145 440,92" fill="none" class="amber"/>
+        <text x="36" y="224" class="dim mono micro">WATCH / 74%</text>
+        <rect x="532" width="500" height="250" rx="22" class="panel2"/>
+        <circle cx="584" cy="52" r="10" class="success"/>
+        <text x="610" y="62" class="txt h3">Allocation</text>
+        <text x="568" y="116" class="muted body">Simulate defensive ballast.</text>
+        <polygon points="790,82 900,132 870,220 710,220 680,132" fill="rgba(20,242,163,.12)" stroke="#14F2A3" stroke-width="4" filter="url(#softGlow)"/>
+        <text x="568" y="224" class="dim mono micro">SIMULATE / 86%</text>
+        <rect x="1064" width="500" height="250" rx="22" class="panel2"/>
+        <circle cx="1116" cy="52" r="10" class="info"/>
+        <text x="1142" y="62" class="txt h3">Life</text>
+        <text x="1100" y="116" class="muted body">Cashflow constraint active.</text>
+        <line x1="1110" y1="185" x2="1490" y2="185" class="neon"/>
+        <circle cx="1190" cy="185" r="18" fill="#0E100F" stroke="#DDE8D8" stroke-width="4"/>
+        <circle cx="1370" cy="185" r="18" fill="#0E100F" stroke="#D8C27A" stroke-width="4"/>
+        <text x="1100" y="224" class="dim mono micro">GUARDRAIL / 90%</text>
+      </g>
+    </g>
+
+    <g transform="translate(60 850)">
+      <rect width="1240" height="680" rx="28" class="panel"/>
+      <text x="44" y="60" class="dim mono cap">CURRENT STATE</text>
+      <text x="44" y="120" class="txt h2">Hard Facts</text>
+      <g transform="translate(44 170)">
+        <rect width="360" height="180" rx="24" class="panel2"/><text x="28" y="50" class="dim mono micro">NET WORTH</text><text x="28" y="118" class="txt metric">$654K</text>
+        <rect x="400" width="360" height="180" rx="24" class="panel2"/><text x="428" y="50" class="dim mono micro">LIQUIDITY</text><text x="428" y="118" class="txt metric">21%</text>
+        <rect x="800" width="360" height="180" rx="24" class="panel2"/><text x="828" y="50" class="dim mono micro">SAFETY</text><text x="828" y="118" class="txt metric">7.4</text>
+      </g>
+      <g transform="translate(44 410)">
+        <rect width="1120" height="190" rx="24" class="panel2"/>
+        <text x="30" y="54" class="txt h3">Data Freshness</text>
+        <text x="30" y="102" class="muted body">Broker holdings 100% / quote coverage 91% / projection T+0</text>
+        <rect x="30" y="134" width="1030" height="20" rx="10" fill="rgba(238,243,234,.08)"/>
+        <rect x="30" y="134" width="910" height="20" rx="10" fill="url(#neonLine)"/>
+      </g>
+    </g>
+
+    <g transform="translate(1330 850)">
+      <rect width="1670" height="680" rx="28" class="panel"/>
+      <text x="44" y="60" class="dim mono cap">PORTFOLIO INTELLIGENCE SNAPSHOT</text>
+      <text x="44" y="120" class="txt h2">Strategic Exposure Map</text>
+      <g transform="translate(70 190)">
+        <line x1="0" y1="310" x2="1020" y2="310" class="grid"/>
+        <line x1="80" y1="40" x2="80" y2="360" class="grid"/>
+        <line x1="260" y1="20" x2="260" y2="380" class="grid"/>
+        <line x1="440" y1="20" x2="440" y2="380" class="grid"/>
+        <line x1="620" y1="20" x2="620" y2="380" class="grid"/>
+        <line x1="800" y1="40" x2="800" y2="360" class="grid"/>
+        <path d="M60 300 C150 170 260 130 370 200 C475 266 540 74 670 110 C790 145 860 230 960 92" fill="none" class="neon"/>
+        <path d="M60 335 C150 235 260 210 370 245 C475 285 540 154 670 190 C790 220 860 270 960 172" fill="none" stroke="#9FB6D9" stroke-width="4" opacity=".8"/>
+        <path d="M60 360 C150 290 260 284 370 300 C475 324 540 230 670 260 C790 284 860 310 960 244" fill="none" stroke="#D8C27A" stroke-width="4" opacity=".75"/>
+        <circle cx="260" cy="130" r="36" fill="#14F2A3" opacity=".7" filter="url(#softGlow)"/>
+        <circle cx="540" cy="74" r="48" fill="#D8C27A" opacity=".65" filter="url(#amberGlow)"/>
+        <circle cx="960" cy="92" r="30" fill="#9FB6D9" opacity=".75"/>
+      </g>
+      <g transform="translate(1110 200)">
+        <rect width="480" height="330" rx="24" class="panel2"/>
+        <text x="30" y="52" class="dim mono micro">INTENT FINGERPRINT</text>
+        <text x="30" y="95" class="txt h3">AI infra / high beta</text>
+        <text x="30" y="145" class="muted body">Missing: power, equipment, defensive ballast.</text>
+        <text x="30" y="200" class="warning body">Suggested: simulate 10% rebalance</text>
+        <text x="30" y="258" class="dim mono micro">ECharts custom series / SVG path grid</text>
+      </g>
+    </g>
+
+    <g transform="translate(3030 850)">
+      <rect width="870" height="680" rx="28" class="panel"/>
+      <text x="44" y="60" class="dim mono cap">DECISION LAYER</text>
+      <text x="44" y="120" class="txt h2">Action Queue</text>
+      <g transform="translate(44 170)">
+        <rect width="780" height="105" rx="20" class="chip"/><circle cx="36" cy="52" r="9" class="success"/><text x="70" y="48" class="txt body">Run portfolio simulation</text><text x="70" y="80" class="dim mono micro">READY_TO_SIMULATE</text>
+        <rect y="130" width="780" height="105" rx="20" class="chip"/><circle cx="36" cy="182" r="9" class="warning"/><text x="70" y="178" class="txt body">Confirm cashflow priority memory</text><text x="70" y="210" class="dim mono micro">PENDING MEMORY</text>
+        <rect y="260" width="780" height="105" rx="20" class="chip"/><circle cx="36" cy="312" r="9" class="info"/><text x="70" y="308" class="txt body">Compare ETF substitutes</text><text x="70" y="340" class="dim mono micro">WORKBENCH ACTION</text>
+      </g>
+    </g>
+  </g>
+
+  <g id="portfolio" transform="translate(170 3140)">
+    <rect width="1940" height="1250" rx="34" class="panel"/>
+    <text x="60" y="80" class="dim mono cap">STEP 6 / PORTFOLIO INTELLIGENCE MAP SYSTEM</text>
+    <text x="60" y="142" class="txt h2">Before / After Strategic Exposure Map</text>
+    <g transform="translate(70 230)">
+      <rect width="820" height="820" rx="28" class="panel2"/>
+      <text x="34" y="58" class="txt h3">Current Exposure</text>
+      <g transform="translate(410 445)">
+        <circle r="230" fill="rgba(20,242,163,.04)" stroke="rgba(238,247,233,.10)" stroke-width="2"/>
+        <circle r="150" fill="rgba(20,242,163,.04)" stroke="rgba(238,247,233,.10)" stroke-width="2"/>
+        <circle cx="-80" cy="-80" r="130" fill="#14F2A3" opacity=".32" stroke="#14F2A3" stroke-width="4" filter="url(#softGlow)"/>
+        <circle cx="80" cy="-55" r="105" fill="#D8C27A" opacity=".28" stroke="#D8C27A" stroke-width="4" filter="url(#amberGlow)"/>
+        <circle cx="-10" cy="135" r="165" fill="#9FB6D9" opacity=".22" stroke="#9FB6D9" stroke-width="4"/>
+        <circle cx="165" cy="120" r="58" fill="#D98F85" opacity=".40" stroke="#D98F85" stroke-width="4"/>
+        <text x="-108" y="-82" class="txt body">AI Infra</text>
+        <text x="42" y="-50" class="txt body">EV</text>
+        <text x="-70" y="145" class="txt body">Semi</text>
+      </g>
+    </g>
+    <g transform="translate(960 230)">
+      <rect width="820" height="820" rx="28" class="panel2"/>
+      <text x="34" y="58" class="txt h3">Projected Exposure</text>
+      <g transform="translate(410 445)">
+        <circle r="230" fill="rgba(20,242,163,.04)" stroke="rgba(238,247,233,.10)" stroke-width="2"/>
+        <circle r="150" fill="rgba(20,242,163,.04)" stroke="rgba(238,247,233,.10)" stroke-width="2"/>
+        <circle cx="-115" cy="-82" r="105" fill="#14F2A3" opacity=".30" stroke="#14F2A3" stroke-width="4" filter="url(#softGlow)"/>
+        <circle cx="72" cy="-56" r="78" fill="#D8C27A" opacity=".24" stroke="#D8C27A" stroke-width="4" filter="url(#amberGlow)"/>
+        <circle cx="-38" cy="112" r="132" fill="#9FB6D9" opacity=".22" stroke="#9FB6D9" stroke-width="4"/>
+        <circle cx="160" cy="130" r="98" fill="#EEF3EA" opacity=".20" stroke="#EEF3EA" stroke-width="4" stroke-dasharray="10 10"/>
+        <circle cx="190" cy="-150" r="82" fill="#A8C9A3" opacity=".24" stroke="#A8C9A3" stroke-width="4"/>
+        <text x="120" y="-145" class="txt body">Power</text>
+        <text x="118" y="138" class="txt body">Cash</text>
+      </g>
+    </g>
+    <g transform="translate(70 1110)">
+      <text class="muted body">Implementation note: packed bubble/treemap can be built by d3-hierarchy or ECharts custom series; 3D glow is visual treatment, not data logic.</text>
+    </g>
+  </g>
+
+  <g id="workbench" transform="translate(2190 3140)">
+    <rect width="1940" height="1250" rx="34" class="panel"/>
+    <text x="60" y="80" class="dim mono cap">STEP 7 / UNIFIED AGENT WORKBENCH</text>
+    <text x="60" y="142" class="txt h2">One Shell, Many Entry Presets</text>
+    <g transform="translate(70 220)">
+      <rect width="1800" height="900" rx="28" fill="#090C0B" stroke="rgba(238,247,233,.16)" stroke-width="2"/>
+      <rect width="1800" height="90" rx="28" fill="#121614"/>
+      <text x="34" y="55" class="txt h3">AI Theme Exposure Simulation</text>
+      <text x="1380" y="55" class="dim mono micro">source: holdings / profile / market</text>
+      <g transform="translate(34 124)">
+        <rect width="300" height="690" rx="22" class="panel2"/>
+        <text x="26" y="48" class="dim mono micro">RAILS</text>
+        <text x="26" y="104" class="txt body">Overview / CIO</text>
+        <text x="26" y="160" class="muted body">Equity</text>
+        <text x="26" y="216" class="muted body">Allocation</text>
+        <text x="26" y="272" class="muted body">Life</text>
+        <text x="26" y="328" class="muted body">Evidence</text>
+        <text x="26" y="384" class="muted body">Memory</text>
+      </g>
+      <g transform="translate(370 124)">
+        <rect width="910" height="410" rx="22" class="panel2"/>
+        <text x="30" y="54" class="dim mono micro">WIDGET CANVAS</text>
+        <text x="30" y="104" class="txt h3">Conflict Resolver</text>
+        <line x1="120" y1="220" x2="790" y2="220" class="hair"/>
+        <circle cx="145" cy="220" r="42" fill="#D8C27A" opacity=".28" stroke="#D8C27A" stroke-width="4"/>
+        <circle cx="455" cy="220" r="56" fill="#14F2A3" opacity=".22" stroke="#14F2A3" stroke-width="4"/>
+        <circle cx="765" cy="220" r="42" fill="#9FB6D9" opacity=".28" stroke="#9FB6D9" stroke-width="4"/>
+        <text x="88" y="308" class="dim mono micro">Equity says watch</text>
+        <text x="380" y="308" class="dim mono micro">CIO says simulate</text>
+        <text x="690" y="308" class="dim mono micro">Life blocks risk</text>
+        <rect y="455" width="910" height="235" rx="22" class="panel2"/>
+        <text x="30" y="512" class="txt h3">Conversation is a tool, not the whole product</text>
+        <rect x="30" y="585" width="820" height="58" rx="18" class="chip"/>
+        <text x="56" y="622" class="dim body">Ask: compare conservative / neutral / aggressive simulation...</text>
+      </g>
+      <g transform="translate(1315 124)">
+        <rect width="420" height="690" rx="22" class="pale"/>
+        <text x="30" y="55" fill="#0E100F" font-family="JetBrains Mono" font-size="17" font-weight="800">MEMORY / PROFILE</text>
+        <text x="30" y="116" fill="#0E100F" font-family="Inter" font-size="28" font-weight="800">Will update dashboard</text>
+        <text x="30" y="172" fill="rgba(14,16,15,.68)" font-family="Inter" font-size="22" font-weight="600">Candidate: future 12 months cashflow priority.</text>
+        <rect x="30" y="540" width="170" height="58" rx="18" fill="#0E100F"/>
+        <text x="70" y="577" fill="#EEF3EA" font-family="Inter" font-size="20" font-weight="800">Confirm</text>
+        <rect x="220" y="540" width="150" height="58" rx="18" fill="rgba(14,16,15,.08)" stroke="rgba(14,16,15,.18)" stroke-width="2"/>
+        <text x="262" y="577" fill="#0E100F" font-family="Inter" font-size="20" font-weight="800">Edit</text>
+      </g>
+    </g>
+  </g>
+
+  <g id="components" transform="translate(170 4550)">
+    <rect width="3960" height="980" rx="34" class="panel"/>
+    <text x="60" y="80" class="dim mono cap">STEP 3 / CORE COMPONENTS 2.0</text>
+    <text x="60" y="142" class="txt h2">Reusable Component Families Required Before Implementation</text>
+    <g transform="translate(60 220)">
+      <g>
+        <rect width="580" height="600" rx="28" class="panel2"/>
+        <text x="34" y="62" class="txt h3">CommandCard</text>
+        <text x="34" y="114" class="muted body">CIO Decision / Conflict / Action</text>
+        <rect x="34" y="170" width="500" height="230" rx="22" class="chip"/>
+        <text x="64" y="224" class="dim mono micro">STANCE</text>
+        <text x="64" y="282" class="txt h2">HOLD</text>
+        <text x="64" y="334" class="muted body">Primary action only.</text>
+      </g>
+      <g transform="translate(640 0)">
+        <rect width="580" height="600" rx="28" class="panel2"/>
+        <text x="34" y="62" class="txt h3">RailCard</text>
+        <text x="34" y="114" class="muted body">Equity / Allocation / Life</text>
+        <circle cx="105" cy="250" r="60" fill="rgba(216,194,122,.18)" stroke="#D8C27A" stroke-width="4"/>
+        <circle cx="270" cy="250" r="60" fill="rgba(20,242,163,.18)" stroke="#14F2A3" stroke-width="4"/>
+        <circle cx="435" cy="250" r="60" fill="rgba(159,182,217,.18)" stroke="#9FB6D9" stroke-width="4"/>
+      </g>
+      <g transform="translate(1280 0)">
+        <rect width="580" height="600" rx="28" class="panel2"/>
+        <text x="34" y="62" class="txt h3">MetricCard 2.0</text>
+        <text x="34" y="114" class="muted body">Real trend or no-history state.</text>
+        <text x="34" y="235" class="txt metric">$654K</text>
+        <polyline points="40,380 120,338 200,356 280,300 360,325 460,265" fill="none" class="neon"/>
+      </g>
+      <g transform="translate(1920 0)">
+        <rect width="580" height="600" rx="28" class="panel2"/>
+        <text x="34" y="62" class="txt h3">MemoryCard</text>
+        <text x="34" y="114" class="muted body">Candidate / confirmed / rejected.</text>
+        <rect x="34" y="170" width="500" height="88" rx="18" class="chip"/>
+        <rect x="34" y="286" width="500" height="88" rx="18" class="chip"/>
+        <rect x="34" y="402" width="500" height="88" rx="18" class="chip"/>
+      </g>
+      <g transform="translate(2560 0)">
+        <rect width="580" height="600" rx="28" class="panel2"/>
+        <text x="34" y="62" class="txt h3">ExposureLegend</text>
+        <text x="34" y="114" class="muted body">Confidence and source encoding.</text>
+        <circle cx="80" cy="210" r="20" fill="#14F2A3"/><text x="125" y="218" class="txt body">official / valid</text>
+        <circle cx="80" cy="290" r="20" fill="#D8C27A"/><text x="125" y="298" class="txt body">watch / missing</text>
+        <circle cx="80" cy="370" r="20" fill="#9FB6D9"/><text x="125" y="378" class="txt body">candidate / simulation</text>
+        <circle cx="80" cy="450" r="20" fill="none" stroke="#EEF3EA" stroke-width="4" stroke-dasharray="8 8"/><text x="125" y="458" class="txt body">estimated / inferred</text>
+      </g>
+      <g transform="translate(3200 0)">
+        <rect width="580" height="600" rx="28" class="panel2"/>
+        <text x="34" y="62" class="txt h3">State Coverage</text>
+        <text x="34" y="114" class="muted body">Default / hover / selected / loading / empty / partial / blocked / warning / mobile.</text>
+        <text x="34" y="230" class="dim mono micro">DO NOT IMPLEMENT ONE-OFF DRAWERS.</text>
+        <text x="34" y="290" class="dim mono micro">DO NOT ALTER API PAYLOADS.</text>
+      </g>
+    </g>
+  </g>
+
+  <g id="storyboard" transform="translate(170 5700)">
+    <rect width="3960" height="1120" rx="34" class="panel"/>
+    <text x="60" y="80" class="dim mono cap">STEP 8 / CLOSED-LOOP STORYBOARD</text>
+    <text x="60" y="142" class="txt h2">Dashboard -> Workbench -> Memory -> Projection Refresh</text>
+    <g transform="translate(60 230)">
+      <g>
+        <rect width="590" height="620" rx="28" class="panel2"/><text x="34" y="62" class="txt h3">01 Dashboard</text><text x="34" y="108" class="muted body">CIO says Hold &amp; Simulate.</text><rect x="34" y="160" width="522" height="340" rx="22" class="chip"/><text x="68" y="320" class="txt h2">HOLD</text>
+      </g>
+      <g transform="translate(640 0)">
+        <rect width="590" height="620" rx="28" class="panel2"/><text x="34" y="62" class="txt h3">02 Portfolio Map</text><text x="34" y="108" class="muted body">High-beta concentration appears.</text><circle cx="295" cy="330" r="150" fill="rgba(20,242,163,.18)" stroke="#14F2A3" stroke-width="4"/>
+      </g>
+      <g transform="translate(1280 0)">
+        <rect width="590" height="620" rx="28" class="panel2"/><text x="34" y="62" class="txt h3">03 Workbench</text><text x="34" y="108" class="muted body">Simulation opens with context.</text><rect x="34" y="160" width="522" height="340" rx="22" class="chip"/><line x1="80" y1="250" x2="500" y2="250" class="neon"/>
+      </g>
+      <g transform="translate(1920 0)">
+        <rect width="590" height="620" rx="28" class="panel2"/><text x="34" y="62" class="txt h3">04 Conflict</text><text x="34" y="108" class="muted body">Rails disagree; CIO resolves.</text><circle cx="180" cy="330" r="50" fill="#D8C27A" opacity=".28"/><circle cx="295" cy="330" r="70" fill="#14F2A3" opacity=".28"/><circle cx="410" cy="330" r="50" fill="#9FB6D9" opacity=".28"/>
+      </g>
+      <g transform="translate(2560 0)">
+        <rect width="590" height="620" rx="28" class="pale"/><text x="34" y="62" fill="#0E100F" font-family="Inter" font-size="26" font-weight="800">05 Memory</text><text x="34" y="108" fill="rgba(14,16,15,.72)" font-family="Inter" font-size="24" font-weight="600">User confirms cash priority.</text><rect x="34" y="420" width="220" height="64" rx="18" fill="#0E100F"/><text x="92" y="460" fill="#EEF3EA" font-family="Inter" font-size="22" font-weight="800">Confirm</text>
+      </g>
+      <g transform="translate(3200 0)">
+        <rect width="590" height="620" rx="28" class="panel2"/><text x="34" y="62" class="txt h3">06 Refresh</text><text x="34" y="108" class="muted body">Dashboard projection updates.</text><text x="34" y="270" class="txt h2">DEFENSIVE HOLD</text><text x="34" y="330" class="warning body">Action queue changed.</text>
+      </g>
+    </g>
+  </g>
+
+  <g id="handoff" transform="translate(170 7000)">
+    <rect width="3960" height="400" rx="34" class="panel"/>
+    <text x="60" y="80" class="dim mono cap">STEP 10 / DESIGN-TO-CODE HANDOFF RULES</text>
+    <text x="60" y="142" class="txt h2">Implementation Must Be Presentation-Only For This Redesign</text>
+    <text x="60" y="210" class="muted body">No API input/output changes. No content hierarchy changes. No bespoke drawer shells. 3D charts must be implemented via deterministic data-driven layers.</text>
+    <text x="60" y="275" class="dim mono micro">Chart implementation candidates: ECharts custom series, d3-hierarchy packed bubbles/treemap, SVG paths, Canvas, optional Three.js for true 3D surfaces.</text>
+  </g>
+</svg>

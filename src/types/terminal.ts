@@ -1,6 +1,6 @@
 import { MarketContext } from './market-context';
 
-export const LIVE_VALUATION_VERSION = 3;
+export const LIVE_VALUATION_VERSION = 5;
 
 export interface UserPersona {
   tags: string[];
@@ -96,12 +96,21 @@ export interface AccountPosition {
   symbol: string;
   name: string;
   quantity: number;
+  availableQuantity?: number;
   costPrice: number;
   currentPrice?: number;
+  previousClose?: number;
   marketValue?: number;
   value?: number;
+  pnl?: number;
+  pnlPercent?: number;
+  dailyPnl?: number;
+  dailyPnlPercent?: number;
+  ownedPercent?: number;
+  returnSource?: string;
   _staleQuote?: boolean;
   currency?: string;
+  market?: string;
   valuationSource?: string;
   accountId: string;
   accountName: string;
@@ -118,6 +127,12 @@ export interface AccountPortfolio {
     valuationCoverage?: number;
     missingValuationSymbols?: string[];
     estimatedValuationSymbols?: string[];
+    profitAnalysisAvailable?: boolean;
+    profitAnalysisItemCount?: number;
+    profitAnalysisMissingSymbols?: string[];
+    profitAnalysisReason?: string;
+    profitAnalysisUpdatedAt?: string;
+    profitAnalysisUpdatedDate?: string;
     generatedAt: number;
     error?: string;
   };

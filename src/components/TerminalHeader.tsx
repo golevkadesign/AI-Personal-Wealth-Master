@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
-import { Database, Cpu, Sparkles, Settings, LogOut, Globe } from 'lucide-react';
 import { logout } from '../lib/firebase';
 import { useTranslation } from '../hooks/useTranslation';
 import { useWealthStore } from '../hooks/useWealthStore';
+import { MaterialIcon } from './ui/MaterialIcon';
 
 interface TerminalHeaderProps {
   user: any;
@@ -22,6 +22,7 @@ export function TerminalHeader({
 }: TerminalHeaderProps) {
   const { t, language, setLanguage } = useTranslation();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -33,6 +34,32 @@ export function TerminalHeader({
 
   const publicHoldingAccounts = data.publicHoldingAccounts || (data.distributions as any)?.publicHoldingAccounts || [];
   const dynamicWidgetCount = data.dynamicWidgets?.length || 0;
+
+  const syncDotClass =
+    publicHoldingAccountsSyncStatus === 'loading' ? 'aw-status-warning animate-pulse' :
+    publicHoldingAccountsSyncStatus === 'success' ? 'aw-status-success' :
+    publicHoldingAccountsSyncStatus === 'error' ? 'aw-status-danger' : '';
+
+  const accountDotClass = publicHoldingAccounts.length > 0 ? 'aw-status-warning' : '';
+
+  const aiDotClass = dynamicWidgetCount > 0 ? 'aw-status-info' : '';
+
+  const marketDotClass =
+    marketContextStatus === 'loading' ? 'aw-status-warning animate-pulse' :
+    marketContextStatus === 'error' ? 'aw-status-danger' :
+    data.marketContext ? (
+      data.marketContext.regime?.riskMode === 'risk_on' ? 'aw-status-success' :
+      data.marketContext.regime?.riskMode === 'risk_off' ? 'aw-status-warning' :
+      'aw-status-info'
+    ) : '';
+
+  const hasAvatarUrl = typeof user?.photoURL === 'string' && user.photoURL.trim().length > 0;
+  const shouldShowAvatarImage = hasAvatarUrl && !avatarLoadFailed;
+  const avatarFallbackLabel = (user?.displayName || user?.email || 'User').trim().slice(0, 1).toUpperCase();
+
+  useEffect(() => {
+    setAvatarLoadFailed(false);
+  }, [user?.photoURL]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -59,87 +86,69 @@ export function TerminalHeader({
   }, []);
 
   return (
-    <header className="sticky top-0 z-40 bg-dash-bg/80 backdrop-blur-md border-b border-[#312B20] mb-6 md:mb-8 transition-colors">
+    <header className="sticky top-0 z-40 aw-terminal-header transition-colors">
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 h-[72px] flex justify-between items-center">
         
         {/* Brand Area */}
-        <div className="flex items-center gap-3 sm:gap-4 select-none shrink-0">
-          <div className="bg-[#1C1F22] border border-dash-subtle shadow-inner w-10 h-10 rounded-xl flex items-center justify-center relative overflow-hidden group">
-            <div className="absolute inset-0 bg-[#C9B284]/10 opacity-30 group-hover:opacity-50 transition-opacity"></div>
-            {/* Elegant dark gold dot */}
-            <div className="w-3.5 h-3.5 rounded-full bg-[#C9B284] shadow-[0_0_12px_rgba(201,178,132,0.6)]"></div>
+        <div className="flex min-w-0 items-center gap-3 sm:gap-4 select-none shrink">
+          <div className="aw-panel-muted w-10 h-10 flex items-center justify-center relative overflow-hidden group">
+            <div className="absolute left-3 top-3 h-4 w-5 -rotate-12 aw-brand-mark-outline" />
+            <div className="absolute right-2.5 top-2.5 h-4 w-4 rotate-12 aw-brand-mark-fill" />
           </div>
-          <div className="flex flex-col justify-center">
-            <h1 className="text-xl font-bold tracking-tight text-white leading-none font-sans">
-              ARBITRA
+          <div className="flex min-w-0 flex-col justify-center">
+            <h1 className="aw-label font-semibold aw-text-primary tracking-normal leading-none font-sans truncate">
+              {t('nav.brandName')}
             </h1>
-            <span className="text-[10px] font-mono tracking-widest uppercase text-[#A39167] mt-1 font-semibold">
-              Sovereign Operating System
+            <span className="aw-caption font-mono uppercase aw-text-tertiary mt-1 font-medium hidden min-[430px]:block truncate">
+              {t('nav.brandSubtitle')}
             </span>
           </div>
         </div>
 
         {/* Mid-Status Area (xl devices only) —— 优雅融入 Header 单行内部 */}
         <div className="hidden xl:flex flex-1 items-center justify-center min-w-0 px-6">
-          <div className="flex items-center gap-2 min-w-0 overflow-hidden text-[10.5px] font-mono select-none">
-            {/* 1. 系统状态 */}
-            <div className="flex items-center gap-1.5 shrink-0 border border-emerald-500/10 bg-emerald-500/[0.01] px-2 py-0.5 rounded-lg">
-              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-              <span className="text-[#8C8370] font-sans">系统 OK</span>
+          <div className="flex items-center gap-2 min-w-0 overflow-hidden aw-caption font-mono select-none">
+            <div className="aw-status-pill shrink-0">
+              <span className="aw-status-dot aw-status-success" />
+              <span className="font-sans">{t('nav.systemOk')}</span>
             </div>
 
-            {/* 2. 数据同步 */}
-            <div className="flex items-center gap-1.5 shrink-0 border border-white/[0.03] bg-white/[0.005] px-2 py-0.5 rounded-lg">
-              <span className={`w-1.5 h-1.5 rounded-full ${
-                publicHoldingAccountsSyncStatus === 'loading' ? 'bg-amber-500 animate-spin' :
-                publicHoldingAccountsSyncStatus === 'success' ? 'bg-emerald-500' :
-                publicHoldingAccountsSyncStatus === 'error' ? 'bg-rose-500' : 'bg-zinc-500'
-              }`} />
-              <span className="text-[#8C8370] font-sans">
-                {publicHoldingAccountsSyncStatus === 'loading' ? '同步中' :
-                 publicHoldingAccountsSyncStatus === 'success' ? '已同步' :
-                 publicHoldingAccountsSyncStatus === 'error' ? '同步异常' : '等待数据'}
+            <div className="aw-status-pill shrink-0">
+              <span className={`aw-status-dot ${syncDotClass}`} />
+              <span className="font-sans">
+                {publicHoldingAccountsSyncStatus === 'loading' ? t('nav.syncing') :
+                 publicHoldingAccountsSyncStatus === 'success' ? t('nav.synced') :
+                 publicHoldingAccountsSyncStatus === 'error' ? t('nav.syncError') : t('nav.awaitingData')}
               </span>
             </div>
 
-            {/* 3. 持仓账户 */}
-            <div className="flex items-center gap-1.5 shrink-0 border border-white/[0.03] bg-white/[0.005] px-2 py-0.5 rounded-lg">
-              <span className={`w-1.5 h-1.5 rounded-full ${publicHoldingAccounts.length > 0 ? 'bg-amber-500' : 'bg-zinc-500'}`} />
-              <span className="text-[#8C8370] font-sans">
-                {publicHoldingAccounts.length > 0 ? `${publicHoldingAccounts.length} 账户` : '等待账户'}
+            <div className="aw-status-pill shrink-0">
+              <span className={`aw-status-dot ${accountDotClass}`} />
+              <span className="font-sans">
+                {publicHoldingAccounts.length > 0 ? `${publicHoldingAccounts.length} ${t('nav.accounts')}` : t('nav.awaitingAccount')}
               </span>
             </div>
 
-            {/* 4. AI分析状态 */}
-            <div className="flex items-center gap-1.5 shrink-0 border border-white/[0.03] bg-white/[0.005] px-2 py-0.5 rounded-lg">
-              <span className={`w-1.5 h-1.5 rounded-full ${dynamicWidgetCount > 0 ? 'bg-[#C9B284]' : 'bg-zinc-500'}`} />
-              <span className="text-[#8C8370] font-sans">
-                {dynamicWidgetCount > 0 ? `AI 洞察 ${dynamicWidgetCount}` : 'AI 空闲'}
+            <div className="aw-status-pill shrink-0">
+              <span className={`aw-status-dot ${aiDotClass}`} />
+              <span className="font-sans">
+                {dynamicWidgetCount > 0 ? `${t('nav.aiInsights')} ${dynamicWidgetCount}` : t('nav.aiIdle')}
               </span>
             </div>
 
-            {/* 5. 市场环境 */}
-            <div className="flex items-center gap-1.5 shrink-0 border border-white/[0.03] bg-white/[0.005] px-2 py-0.5 rounded-lg min-w-0" title={
+            <div className="aw-status-pill shrink-0 min-w-0" title={
               marketContextStatus === 'error' && marketContextError ? marketContextError : 
-              data.marketContext ? `${data.marketContext.freshness} · Stooq delayed` : '市场环境状态'
+              data.marketContext ? `${data.marketContext.freshness} · ${t('nav.marketSourceDelayed')}` : t('nav.marketStatus')
             }>
-              <span className={`w-1.5 h-1.5 rounded-full ${
-                marketContextStatus === 'loading' ? 'bg-amber-500 animate-pulse' :
-                marketContextStatus === 'error' ? 'bg-rose-500' :
-                data.marketContext ? (
-                  data.marketContext.regime?.riskMode === 'risk_on' ? 'bg-emerald-500' :
-                  data.marketContext.regime?.riskMode === 'risk_off' ? 'bg-amber-500' :
-                  'bg-[#C9B284]'
-                ) : 'bg-zinc-500'
-              }`} />
-              <span className="text-[#8C8370] font-sans truncate max-w-[124px]">
-                {marketContextStatus === 'loading' ? '市场刷新中' :
-                 marketContextStatus === 'error' ? '市场异常' :
-                 data.marketContext ? (
-                   data.marketContext.regime?.riskMode === 'risk_on' ? 'Risk-on' :
-                   data.marketContext.regime?.riskMode === 'risk_off' ? 'Risk-off' :
-                   data.marketContext.regime?.riskMode === 'neutral' ? 'Neutral' : 'Neutral'
-                 ) : '市场待刷新'}
+              <span className={`aw-status-dot ${marketDotClass}`} />
+              <span className="font-sans truncate max-w-[124px]">
+                {marketContextStatus === 'loading' ? t('nav.marketRefreshing') :
+                 marketContextStatus === 'error' ? t('nav.marketError') :
+	                 data.marketContext ? (
+	                   data.marketContext.regime?.riskMode === 'risk_on' ? t('nav.riskOn') :
+	                   data.marketContext.regime?.riskMode === 'risk_off' ? t('nav.riskOff') :
+	                   data.marketContext.regime?.riskMode === 'neutral' ? t('nav.neutral') : t('nav.neutral')
+	                 ) : t('nav.marketWaiting')}
               </span>
             </div>
           </div>
@@ -153,42 +162,66 @@ export function TerminalHeader({
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => setDrawerOpen(true)} 
-            className="bg-[#C9B284] hover:bg-[#D4AF37] text-[#121415] hover:text-[#0c0d0e] flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs sm:text-sm shadow-lg transition-colors cursor-pointer"
-            title="询问 Arbitra"
-            aria-label="询问 Arbitra"
+            className="aw-button aw-button-primary cursor-pointer"
+            title={t('nav.askArbitra')}
+            aria-label={t('nav.askArbitra')}
           >
-            <Sparkles className="w-4 h-4 text-current shrink-0" />
-            <span>询问 Arbitra</span>
+            <MaterialIcon name="auto_awesome" size={20} filled className="shrink-0" />
+            <span className="hidden min-[430px]:inline">{t('nav.askArbitra')}</span>
           </motion.button>
 
-          <div className="h-6 w-px bg-dash-subtle/50 mx-0.5"></div>
+          <div className="h-6 w-px bg-aw-border-subtle mx-0.5"></div>
 
           {/* Avatar dropdown trigger & menu */}
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="w-10 h-10 rounded-xl bg-dash-surface-hover border border-[#C9B284]/30 hover:border-[#C9B284] flex items-center justify-center overflow-hidden shrink-0 shadow-sm transition-all ml-1 duration-300 cursor-pointer focus:outline-none"
-              title={user.displayName || "User Account Menu"}
-              aria-label="Toggle account menu"
+              className="w-10 h-10 aw-avatar-button flex items-center justify-center overflow-hidden shrink-0 transition-all ml-1 duration-200 cursor-pointer focus:outline-none"
+              title={user.displayName || t('nav.accountMenu')}
+              aria-label={t('nav.accountMenu')}
             >
-              <img src={user.photoURL} alt="User Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              {shouldShowAvatarImage ? (
+                <img
+                  src={user.photoURL}
+                  alt={t('nav.userAvatar')}
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                  onError={() => setAvatarLoadFailed(true)}
+                />
+              ) : (
+                <span className="aw-caption aw-text-primary font-mono font-semibold flex items-center justify-center">
+                  {avatarFallbackLabel || <MaterialIcon name="account_circle" size={20} />}
+                </span>
+              )}
             </button>
 
             {isDropdownOpen && (
               <div 
-                className="absolute right-0 mt-3 w-64 bg-[#0B0F19]/95 border border-[#C9B284]/20 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] overflow-hidden z-50 text-sans font-normal backdrop-blur-md animate-in fade-in slide-in-from-top-3 duration-200"
+                className="absolute right-0 mt-3 w-64 aw-panel overflow-hidden z-50 text-sans font-normal backdrop-blur-md animate-in fade-in slide-in-from-top-3 duration-200"
               >
                 {/* User info info cards */}
-                <div className="p-4 border-b border-[#C9B284]/10 bg-black/30 flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg border border-[#C9B284]/30 flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
-                    <img src={user.photoURL} alt="User Avatar Mini" className="w-full h-full object-cover animate-fade-in" referrerPolicy="no-referrer" />
+                <div className="p-4 border-b border-aw-border-subtle bg-aw-surface-3 flex items-center gap-3">
+                  <div className="w-8 h-8 aw-avatar-frame flex items-center justify-center overflow-hidden shrink-0">
+                    {shouldShowAvatarImage ? (
+                      <img
+                        src={user.photoURL}
+                        alt={t('nav.userAvatarMini')}
+                        className="w-full h-full object-cover animate-fade-in"
+                        referrerPolicy="no-referrer"
+                        onError={() => setAvatarLoadFailed(true)}
+                      />
+                    ) : (
+                      <span className="aw-caption aw-text-primary font-mono font-semibold">
+                        {avatarFallbackLabel || <MaterialIcon name="account_circle" size={20} />}
+                      </span>
+                    )}
                   </div>
                   <div className="flex flex-col min-w-0">
-                    <div className="text-[12.5px] font-bold text-white truncate pr-1">
-                      {user.displayName || "Alex H."}
+                    <div className="aw-body font-semibold aw-text-primary truncate pr-1">
+                      {user.displayName || t('nav.defaultUserName')}
                     </div>
-                    <div className="text-[10px] font-mono text-[#8C8370] truncate leading-tight mt-0.5">
-                      {user.email || "user@example.com"}
+                    <div className="aw-caption font-mono aw-text-tertiary truncate leading-tight mt-0.5">
+                      {user.email || t('nav.defaultUserEmail')}
                     </div>
                   </div>
                 </div>
@@ -201,10 +234,10 @@ export function TerminalHeader({
                       setIsDropdownOpen(false);
                       setShowProfileReport(true);
                     }}
-                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg text-left text-[12.5px] text-[#8C8370] hover:bg-[#C9B284]/10 hover:text-[#E7D7B0] transition-all cursor-pointer"
+                    className="w-full aw-button aw-button-ghost !justify-start !px-3 !py-2 !min-h-9 text-left cursor-pointer"
                   >
-                    <Database className="w-4 h-4 text-[#8C8370]" />
-                    <span>{t('nav.memoryProfile') || '长线记忆 / Memory'}</span>
+                    <MaterialIcon name="database" size={20} />
+                    <span>{t('nav.memoryProfile')}</span>
                   </button>
 
                   {/* Developer View Toggle Option */}
@@ -213,10 +246,10 @@ export function TerminalHeader({
                       setIsDropdownOpen(false);
                       setShowDeveloperView(true);
                     }}
-                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg text-left text-[12.5px] text-[#8C8370] hover:bg-[#C9B284]/10 hover:text-[#E7D7B0] transition-all cursor-pointer"
+                    className="w-full aw-button aw-button-ghost !justify-start !px-3 !py-2 !min-h-9 text-left cursor-pointer"
                   >
-                    <Cpu className="w-4 h-4 text-[#8C8370]" />
-                    <span>{t('nav.developer') || '开发者视图 / Developer'}</span>
+                    <MaterialIcon name="developer_board" size={20} />
+                    <span>{t('nav.developer')}</span>
                   </button>
 
                   {/* Toggle Interface Language Option */}
@@ -224,14 +257,14 @@ export function TerminalHeader({
                     onClick={() => {
                       setLanguage(language === 'zh-CN' ? 'en-US' : 'zh-CN');
                     }}
-                    className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-left text-[12.5px] text-[#8C8370] hover:bg-[#C9B284]/10 hover:text-[#E7D7B0] transition-all cursor-pointer"
+                    className="w-full aw-button aw-button-ghost !justify-between !px-3 !py-2 !min-h-9 text-left cursor-pointer"
                   >
                     <div className="flex items-center gap-2.5">
-                      <Globe className="w-4 h-4 text-[#8C8370]" />
-                      <span>{language === 'zh-CN' ? '切换语言 / Language' : 'Language / 切换语言'}</span>
+                      <MaterialIcon name="language" size={20} />
+                      <span>{t('nav.language')}</span>
                     </div>
-                    <span className="text-[10px] font-mono font-bold bg-[#C9B284]/10 border border-[#C9B284]/20 text-[#C9B284] px-1.5 py-0.5 rounded uppercase leading-none text-center">
-                      {language === 'zh-CN' ? 'EN' : '中'}
+                    <span className="aw-caption font-mono font-semibold bg-aw-surface-3 border border-aw-border-subtle aw-text-secondary px-1.5 py-0.5 aw-mini-token uppercase leading-none text-center">
+                      {language === 'zh-CN' ? t('nav.switchToEnglish') : t('nav.switchToChinese')}
                     </span>
                   </button>
 
@@ -241,13 +274,13 @@ export function TerminalHeader({
                       setIsDropdownOpen(false);
                       setShowSettingsModal(true);
                     }}
-                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg text-left text-[12.5px] text-[#8C8370] hover:bg-[#C9B284]/10 hover:text-[#E7D7B0] transition-all cursor-pointer"
+                    className="w-full aw-button aw-button-ghost !justify-start !px-3 !py-2 !min-h-9 text-left cursor-pointer"
                   >
-                    <Settings className="w-4 h-4 text-[#8C8370]" />
-                    <span>{t('nav.settings') || '设置 / Settings'}</span>
+                    <MaterialIcon name="settings" size={20} />
+                    <span>{t('nav.settings')}</span>
                   </button>
 
-                  <div className="h-px bg-[#C9B284]/10 my-1 mx-2" />
+                  <div className="h-px bg-aw-border-subtle my-1 mx-2" />
 
                   {/* Ultimate Logout Option */}
                   <button
@@ -255,10 +288,10 @@ export function TerminalHeader({
                       setIsDropdownOpen(false);
                       logout();
                     }}
-                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg text-left text-[12.5px] text-[#8C8370] hover:bg-rose-500/10 hover:text-rose-400 transition-all cursor-pointer"
+                    className="w-full aw-button aw-button-ghost !justify-start !px-3 !py-2 !min-h-9 text-left cursor-pointer hover:!text-aw-danger"
                   >
-                    <LogOut className="w-4 h-4 text-red-500/60" />
-                    <span>{language === 'zh-CN' ? '退出登录' : 'Logout'}</span>
+                    <MaterialIcon name="logout" size={20} />
+                    <span>{t('nav.logout')}</span>
                   </button>
 
                 </div>

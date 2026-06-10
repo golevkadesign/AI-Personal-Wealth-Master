@@ -1,19 +1,15 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  X, Cpu, User, Activity, PieChart, Sparkles, Target, Sliders, 
-  Database, RefreshCw, Edit3, Trash2, Check, Copy, AlertTriangle, ShieldCheck,
-  GitMerge, Settings2, PlaySquare, Workflow
-} from 'lucide-react';
 import { auth } from '../lib/firebase';
 import { useWealthStore } from '../hooks/useWealthStore';
 import { getSettings, saveSettings } from '../lib/settings';
 import { DEFAULT_PROMPTS, DEFAULT_RAG_SCHEMA } from '../lib/defaultPrompts';
 import { getLastSDUIIntakeDiagnostics } from '../lib/sdui-intake-policy';
 import { DEVELOPER_PIPELINE_AGENT_IDS, getSharedAgentDefinition } from '../lib/agent-definitions';
+import { useTranslation } from '../hooks/useTranslation';
+import { MaterialIcon } from './ui/MaterialIcon';
 
 const AGENTS = DEVELOPER_PIPELINE_AGENT_IDS.map(id => getSharedAgentDefinition(id));
-
 
 interface DeveloperViewProps {
   isOpen: boolean;
@@ -21,11 +17,14 @@ interface DeveloperViewProps {
   onClearData?: () => void;
 }
 
-export const DeveloperView: React.FC<DeveloperViewProps> = ({ 
-  isOpen, 
-  onClose, 
+type DeveloperTab = 'state' | 'pipeline';
+
+export const DeveloperView: React.FC<DeveloperViewProps> = ({
+  isOpen,
+  onClose,
   onClearData
 }) => {
+  const { t } = useTranslation();
   const user = useWealthStore(s => s.user);
   const state = useWealthStore(s => s.data);
   const commitData = useWealthStore(s => s.commitData);
@@ -39,20 +38,17 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({
   const [copiedUid, setCopiedUid] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [isCopiedMc, setIsCopiedMc] = useState(false);
-  
-  // Tabs & Pipeline
-  const [activeTab, setActiveTab] = useState<'state' | 'pipeline'>('state');
+  const [activeTab, setActiveTab] = useState<DeveloperTab>('state');
   const [activeAgentId, setActiveAgentId] = useState<string>('orchestrator');
   const [isEditingPrompt, setIsEditingPrompt] = useState(false);
   const [editContent, setEditContent] = useState('');
   const [localSettings, setLocalSettings] = useState(getSettings());
 
-  // Initialize editable profile fields when modal opens
   useEffect(() => {
     if (isOpen) {
       setEditProfileData({
-        name: user?.name || user?.displayName || auth.currentUser?.displayName || 'Alex H.',
-        email: user?.email || auth.currentUser?.email || 'alex.h@example.com',
+        name: user?.name || user?.displayName || auth.currentUser?.displayName || t('developerView.defaultName'),
+        email: user?.email || auth.currentUser?.email || t('developerView.defaultEmail'),
         currency: user?.currency || 'USD',
         riskProfile: user?.riskProfile || 'Moderate',
         investmentHorizon: user?.investmentHorizon || 'Long Term',
@@ -69,124 +65,32 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({
     }
   }, [isOpen, user]);
 
-  const handleCopyUid = () => {
-    const uid = auth.currentUser?.uid || 'user_9f3b7a2c';
-    navigator.clipboard.writeText(uid);
-    setCopiedUid(true);
-    setTimeout(() => setCopiedUid(false), 2000);
-  };
+  const activeAgent = AGENTS.find(agent => agent.id === activeAgentId) || AGENTS[0];
 
-  const handleFieldChange = (key: string, val: string) => {
-    setEditProfileData((prev: any) => ({
-      ...prev,
-      [key]: val
-    }));
-  };
-
-  const handleSaveProfile = () => {
-    commitData((prev: any) => ({
-      ...prev,
-      userProfile: editProfileData
-    }));
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 3000);
-    setIsEditingProfile(false);
-  };
-
-  // Agent Pipeline Logic
-  const handleSelectAgent = (id: string) => {
-    setActiveAgentId(id);
-    setIsEditingPrompt(false);
-  };
-  
-  const activeAgent = AGENTS.find(a => a.id === activeAgentId) || AGENTS[0];
-  
-  const getCurrentAgentContent = (agent: typeof activeAgent) => {
-    if (agent.type === 'rag') {
-      return localSettings.ragSchema || DEFAULT_RAG_SCHEMA;
-    }
-    if (agent.type === 'llm') {
-      return localSettings.agentPrompts?.[agent.id] || (DEFAULT_PROMPTS as any)[agent.id] || '';
-    }
-    return 'DETERMINISTIC_MIDDLEWARE_LAYER: \nThis node interpreting and routing extracted context. No stochastic LLM prompt is executed here.';
-  };
-  
-  const handleEditPrompt = () => {
-    setEditContent(getCurrentAgentContent(activeAgent));
-    setIsEditingPrompt(true);
-  };
-  
-  const handleCancelEdit = () => {
-    setIsEditingPrompt(false);
-  };
-  
-  const handleSavePrompt = () => {
-    const newSettings = { ...localSettings };
-    if (activeAgent.type === 'rag') {
-      newSettings.ragSchema = editContent;
-    } else if (activeAgent.type === 'llm') {
-      newSettings.agentPrompts = {
-        ...newSettings.agentPrompts,
-        [activeAgent.id]: editContent
-      };
-    }
-    
-    saveSettings(newSettings);
-    setLocalSettings(newSettings);
-    setIsEditingPrompt(false);
-    
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 3000);
-  };
-  
-  const handleRestoreDefault = () => {
-    const newSettings = { ...localSettings };
-    if (activeAgent.type === 'rag') {
-      newSettings.ragSchema = DEFAULT_RAG_SCHEMA;
-    } else if (activeAgent.type === 'llm') {
-      if (newSettings.agentPrompts) {
-        delete newSettings.agentPrompts[activeAgent.id];
-      }
-    }
-    
-    saveSettings(newSettings);
-    setLocalSettings(newSettings);
-    setIsEditingPrompt(false);
-    
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 3000);
-  };
-
-  // Live element counts for the state inspector rows
   const counts = useMemo(() => {
-    const uCount = Object.keys(user || {}).length;
-    const mCount = Object.keys(state?.metrics || {}).length;
-    
-    // Total items across all distribution categories
-    const distCount = Object.values(state?.distributions || {}).reduce(
-      (acc: number, arr: any) => acc + (Array.isArray(arr) ? arr.length : 0), 0
+    const userCount = Object.keys(user || {}).length;
+    const metricCount = Object.keys(state?.metrics || {}).length;
+    const distributionCount = Object.values(state?.distributions || {}).reduce(
+      (acc: number, value: any) => acc + (Array.isArray(value) ? value.length : 0),
+      0
     );
-
-    const iCount = Object.keys(state?.insights || {}).filter(k => state?.insights?.[k]).length;
-    const gActive = state?.goal?.name ? 1 : 0;
-    const wCount = state?.dynamicWidgets?.length ?? 0;
-
-    const mcInstruments = Array.isArray(state?.marketContext?.instruments)
+    const insightCount = Object.keys(state?.insights || {}).filter(key => state?.insights?.[key]).length;
+    const goalActive = state?.goal?.name ? 1 : 0;
+    const widgetCount = state?.dynamicWidgets?.length ?? 0;
+    const marketContextInstruments = Array.isArray(state?.marketContext?.instruments)
       ? state.marketContext.instruments
       : Array.isArray((state?.marketContext as any)?.keyInstruments)
         ? (state?.marketContext as any).keyInstruments
         : [];
 
     return {
-      userProfile: `${uCount} fields`,
-      metrics: `${mCount} metrics`,
-      distributions: `${distCount} items`,
-      insights: `${iCount} items`,
-      goal: gActive ? '1 active' : '0 active',
-      dynamicWidgets: `${wCount} widgets`,
-      marketContext: state?.marketContext
-        ? `${mcInstruments.length} instruments`
-        : 'not loaded'
+      userProfile: `${userCount} fields`,
+      metrics: `${metricCount} metrics`,
+      distributions: `${distributionCount} items`,
+      insights: `${insightCount} items`,
+      goal: goalActive ? '1 active' : '0 active',
+      dynamicWidgets: `${widgetCount} widgets`,
+      marketContext: state?.marketContext ? `${marketContextInstruments.length} instruments` : 'not loaded'
     };
   }, [user, state]);
 
@@ -201,18 +105,140 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({
     : Array.isArray((marketContext as any)?.keyInstruments)
       ? (marketContext as any).keyInstruments
       : [];
+  const marketContextSignals = Array.isArray(marketContext?.crossAssetSignals) ? marketContext.crossAssetSignals : [];
+  const marketContextWarnings = Array.isArray(marketContext?.warnings) ? marketContext.warnings : [];
+  const marketContextSourceSummary = Array.isArray(marketContext?.sourceSummary) ? marketContext.sourceSummary : [];
 
-  const marketContextSignals = Array.isArray(marketContext?.crossAssetSignals)
-    ? marketContext.crossAssetSignals
-    : [];
+  const jsonCodeLines = useMemo(() => {
+    let subset: any;
+    if (!selectedSection) {
+      subset = {
+        userProfile: `... ${counts.userProfile}`,
+        metrics: `... ${counts.metrics}`,
+        distributions: `... ${counts.distributions}`,
+        insights: `... ${counts.insights}`,
+        goal: `... ${counts.goal}`,
+        dynamicWidgets: `... ${counts.dynamicWidgets}`,
+        marketContext: `... ${counts.marketContext}`
+      };
+    } else if (selectedSection === 'userProfile') {
+      subset = { userProfile: user || {} };
+    } else if (selectedSection === 'metrics') {
+      subset = { metrics: state?.metrics || {} };
+    } else if (selectedSection === 'distributions') {
+      subset = { distributions: state?.distributions || {} };
+    } else if (selectedSection === 'insights') {
+      subset = { insights: state?.insights || {} };
+    } else if (selectedSection === 'goal') {
+      subset = { goal: state?.goal || {} };
+    } else if (selectedSection === 'dynamicWidgets') {
+      subset = { dynamicWidgets: state?.dynamicWidgets || [] };
+    } else {
+      subset = {
+        marketContext: state?.marketContext || null,
+        marketContextLastFetchedAt: state?.marketContextLastFetchedAt || null,
+        marketContextStatus,
+        marketContextError
+      };
+    }
+    return JSON.stringify(subset, null, 2).split('\n');
+  }, [selectedSection, user, state, counts, marketContextStatus, marketContextError]);
 
-  const marketContextWarnings = Array.isArray(marketContext?.warnings)
-    ? marketContext.warnings
-    : [];
+  const profileFields = [
+    { key: 'name', label: 'Name', type: 'text' },
+    { key: 'email', label: 'Email', type: 'email' },
+    { key: 'currency', label: 'Currency', type: 'text' },
+    { key: 'riskProfile', label: 'Risk Profile', type: 'text' },
+    { key: 'investmentHorizon', label: 'Investment Horizon', type: 'text' },
+    { key: 'dataSource', label: 'Data Source', type: 'text' },
+    { key: 'createdAt', label: 'Created At', type: 'text' },
+    { key: 'updatedAt', label: 'Updated At', type: 'text' },
+  ];
 
-  const marketContextSourceSummary = Array.isArray(marketContext?.sourceSummary)
-    ? marketContext.sourceSummary
-    : [];
+  const stateRows = [
+    { id: 'userProfile', name: 'userProfile', count: counts.userProfile, icon: 'person', badge: 'valid', status: 'success' },
+    { id: 'metrics', name: 'metrics', count: counts.metrics, icon: 'query_stats', badge: 'ok', status: 'success' },
+    { id: 'distributions', name: 'distributions', count: counts.distributions, icon: 'donut_large', badge: 'ok', status: 'success' },
+    { id: 'insights', name: 'insights', count: counts.insights, icon: 'auto_awesome', badge: 'ok', status: 'success' },
+    { id: 'goal', name: 'goal', count: counts.goal, icon: 'track_changes', badge: 'partial', status: 'warning' },
+    { id: 'dynamicWidgets', name: 'dynamicWidgets', count: counts.dynamicWidgets, icon: 'tune', badge: 'ok', status: 'success' },
+    {
+      id: 'marketContext',
+      name: 'marketContext',
+      count: counts.marketContext,
+      icon: 'monitoring',
+      badge: state?.marketContext ? (marketContextStatus === 'error' ? 'error' : 'ready') : 'empty',
+      status: marketContextStatus === 'error' ? 'danger' : state?.marketContext ? 'success' : 'info'
+    }
+  ];
+
+  const getCurrentAgentContent = (agent: typeof activeAgent) => {
+    if (agent.type === 'rag') return localSettings.ragSchema || DEFAULT_RAG_SCHEMA;
+    if (agent.type === 'llm') return localSettings.agentPrompts?.[agent.id] || (DEFAULT_PROMPTS as any)[agent.id] || '';
+    return 'DETERMINISTIC_MIDDLEWARE_LAYER:\nThis node interprets and routes extracted context. No stochastic LLM prompt is executed here.';
+  };
+
+  const flashSaved = () => {
+    setSaveSuccess(true);
+    setTimeout(() => setSaveSuccess(false), 3000);
+  };
+
+  const handleCopyUid = () => {
+    const uid = auth.currentUser?.uid || 'user_9f3b7a2c';
+    navigator.clipboard.writeText(uid);
+    setCopiedUid(true);
+    setTimeout(() => setCopiedUid(false), 2000);
+  };
+
+  const handleSaveProfile = () => {
+    commitData((prev: any) => ({
+      ...prev,
+      userProfile: editProfileData
+    }));
+    setIsEditingProfile(false);
+    flashSaved();
+  };
+
+  const handleEditPrompt = () => {
+    setEditContent(getCurrentAgentContent(activeAgent));
+    setIsEditingPrompt(true);
+  };
+
+  const handleSavePrompt = () => {
+    const newSettings = { ...localSettings };
+    if (activeAgent.type === 'rag') {
+      newSettings.ragSchema = editContent;
+    } else if (activeAgent.type === 'llm') {
+      newSettings.agentPrompts = {
+        ...newSettings.agentPrompts,
+        [activeAgent.id]: editContent
+      };
+    }
+    saveSettings(newSettings);
+    setLocalSettings(newSettings);
+    setIsEditingPrompt(false);
+    flashSaved();
+  };
+
+  const handleRestoreDefault = () => {
+    const newSettings = { ...localSettings };
+    if (activeAgent.type === 'rag') {
+      newSettings.ragSchema = DEFAULT_RAG_SCHEMA;
+    } else if (activeAgent.type === 'llm' && newSettings.agentPrompts) {
+      delete newSettings.agentPrompts[activeAgent.id];
+    }
+    saveSettings(newSettings);
+    setLocalSettings(newSettings);
+    setIsEditingPrompt(false);
+    flashSaved();
+  };
+
+  const statusDotClass = (status: string) => {
+    if (status === 'success') return 'aw-status-success';
+    if (status === 'warning') return 'aw-status-warning';
+    if (status === 'danger') return 'aw-status-danger';
+    return 'aw-status-info';
+  };
 
   const formatTime = (ts?: number) => {
     if (!ts) return 'Never';
@@ -223,808 +249,412 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({
     }
   };
 
-  // Generate pretty syntax highlighted code snippets
-  const jsonCodeLines = useMemo(() => {
-    let rawStr = '';
-    if (!selectedSection) {
-      rawStr = `{\n  "userProfile": { ... ${counts.userProfile} },\n  "metrics": { ... ${counts.metrics} },\n  "distributions": [ ... ${counts.distributions} ],\n  "insights": [ ... ${counts.insights} ],\n  "goal": { ... ${counts.goal} },\n  "dynamicWidgets": [ ... ${counts.dynamicWidgets} ],\n  "marketContext": { ... ${counts.marketContext} }\n}`;
-    } else {
-      let subset: any = {};
-      if (selectedSection === 'userProfile') {
-        subset = { userProfile: user || {} };
-      } else if (selectedSection === 'metrics') {
-        subset = { metrics: state?.metrics || {} };
-      } else if (selectedSection === 'distributions') {
-        subset = { distributions: state?.distributions || {} };
-      } else if (selectedSection === 'insights') {
-        subset = { insights: state?.insights || {} };
-      } else if (selectedSection === 'goal') {
-        subset = { goal: state?.goal || {} };
-      } else if (selectedSection === 'dynamicWidgets') {
-        subset = { dynamicWidgets: state?.dynamicWidgets || [] };
-      } else if (selectedSection === 'marketContext') {
-        subset = {
-          marketContext: state?.marketContext || null,
-          marketContextLastFetchedAt: state?.marketContextLastFetchedAt || null,
-          marketContextStatus,
-          marketContextError
-        };
-      }
-      rawStr = JSON.stringify(subset, null, 2);
-    }
-    return rawStr.split('\n');
-  }, [selectedSection, user, state, counts, marketContextStatus, marketContextError]);
+  const renderStateTab = () => (
+    <div className="flex min-h-0 flex-1 flex-col md:flex-row overflow-hidden">
+      <aside className="aw-dev-pane w-full md:w-[38%] max-h-[50%] md:max-h-full border-b md:border-b-0 md:border-r flex flex-col overflow-y-auto custom-scroll p-6 sm:p-7 shrink-0">
+        <div className="flex items-center gap-2 mb-6 shrink-0">
+          <MaterialIcon name="person" size={20} className="text-aw-accent-mist" />
+          <h3 className="aw-section-kicker">{t('developerView.userProfileDebug')}</h3>
+        </div>
 
-  const handleRefresh = () => {
-    // Force a minor recalculation/refresh aesthetic representation
-    setSelectedSection(null);
-  };
+        <div className="space-y-4 flex-1 pb-6">
+          <div>
+            <label className="aw-form-label block mb-2">User ID</label>
+            <div className="aw-panel-muted flex items-center justify-between px-3 py-2">
+              <span className="aw-caption aw-text-tertiary font-mono truncate">
+                {auth.currentUser?.uid ? `${auth.currentUser.uid.slice(0, 14)}...` : 'user_9f3b7a2c'}
+              </span>
+              <button type="button" onClick={handleCopyUid} className="aw-icon-button" title="Copy User ID">
+                <MaterialIcon name={copiedUid ? 'check' : 'content_copy'} size={20} className={copiedUid ? 'text-aw-success' : ''} />
+              </button>
+            </div>
+          </div>
+
+          {profileFields.map(field => {
+            const rawValue = editProfileData[field.key] || '';
+            const displayValue = field.key === 'email' && !isEditingProfile && rawValue
+              ? rawValue.replace(/(.{3})(.*)(@.*)/, "$1...$3")
+              : rawValue;
+
+            return (
+              <div key={field.key}>
+                <label className="aw-form-label block mb-2">{field.label}</label>
+                <input
+                  type={field.type}
+                  value={displayValue}
+                  disabled={!isEditingProfile}
+                  readOnly={!isEditingProfile}
+                  onChange={event => setEditProfileData((prev: any) => ({ ...prev, [field.key]: event.target.value }))}
+                  className="aw-form-input font-mono"
+                />
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="mt-auto border-t border-aw-border-subtle pt-6 shrink-0">
+          <div className="aw-panel-muted p-4">
+            <div className="flex items-start gap-3">
+              <div className="aw-chart-state-icon h-8 w-8 shrink-0">
+                <MaterialIcon name="edit" size={20} className="text-aw-accent-mist" />
+              </div>
+              <div>
+                <h4 className="aw-body aw-text-primary font-medium">{t('developerView.updateProfile')}</h4>
+                <p className="aw-caption aw-text-tertiary mt-1">{t('developerView.updateProfileDesc')}</p>
+              </div>
+            </div>
+            <div className="mt-4 flex gap-2">
+              {isEditingProfile ? (
+                <>
+                  <button type="button" onClick={handleSaveProfile} className="aw-button aw-button-primary flex-1 cursor-pointer">{t('developerView.saveInputs')}</button>
+                  <button type="button" onClick={() => { setEditProfileData({ ...user }); setIsEditingProfile(false); }} className="aw-button aw-button-ghost cursor-pointer">{t('developerView.cancel')}</button>
+                </>
+              ) : (
+                <button type="button" onClick={() => setIsEditingProfile(true)} className="aw-button aw-button-ghost w-full cursor-pointer">
+                  <MaterialIcon name="edit" size={16} />
+                  {t('developerView.editProfile')}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <section className="flex-1 flex flex-col overflow-y-auto p-6 sm:p-7 custom-scroll">
+        <div className="mb-2 flex items-center justify-between gap-4 shrink-0">
+          <div className="flex items-center gap-2">
+            <MaterialIcon name="database" size={20} className="text-aw-accent-mist" />
+            <h3 className="aw-section-kicker">{t('developerView.dataInspector')}</h3>
+          </div>
+          <button type="button" onClick={() => setSelectedSection(null)} className="aw-button aw-button-ghost !min-h-8 cursor-pointer">
+            <MaterialIcon name="refresh" size={16} />
+            {t('developerView.refresh')}
+          </button>
+        </div>
+        <p className="aw-caption aw-text-tertiary mb-6">{t('developerView.liveSnapshot')}</p>
+
+        <div className="aw-panel-muted mb-5 p-4">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h4 className="aw-body aw-text-primary font-medium">{t('developerView.marketContextDebug')}</h4>
+              <p className="aw-caption aw-text-tertiary mt-1">Delayed / historical market context, not execution-grade quote data.</p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                disabled={marketContextStatus === 'loading'}
+                onClick={async () => {
+                  try {
+                    await fetchMarketContext({ forceRefresh: true });
+                  } catch (error) {
+                    console.error(error);
+                  }
+                }}
+                className="aw-button aw-button-ghost !min-h-8 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {marketContextStatus === 'loading' ? t('developerView.refreshing') : t('developerView.forceRefresh')}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(JSON.stringify({
+                    marketContext: state?.marketContext || null,
+                    marketContextLastFetchedAt: state?.marketContextLastFetchedAt || null,
+                    marketContextStatus,
+                    marketContextError
+                  }, null, 2));
+                  setIsCopiedMc(true);
+                  setTimeout(() => setIsCopiedMc(false), 2000);
+                }}
+                className="aw-button aw-button-ghost !min-h-8 cursor-pointer"
+              >
+                {isCopiedMc ? t('developerView.copied') : t('developerView.copyJson')}
+              </button>
+            </div>
+          </div>
+
+          <div className="aw-panel-muted mb-4 grid grid-cols-2 gap-3 p-3 font-mono sm:grid-cols-3">
+            {[
+              ['Status', marketContextStatus || 'idle'],
+              ['Freshness', marketContext?.freshness || 'N/A'],
+              ['Data Quality', marketContext?.dataQuality || 'N/A'],
+              ['Risk Mode', marketContext?.regime?.riskMode || 'unknown'],
+              ['Instruments', String(marketContextInstruments.length)],
+              ['Signals', String(marketContextSignals.length)],
+              ['Last Fetched', formatTime(state?.marketContextLastFetchedAt)],
+            ].map(([label, value]) => (
+              <div key={label} className={label === 'Last Fetched' ? 'col-span-2 sm:col-span-3' : ''}>
+                <div className="aw-caption aw-text-tertiary uppercase">{label}</div>
+                <div className="aw-body aw-text-secondary mt-1 font-semibold">{value}</div>
+              </div>
+            ))}
+          </div>
+
+          {marketContextError && (
+            <div className="aw-danger-panel mb-4 p-3 aw-caption text-aw-danger font-mono">
+              Error: {marketContextError}
+            </div>
+          )}
+
+          <div className="space-y-2 aw-caption aw-text-secondary font-mono">
+            {marketContextSourceSummary.length > 0 && (
+              <div><span className="aw-text-tertiary font-semibold">Sources:</span> {marketContextSourceSummary.slice(0, 2).join(', ')}</div>
+            )}
+            {marketContextWarnings.length > 0 ? (
+              <div>
+                <div className="aw-text-tertiary font-semibold mb-1">Warnings (Recent 2):</div>
+                <ul className="list-disc pl-4 space-y-1">
+                  {marketContextWarnings.slice(0, 2).map((warning: string, index: number) => <li key={index}>{warning}</li>)}
+                </ul>
+              </div>
+            ) : (
+              <div className="aw-text-tertiary">No active warnings.</div>
+            )}
+          </div>
+        </div>
+
+        <div className="aw-panel-muted mb-5 p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <MaterialIcon name="tune" size={20} className="text-aw-accent-mist" />
+            <h4 className="aw-body aw-text-primary font-medium">{t('developerView.intakeDiagnostics')}</h4>
+          </div>
+          {sduiDiagnostics ? (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {[
+                ['Raw Top-Level', sduiDiagnostics.rawTopLevel],
+                ['Normalized', sduiDiagnostics.normalizedCount],
+                ['Candidates', sduiDiagnostics.candidateCount],
+                ['Unique', sduiDiagnostics.uniqueCount],
+                ['Final Kept', sduiDiagnostics.finalCount],
+                ['Dropped', sduiDiagnostics.droppedCount],
+                ['Intervention Kept', sduiDiagnostics.interventionCardsKept],
+                ['Last Updated', new Date(sduiDiagnostics.generatedAt).toLocaleTimeString()],
+              ].map(([label, value]) => (
+                <div key={label} className="aw-panel-muted p-3 font-mono">
+                  <div className="aw-caption aw-text-tertiary uppercase">{label}</div>
+                  <div className="aw-body aw-text-primary mt-1 font-semibold">{value}</div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="aw-caption aw-text-tertiary font-mono italic">{t('developerView.noIntake')}</div>
+          )}
+        </div>
+
+        <div className="space-y-2 mb-6 shrink-0">
+          {stateRows.map(row => {
+            const isSelected = selectedSection === row.id;
+            return (
+              <button
+                type="button"
+                key={row.id}
+                onClick={() => setSelectedSection(isSelected ? null : row.id)}
+                className={`aw-panel-muted flex w-full items-center justify-between gap-4 px-4 py-3 text-left transition-colors cursor-pointer ${isSelected ? 'border-aw-border-strong' : 'hover:border-aw-border-strong'}`}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <MaterialIcon name={isSelected ? 'expand_more' : 'chevron_right'} size={16} className="aw-text-tertiary" />
+                  <MaterialIcon name={row.icon} size={20} className="text-aw-accent-mist shrink-0" />
+                  <span className="aw-body aw-text-secondary font-mono truncate">{row.name}</span>
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  <span className="aw-caption aw-text-tertiary font-mono">{row.count}</span>
+                  <span className="aw-status-pill font-mono uppercase">
+                    <span className={`aw-status-dot ${statusDotClass(row.status)}`} />
+                    {row.badge}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="aw-dev-code flex-1 min-h-44 overflow-auto p-4 custom-scroll">
+          <div className="mb-3 flex justify-end">
+            {selectedSection && (
+              <button type="button" onClick={() => setSelectedSection(null)} className="aw-chat-meta-action">
+                <MaterialIcon name="keyboard_backspace" size={16} />
+                {t('developerView.showOverview')}
+              </button>
+            )}
+          </div>
+          <table className="w-full border-collapse select-text">
+            <tbody>
+              {jsonCodeLines.map((line, index) => (
+                <tr key={index} className="hover:bg-aw-surface-3">
+                  <td className="aw-dev-line-number w-10 pr-3 text-right align-top">{index + 1}</td>
+                  <td className="pl-4 pb-1 whitespace-pre select-text">{line}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  );
+
+  const renderPipelineTab = () => (
+    <div className="flex min-h-0 flex-1 flex-col md:flex-row overflow-hidden">
+      <aside className="aw-dev-pane w-full md:w-[38%] max-h-[40%] md:max-h-full border-b md:border-b-0 md:border-r p-6 sm:p-7 flex flex-col overflow-y-auto custom-scroll shrink-0">
+        <div className="mb-6 flex items-center gap-2 shrink-0">
+          <MaterialIcon name="account_tree" size={20} className="text-aw-accent-mist" />
+          <h3 className="aw-section-kicker">{t('developerView.intelligencePipeline')}</h3>
+        </div>
+        <div className="relative flex flex-col gap-3">
+          {AGENTS.map((agent, index) => {
+            const isActive = activeAgentId === agent.id;
+            return (
+              <button
+                type="button"
+                key={agent.id}
+                onClick={() => { setActiveAgentId(agent.id); setIsEditingPrompt(false); }}
+                className={`aw-panel-muted relative z-10 flex gap-4 p-3 text-left transition-colors cursor-pointer ${isActive ? 'border-aw-border-strong' : 'hover:border-aw-border-strong'}`}
+              >
+                <div className="aw-chart-state-icon h-6 w-6 shrink-0 text-aw-accent-mist aw-caption font-mono">{index + 1}</div>
+                <div className="flex flex-1 flex-col min-w-0">
+                  <div className="mb-1 flex items-center justify-between gap-3">
+                    <span className="aw-body aw-text-primary font-medium truncate">{agent.name}</span>
+                    <span className="aw-caption aw-text-tertiary font-mono uppercase">{agent.type}</span>
+                  </div>
+                  <span className="aw-caption aw-text-tertiary font-mono truncate">{agent.role}</span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </aside>
+
+      <section className="flex-1 flex flex-col p-6 sm:p-7 overflow-hidden">
+        <div className="mb-4 flex items-center gap-2 shrink-0">
+          <MaterialIcon name="settings_suggest" size={20} className="text-aw-accent-mist" />
+          <h3 className="aw-section-kicker">{t('developerView.nodeConfig')}</h3>
+        </div>
+        <div className="mb-4">
+          <h4 className="aw-label aw-text-primary font-medium">{activeAgent.name}</h4>
+          <p className="aw-caption aw-text-tertiary font-mono mt-1">Role: {activeAgent.role} | Type: {activeAgent.type}</p>
+        </div>
+
+        <div className="aw-dev-code flex-1 flex flex-col overflow-hidden">
+          <div className="aw-modal-header flex min-h-10 items-center justify-between gap-4 border-b px-4 shrink-0">
+            <span className="aw-caption font-mono text-aw-accent-mist uppercase flex items-center gap-2">
+              <MaterialIcon name="terminal" size={16} className="aw-text-tertiary" />
+              {activeAgent.type === 'rag' ? 'Memory Schema' : activeAgent.type === 'middleware' ? 'Runtime Logic' : 'System Prompt'}
+            </span>
+            {activeAgent.type !== 'middleware' && (
+              <div className="flex items-center gap-3">
+                {isEditingPrompt ? (
+                  <>
+                    <button type="button" onClick={() => setIsEditingPrompt(false)} className="aw-chat-meta-action">{t('developerView.cancelEdit')}</button>
+                    <button type="button" onClick={handleSavePrompt} className="aw-button aw-button-primary !min-h-7 !px-3">{t('developerView.save')}</button>
+                  </>
+                ) : (
+                  <>
+                    <button type="button" onClick={handleRestoreDefault} className="aw-chat-meta-action text-aw-danger">
+                      <MaterialIcon name="delete" size={16} /> {t('developerView.reset')}
+                    </button>
+                    <button type="button" onClick={handleEditPrompt} className="aw-chat-meta-action text-aw-accent-mist">
+                      <MaterialIcon name="edit" size={16} /> {t('developerView.edit')}
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="flex-1 overflow-auto custom-scroll">
+            {isEditingPrompt ? (
+              <textarea
+                value={editContent}
+                onChange={event => setEditContent(event.target.value)}
+                className="aw-form-input h-full resize-none rounded-none border-0 bg-transparent p-5 font-mono"
+                placeholder="Enter prompt or schema structure here..."
+              />
+            ) : (
+              <div className="p-5 aw-caption aw-text-secondary font-mono leading-relaxed whitespace-pre-wrap select-text">
+                {getCurrentAgentContent(activeAgent)}
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+    </div>
+  );
 
   return (
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Deep immersive dark backdrop overlay */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="fixed inset-0 bg-[#030406]/85 backdrop-blur-[10px] z-[90]"
+            className="fixed inset-0 aw-modal-backdrop z-50"
             onClick={onClose}
           />
 
-          {/* Centered refined Modal container */}
-          <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-[100] p-4 sm:p-6 md:p-8">
+          <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none p-4 sm:p-6 md:p-8">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-              className="bg-[#0E1115] border border-[#1C2026] rounded-[28px] w-full max-w-6xl h-[85vh] flex flex-col shadow-[0_32px_96px_rgba(0,0,0,0.95),0_0_0_1px_rgba(251,242,212,0.02)] pointer-events-auto overflow-hidden text-neutral-200 select-none"
+              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+              className="aw-modal-shell aw-dev-shell flex flex-col pointer-events-auto overflow-hidden select-none"
             >
-              
-              {/* Header block with CPU chip icon and Title elements */}
-              <div className="h-20 px-6 sm:px-8 border-b border-[#1C2026] flex items-center justify-between shrink-0 bg-[#0B0D10]/50 relative">
-                {/* Thin top absolute accent bar */}
-                <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-[#C9B284]/20 to-transparent" />
-                
+              <header className="aw-modal-header min-h-20 px-6 sm:px-8 border-b flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-6">
-                  <div className="flex items-center gap-4 border-r border-[#1C2026] pr-6 hidden sm:flex">
-                    <div className="w-10 h-10 rounded-xl bg-[#12151A] border border-[#1C2026] flex items-center justify-center text-[#C9B284] shadow-inner transform scale-95">
-                      <Cpu className="w-5 h-5 animate-pulse" />
+                  <div className="hidden sm:flex items-center gap-4 border-r border-aw-border-subtle pr-6">
+                    <div className="aw-chart-state-icon h-10 w-10">
+                      <MaterialIcon name="memory" size={24} className="text-aw-accent-mist animate-pulse" />
                     </div>
                     <div>
-                      <h2 className="text-base font-serif text-[#E7D7B0] tracking-wide font-medium">Developer View</h2>
-                      <p className="text-[11px] font-mono tracking-widest text-[#8C8370] uppercase mt-0.5">App Workspace State</p>
+                      <h2 className="aw-label aw-text-primary font-serif font-medium">{t('developerView.title')}</h2>
+                      <p className="aw-caption aw-text-tertiary font-mono uppercase mt-1">{t('developerView.subtitle')}</p>
                     </div>
                   </div>
-                  
-                  {/* Tabs */}
-                  <div className="flex bg-[#12151A]/60 border border-[#1C2026] rounded-xl p-1">
-                    <button
-                      onClick={() => setActiveTab('state')}
-                      className={`px-4 py-1.5 rounded-lg text-[11px] sm:text-xs font-mono uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 ${activeTab === 'state' ? 'bg-[#1C2026] text-[#E7D7B0] shadow-sm' : 'text-[#8C8370] hover:text-[#C9B284] hover:bg-[#1C2026]/50'}`}
-                    >
-                      <Database className="w-3.5 h-3.5 hidden sm:block" />
-                      State & Data
+
+                  <div className="aw-panel-muted flex p-1">
+                    <button type="button" onClick={() => setActiveTab('state')} className={`aw-dev-tab cursor-pointer ${activeTab === 'state' ? 'aw-dev-tab-active' : ''}`}>
+                      <MaterialIcon name="database" size={16} className="hidden sm:inline-flex" />
+                      {t('developerView.stateData')}
                     </button>
-                    <button
-                      onClick={() => setActiveTab('pipeline')}
-                      className={`px-4 py-1.5 rounded-lg text-[11px] sm:text-xs font-mono uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 ${activeTab === 'pipeline' ? 'bg-[#1C2026] text-[#E7D7B0] shadow-sm' : 'text-[#8C8370] hover:text-[#C9B284] hover:bg-[#1C2026]/50'}`}
-                    >
-                      <Workflow className="w-3.5 h-3.5 hidden sm:block" />
-                      Pipeline
+                    <button type="button" onClick={() => setActiveTab('pipeline')} className={`aw-dev-tab cursor-pointer ${activeTab === 'pipeline' ? 'aw-dev-tab-active' : ''}`}>
+                      <MaterialIcon name="account_tree" size={16} className="hidden sm:inline-flex" />
+                      {t('developerView.pipeline')}
                     </button>
                   </div>
                 </div>
 
-                {/* Top close anchor */}
-                <button 
-                  onClick={onClose} 
-                  className="p-2 bg-[#12151A]/60 hover:bg-[#1E232B] border border-[#1C2026] hover:border-[#8C8370]/30 rounded-full text-neutral-400 hover:text-white transition-all cursor-pointer shadow-sm"
-                  aria-label="Close"
-                >
-                  <X className="w-4 h-4" />
+                <button type="button" onClick={onClose} className="aw-icon-button cursor-pointer" aria-label={t('developerView.close')}>
+                  <MaterialIcon name="close" size={20} />
                 </button>
-              </div>
+              </header>
 
-              {/* Central Dual Column Workspace Area */}
-              <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
-                {activeTab === 'state' ? (
-                  <>
-                    {/* Left Column: User Profile Debug panel */}
-                    <div className="w-full md:w-[38%] h-auto max-h-[50%] md:max-h-full border-b md:border-b-0 border-r-0 md:border-r border-[#1C2026] flex flex-col bg-[#0B0D10]/20 overflow-y-auto custom-scrollbar p-6 sm:p-7 shrink-0 md:shrink-none">
-                      
-                      {/* Title */}
-                      <div className="flex items-center gap-2 mb-6 shrink-0">
-                        <User className="w-4 h-4 text-[#C9B284]" />
-                        <h3 className="text-[13px] font-mono tracking-wider text-[#E7D7B0] uppercase font-bold">User Profile Debug</h3>
-                      </div>
+              {activeTab === 'state' ? renderStateTab() : renderPipelineTab()}
 
-                      {/* Inspector Fields Table */}
-                      <div className="space-y-3 flex-1 pb-6">
-                        {/* Unique User ID Row */}
-                        <div>
-                          <label className="block text-[10px] font-mono uppercase tracking-wider text-[#8C8370] mb-1.5">User ID</label>
-                          <div className="flex items-center bg-[#12151A] border border-[#1C2026] rounded-lg px-3 py-2 justify-between">
-                            <span className="text-xs text-[#8C8370] font-mono truncate max-w-[200px]">
-                              {auth.currentUser?.uid ? auth.currentUser.uid.slice(0, 14) + "..." : "user_9f3b7a2c"}
-                            </span>
-                            <button 
-                              onClick={handleCopyUid}
-                              className="p-1 text-neutral-500 hover:text-[#C9B284] hover:bg-neutral-800/40 rounded transition-all cursor-pointer"
-                              title="Copy User ID"
-                            >
-                              {copiedUid ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Standard Profile inputs */}
-                        {[
-                          { key: 'name', label: 'Name', type: 'text' },
-                          { key: 'email', label: 'Email', type: 'email' },
-                          { key: 'currency', label: 'Currency', type: 'text' },
-                          { key: 'riskProfile', label: 'Risk Profile', type: 'text' },
-                          { key: 'investmentHorizon', label: 'Investment Horizon', type: 'text' },
-                          { key: 'dataSource', label: 'Data Source', type: 'text' },
-                          { key: 'createdAt', label: 'Created At', type: 'text' },
-                          { key: 'updatedAt', label: 'Updated At', type: 'text' },
-                        ].map((f) => {
-                          const isEmail = f.key === 'email';
-                          const val = editProfileData[f.key] || '';
-                          
-                          // Mask email slightly to conform with API key rules if not in active edit mode
-                          const displayVal = (isEmail && !isEditingProfile && val) 
-                            ? val.replace(/(.{3})(.*)(@.*)/, "$1...$3")
-                            : val;
-
-                          return (
-                            <div key={f.key}>
-                              <label className="block text-[10px] font-mono uppercase tracking-wider text-[#8C8370] mb-1.5">{f.label}</label>
-                              <input 
-                                type={f.type}
-                                value={displayVal}
-                                disabled={!isEditingProfile}
-                                readOnly={!isEditingProfile}
-                                onChange={(e) => handleFieldChange(f.key, e.target.value)}
-                                className={`w-full bg-[#12151A] border ${isEditingProfile ? 'border-[#C9B284]/40 text-[#E7D7B0] focus:border-[#C9B284]' : 'border-[#1C2026] text-neutral-300'} rounded-lg px-3 py-2 text-xs font-mono transition-all focus:outline-none`}
-                              />
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {/* Dynamic Action Block for Triggering Profile Updates */}
-                      <div className="mt-auto pt-6 border-t border-[#1C2026] relative z-10 shrink-0">
-                        <div className="bg-[#12151A] border border-[#1C2026] rounded-xl p-4 flex flex-col">
-                          <div className="flex items-start gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-[#C9B284]/5 border border-[#C9B284]/15 flex items-center justify-center text-[#C9B284] shrink-0">
-                              <Edit3 className="w-4 h-4" />
-                            </div>
-                            <div>
-                              <h4 className="text-xs font-serif text-[#E7D7B0] font-medium">Update Profile</h4>
-                              <p className="text-[10px] text-[#8C8370] leading-relaxed mt-1">Update basic profile settings for the current user.</p>
-                            </div>
-                          </div>
-                          
-                          <div className="mt-4 flex gap-2">
-                            {isEditingProfile ? (
-                              <>
-                                <button 
-                                  onClick={handleSaveProfile}
-                                  className="flex-1 py-2 bg-[#C9B284] hover:bg-[#E7D7B0] text-black rounded-lg text-xs font-semibold tracking-wide transition-colors cursor-pointer"
-                                >
-                                  Save Inputs
-                                </button>
-                                <button 
-                                  onClick={() => {
-                                    setEditProfileData({ ...user });
-                                    setIsEditingProfile(false);
-                                  }}
-                                  className="py-2 px-3 bg-[#1E232B] hover:bg-neutral-800 rounded-lg text-xs font-mono text-neutral-400 hover:text-white transition-all border border-[#1C2026] cursor-pointer"
-                                >
-                                  Cancel
-                                </button>
-                              </>
-                            ) : (
-                              <button 
-                                onClick={() => setIsEditingProfile(true)}
-                                className="w-full flex items-center justify-center gap-2 py-2 border border-[#C9B284]/25 hover:border-[#C9B284]/50 bg-[#C9B284]/5 hover:bg-[#C9B284]/10 text-[#C9B284] hover:text-[#E7D7B0] rounded-lg text-xs font-mono tracking-wider uppercase transition-all duration-300 cursor-pointer shadow-sm"
-                              >
-                                <Edit3 className="w-3.5 h-3.5" />
-                                Edit Profile
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                    </div>
-
-                    {/* Right Column: Data / State Inspector panel */}
-                    <div className="flex-1 flex flex-col bg-[#080A0D]/40 overflow-y-auto p-6 sm:p-7 custom-scrollbar">
-                      
-                      {/* Title & Refresh control */}
-                      <div className="flex items-center justify-between mb-2 shrink-0">
-                        <div className="flex items-center gap-2">
-                          <Database className="w-4 h-4 text-[#C9B284]" />
-                          <h3 className="text-[13px] font-mono tracking-wider text-[#E7D7B0] uppercase font-bold">Data / State Inspector</h3>
-                        </div>
-                        
-                        <button 
-                          onClick={handleRefresh}
-                          className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#12151A] hover:bg-[#1E232B] border border-[#1C2026] rounded-lg text-[10px] font-mono text-[#8C8370] hover:text-white uppercase tracking-wider transition-all cursor-pointer shadow-sm"
-                        >
-                          <RefreshCw className="w-3 h-3 text-[#C9B284]" />
-                          Refresh
-                        </button>
-                      </div>
-                      
-                      <p className="text-[11px] text-[#8C8370] tracking-wide mb-6">
-                        Live snapshot of the current workspace state stored in local database.
-                      </p>
-
-                      {/* Market Context Debug Panel */}
-                      <div className="mb-5 rounded-xl border border-[#1C2026] bg-[#12151A]/60 p-4 relative z-10">
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-                          <div>
-                            <h4 className="text-xs font-serif text-[#E7D7B0] tracking-wide font-medium">Market Context Debug</h4>
-                            <p className="text-[10px] text-[#8C8370] leading-relaxed mt-0.5">
-                              Delayed / historical market context, not execution-grade quote data.
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <button
-                              disabled={marketContextStatus === 'loading'}
-                              onClick={async () => {
-                                try {
-                                  await fetchMarketContext({ forceRefresh: true });
-                                } catch (e) {
-                                  console.error(e);
-                                }
-                              }}
-                              className="px-2.5 py-1.5 bg-[#1C2026] hover:bg-[#1E232B] border border-[#1C2026] hover:border-[#8C8370]/30 rounded-lg text-[10px] font-mono text-[#E7D7B0] uppercase tracking-wider transition-all cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              {marketContextStatus === 'loading' ? 'Refreshing...' : 'Force Refresh'}
-                            </button>
-                            <button
-                              onClick={() => {
-                                navigator.clipboard.writeText(JSON.stringify({
-                                  marketContext: state?.marketContext || null,
-                                  marketContextLastFetchedAt: state?.marketContextLastFetchedAt || null,
-                                  marketContextStatus,
-                                  marketContextError
-                                }, null, 2));
-                                setIsCopiedMc(true);
-                                setTimeout(() => setIsCopiedMc(false), 2000);
-                              }}
-                              className="px-2.5 py-1.5 bg-[#1C2026] hover:bg-[#1E232B] border border-[#1C2026] hover:border-[#8C8370]/30 rounded-lg text-[10px] font-mono text-[#C9B284] uppercase tracking-wider transition-all cursor-pointer shadow-sm"
-                            >
-                              {isCopiedMc ? 'Copied' : 'Copy JSON'}
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Status grid info */}
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-[#0B0D10]/40 rounded-lg p-3 text-[11px] font-mono mb-4 border border-[#1C2026]">
-                          <div>
-                            <div className="text-[#8C8370] text-[9px] uppercase tracking-widest">Status</div>
-                            <div className={`mt-1 font-semibold ${marketContextStatus === 'error' ? 'text-rose-400' : marketContextStatus === 'loading' ? 'text-[#C9B284]' : 'text-emerald-400'}`}>
-                              {marketContextStatus || 'idle'}
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-[#8C8370] text-[9px] uppercase tracking-widest">Freshness</div>
-                            <div className="mt-1 text-neutral-300">{marketContext?.freshness || 'N/A'}</div>
-                          </div>
-                          <div>
-                            <div className="text-[#8C8370] text-[9px] uppercase tracking-widest">Data Quality</div>
-                            <div className="mt-1 text-neutral-300">{marketContext?.dataQuality || 'N/A'}</div>
-                          </div>
-                          <div>
-                            <div className="text-[#8C8370] text-[9px] uppercase tracking-widest">Risk Mode</div>
-                            <div className="mt-1 text-neutral-300">{marketContext?.regime?.riskMode || 'unknown'}</div>
-                          </div>
-                          <div>
-                            <div className="text-[#8C8370] text-[9px] uppercase tracking-widest">Instruments</div>
-                            <div className="mt-1 text-neutral-300">{marketContextInstruments.length}</div>
-                          </div>
-                          <div>
-                            <div className="text-[#8C8370] text-[9px] uppercase tracking-widest">Signals</div>
-                            <div className="mt-1 text-neutral-300">{marketContextSignals.length}</div>
-                          </div>
-                          {marketContext?.qualitySummary && (
-                            <>
-                              <div>
-                                <div className="text-[#8C8370] text-[9px] uppercase tracking-widest">Quality Status</div>
-                                <div className={`mt-1 font-semibold ${
-                                  marketContext.qualitySummary.status === 'ready' ? 'text-emerald-400' :
-                                  marketContext.qualitySummary.status === 'degraded' ? 'text-amber-400' :
-                                  'text-rose-400'
-                                }`}>
-                                  {marketContext.qualitySummary.status.toUpperCase()}
-                                </div>
-                              </div>
-                              <div>
-                                <div className="text-[#8C8370] text-[9px] uppercase tracking-widest">Confidence</div>
-                                <div className={`mt-1 font-semibold ${
-                                  marketContext.qualitySummary.confidence === 'high' ? 'text-emerald-400' :
-                                  marketContext.qualitySummary.confidence === 'medium' ? 'text-amber-400' :
-                                  'text-rose-400'
-                                }`}>
-                                  {marketContext.qualitySummary.confidence.toUpperCase()}
-                                </div>
-                              </div>
-                              <div>
-                                <div className="text-[#8C8370] text-[9px] uppercase tracking-widest">Coverage</div>
-                                <div className="mt-1 text-neutral-300">
-                                  {Math.round((marketContext.qualitySummary.coverageRatio || 0) * 100)}%
-                                </div>
-                              </div>
-                            </>
-                          )}
-                          <div className="col-span-2 sm:col-span-3">
-                            <div className="text-[#8C8370] text-[9px] uppercase tracking-widest">Last Fetched</div>
-                            <div className="mt-1 text-neutral-300">{formatTime(state?.marketContextLastFetchedAt)}</div>
-                          </div>
-                        </div>
-
-                        {/* Error presentation */}
-                        {marketContextError && (
-                          <div className="mb-4 text-xs text-rose-400 font-mono bg-rose-500/5 border border-rose-500/10 rounded-lg p-2.5">
-                            Error: {marketContextError}
-                          </div>
-                        )}
-
-                        {/* Lists of sourceSummary and warnings */}
-                        <div className="space-y-2 mb-4 text-[10.5px] font-mono">
-                          {marketContextSourceSummary.length > 0 && (
-                            <div>
-                              <span className="text-[#8C8370] font-semibold">Sources:</span>{' '}
-                              <span className="text-neutral-400">{marketContextSourceSummary.slice(0, 2).join(', ')}</span>
-                            </div>
-                          )}
-                          {marketContextWarnings.length > 0 ? (
-                            <div>
-                              <div className="text-[#8C8370] font-semibold mb-1">Warnings (Recent 2):</div>
-                              <ul className="list-disc pl-4 space-y-0.5 text-neutral-400">
-                                {marketContextWarnings.slice(0, 2).map((w: string, i: number) => (
-                                  <li key={i}>{w}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          ) : (
-                            <div className="text-[#8C8370]">No active warnings.</div>
-                          )}
-                        </div>
-
-                        {/* Snapshot list */}
-                        <div className="border-t border-[#1C2026] pt-3 mt-3">
-                          <div className="text-[10px] font-mono uppercase tracking-widest text-[#8C8370] font-semibold mb-2">
-                            Top Instruments Snapshot
-                          </div>
-                          {marketContextInstruments.length === 0 ? (
-                            <div className="text-xs font-mono text-[#8C8370] italic">No instruments loaded.</div>
-                          ) : (
-                            <div className="space-y-1.5 custom-scrollbar max-h-[140px] overflow-y-auto">
-                              {marketContextInstruments.slice(0, 6).map((item: any, idx: number) => {
-                                const sym = item.symbol || 'N/A';
-                                const cat = item.category || 'N/A';
-                                let chgText = 'N/A';
-                                if (item.change3M !== undefined && item.change3M !== null) {
-                                  const val = Number(item.change3M);
-                                  chgText = Number.isFinite(val) ? `${val.toFixed(2)}%` : 'N/A';
-                                }
-                                const qual = item.dataQuality || 'N/A';
-                                return (
-                                  <div key={idx} className="flex flex-wrap items-center justify-between text-[11px] font-mono bg-[#0B0D10]/20 border border-[#1C2026]/40 rounded px-2.5 py-1 hover:bg-[#0B0D10]/40 transition-colors">
-                                    <div className="flex items-center gap-2">
-                                      <span className="font-semibold text-neutral-200">{sym}</span>
-                                      <span className="text-[#8C8370] text-[9px] uppercase tracking-widest">({cat})</span>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                      <span>3M: <span className={chgText.startsWith('-') ? 'text-rose-400' : chgText === 'N/A' ? 'text-[#8C8370]' : 'text-emerald-400'}>{chgText}</span></span>
-                                      <span className="text-[#8C8370] text-[10px]">Quality: <span className="text-neutral-300">{qual}</span></span>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Source Health section */}
-                        {marketContext?.qualitySummary?.sourceHealth && (
-                          <div className="border-t border-[#1C2026] pt-3 mt-3">
-                            <div className="text-[10px] font-mono uppercase tracking-widest text-[#8C8370] font-semibold mb-2">
-                              Source Health Assessment ({marketContext.qualitySummary.sourceHealth.length})
-                            </div>
-                            <div className="space-y-1">
-                              {marketContext.qualitySummary.sourceHealth.map((sh: any, idx: number) => (
-                                <div key={idx} className="flex items-center justify-between text-[11px] font-mono bg-[#0B0D10]/20 border border-[#1C2026]/40 rounded px-2.5 py-1">
-                                  <span className="font-semibold text-neutral-200 uppercase">{sh.source}</span>
-                                  <div className="flex items-center gap-3">
-                                    <span className={`${
-                                      sh.status === 'ok' ? 'text-emerald-400' :
-                                      sh.status === 'partial' ? 'text-amber-400' :
-                                      sh.status === 'not_configured' ? 'text-zinc-500' :
-                                      'text-rose-400'
-                                    }`}>
-                                      {sh.status.toUpperCase()}
-                                    </span>
-                                    {sh.expectedCount !== undefined && sh.expectedCount > 0 && (
-                                      <span className="text-neutral-400 text-[10px]">
-                                        ({sh.successCount || 0}/{sh.expectedCount})
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Top Macro Enhancements snap */}
-                        {marketContext?.macroEnhancements && marketContext.macroEnhancements.length > 0 && (
-                          <div className="border-t border-[#1C2026] pt-3 mt-3">
-                            <div className="text-[10px] font-mono uppercase tracking-widest text-[#8C8370] font-semibold mb-2">
-                              Top Macro Enhancements ({marketContext.macroEnhancements.length})
-                            </div>
-                            <div className="space-y-1.5 custom-scrollbar max-h-[140px] overflow-y-auto">
-                              {marketContext.macroEnhancements.slice(0, 6).map((item: any, idx: number) => {
-                                const valStr = item.value !== undefined && item.value !== null ? item.value.toFixed(2) : 'N/A';
-                                let chg1MText = 'N/A';
-                                if (item.change1M !== undefined && item.change1M !== null) {
-                                  chg1MText = item.change1M.toFixed(2);
-                                  if (item.change1M > 0) chg1MText = `+${chg1MText}`;
-                                }
-                                return (
-                                  <div key={idx} className="flex flex-wrap items-center justify-between text-[11px] font-mono bg-[#0B0D10]/20 border border-[#1C2026]/40 rounded px-2.5 py-1 hover:bg-[#0B0D10]/40 transition-colors">
-                                    <div className="flex items-center gap-1.5 min-w-0 truncate">
-                                      <span className="font-semibold text-neutral-200 truncate">{item.label}</span>
-                                      <span className="text-[9px] text-zinc-500 font-mono">({item.source.toUpperCase()})</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 font-mono text-[10.5px]">
-                                      <span className="text-[#C9B284] font-medium">{valStr}{item.unit || ''}</span>
-                                      {chg1MText !== 'N/A' && (
-                                        <span className={chg1MText.startsWith('-') ? 'text-rose-400' : 'text-emerald-400'}>
-                                          (1M: {chg1MText})
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* SDUI Intake Diagnostics Panel */}
-                      <div className="mb-5 rounded-xl border border-[#1C2026] bg-[#12151A]/60 p-4 relative z-10 text-left">
-                        <div className="flex items-center gap-2 mb-3">
-                          <Sliders className="w-4 h-4 text-[#C9B284]" />
-                          <h4 className="text-xs font-serif text-[#E7D7B0] tracking-wide font-medium">SDUI Intake Diagnostics</h4>
-                        </div>
-                        {sduiDiagnostics ? (
-                          <div className="space-y-4">
-                            {/* Live diagnostics metric grid */}
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-[#0B0D10]/40 rounded-lg p-3 text-[11px] font-mono border border-[#1C2026]">
-                              <div>
-                                <div className="text-[#8C8370] text-[9px] uppercase tracking-widest">Raw Top-Level</div>
-                                <div className="mt-1 font-semibold text-neutral-200">{sduiDiagnostics.rawTopLevel}</div>
-                              </div>
-                              <div>
-                                <div className="text-[#8C8370] text-[9px] uppercase tracking-widest">Normalized</div>
-                                <div className="mt-1 font-semibold text-neutral-200">{sduiDiagnostics.normalizedCount}</div>
-                              </div>
-                              <div>
-                                <div className="text-[#8C8370] text-[9px] uppercase tracking-widest">Candidates</div>
-                                <div className="mt-1 font-semibold text-neutral-200">{sduiDiagnostics.candidateCount}</div>
-                              </div>
-                              <div>
-                                <div className="text-[#8C8370] text-[9px] uppercase tracking-widest">Unique</div>
-                                <div className="mt-1 font-semibold text-neutral-200">{sduiDiagnostics.uniqueCount}</div>
-                              </div>
-                              <div>
-                                <div className="text-[#8C8370] text-[9px] uppercase tracking-widest">Final Kept</div>
-                                <div className="mt-1 font-semibold text-emerald-400">{sduiDiagnostics.finalCount}</div>
-                              </div>
-                              <div>
-                                <div className="text-[#8C8370] text-[9px] uppercase tracking-widest">Dropped</div>
-                                <div className="mt-1 font-semibold text-rose-400">{sduiDiagnostics.droppedCount}</div>
-                              </div>
-                              <div>
-                                <div className="text-[#8C8370] text-[9px] uppercase tracking-widest">Intervention Kept</div>
-                                <div className="mt-1 font-semibold text-amber-400">{sduiDiagnostics.interventionCardsKept}</div>
-                              </div>
-                              <div>
-                                <div className="text-[#8C8370] text-[9px] uppercase tracking-widest">Last Updated</div>
-                                <div className="mt-1 text-neutral-300 truncate" title={new Date(sduiDiagnostics.generatedAt).toLocaleString()}>
-                                  {new Date(sduiDiagnostics.generatedAt).toLocaleTimeString()}
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Final Types */}
-                            {sduiDiagnostics.finalTypes && sduiDiagnostics.finalTypes.length > 0 && (
-                              <div className="text-[11px] font-mono">
-                                <span className="text-[#8C8370] font-semibold">Final Types:</span>{' '}
-                                <span className="text-emerald-400">{sduiDiagnostics.finalTypes.join(', ')}</span>
-                              </div>
-                            )}
-
-                            {/* Dropped Reasons */}
-                            <div className="text-[11px] font-mono">
-                              <div className="text-[#8C8370] font-semibold mb-1">Dropped Reasons:</div>
-                              {Object.keys(sduiDiagnostics.droppedReasons).length > 0 ? (
-                                <ul className="list-disc pl-4 space-y-0.5 text-neutral-400">
-                                  {Object.entries(sduiDiagnostics.droppedReasons).map(([reason, count]) => (
-                                    <li key={reason}>
-                                      <span className="font-semibold text-rose-400/90">{reason}</span>: {count}
-                                    </li>
-                                  ))}
-                                </ul>
-                              ) : (
-                                <span className="text-[#8C8370] italic text-[10.5px]">No items were dropped.</span>
-                              )}
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="text-xs font-mono text-[#8C8370] italic text-[10.5px]">
-                            No SDUI intake has run in this session.
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Summary lists mapping database states */}
-                      <div className="space-y-2 mb-6 shrink-0 relative z-10">
-                        {[
-                          { id: 'userProfile', name: 'userProfile', count: counts.userProfile, icon: User, badge: 'valid', badgeColor: 'bg-[#0E2C1C] text-[#4ADE80] border-[#22C55E]/15' },
-                          { id: 'metrics', name: 'metrics', count: counts.metrics, icon: Activity, badge: 'ok', badgeColor: 'bg-[#0E2C1C] text-[#4ADE80] border-[#22C55E]/15' },
-                          { id: 'distributions', name: 'distributions', count: counts.distributions, icon: PieChart, badge: 'ok', badgeColor: 'bg-[#0E2C1C] text-[#4ADE80] border-[#22C55E]/15' },
-                          { id: 'insights', name: 'insights', count: counts.insights, icon: Sparkles, badge: 'ok', badgeColor: 'bg-[#0E2C1C] text-[#4ADE80] border-[#22C55E]/15' },
-                          { id: 'goal', name: 'goal', count: counts.goal, icon: Target, badge: 'partial', badgeColor: 'bg-[#2D1F10] text-[#FB923C] border-[#F97316]/15' },
-                          { id: 'dynamicWidgets', name: 'dynamicWidgets', count: counts.dynamicWidgets, icon: Sliders, badge: 'ok', badgeColor: 'bg-[#0E2C1C] text-[#4ADE80] border-[#22C55E]/15' },
-                          {
-                            id: 'marketContext',
-                            name: 'marketContext',
-                            count: counts.marketContext,
-                            icon: Activity,
-                            badge: state?.marketContext ? (marketContextStatus === 'error' ? 'error' : 'ready') : 'empty',
-                            badgeColor:
-                              marketContextStatus === 'error'
-                                ? 'bg-[#2B1010] text-rose-400 border-rose-500/20'
-                                : state?.marketContext
-                                  ? 'bg-[#0E2C1C] text-[#4ADE80] border-[#22C55E]/15'
-                                  : 'bg-[#1E232B] text-[#8C8370] border-[#8C8370]/15'
-                          }
-                        ].map((row) => {
-                          const IconComponent = row.icon;
-                          const isSelected = selectedSection === row.id;
-
-                          return (
-                            <div 
-                              key={row.id}
-                              onClick={() => setSelectedSection(isSelected ? null : row.id)}
-                              className={`flex items-center justify-between px-4 py-3 bg-[#12151A]/60 rounded-xl border ${isSelected ? 'border-[#C9B284] bg-[#12151A]' : 'border-[#1C2026] hover:border-[#8C8370]/30'} transition-all cursor-pointer group`}
-                            >
-                              <div className="flex items-center gap-3">
-                                <span className="text-[10px] font-mono text-[#8C8370]/40 group-hover:text-[#C9B284] transition-colors">{isSelected ? "▼" : "▶"}</span>
-                                <IconComponent className="w-4 h-4 text-[#C9B284] opacity-85" />
-                                <span className="text-xs font-mono text-neutral-300 font-medium group-hover:text-[#E7D7B0] transition-colors">{row.name}</span>
-                              </div>
-
-                              <div className="flex items-center gap-3.5">
-                                <span className="text-[11px] font-mono text-[#8C8370]/80">{row.count}</span>
-                                <span className={`text-[9px] font-mono tracking-widest uppercase px-1.5 py-0.5 rounded border ${row.badgeColor}`}>
-                                  {row.badge}
-                                </span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {/* Output Code box (Syntax highlighting engine representation) */}
-                      <div className="flex-1 min-h-[180px] relative z-10 flex flex-col">
-                        <div className="bg-[#0B0D10] border border-[#1C2026] rounded-xl flex-1 overflow-x-auto overflow-y-auto p-4 font-mono text-[12.5px] leading-relaxed relative text-[#A6B2C0] shadow-inner custom-scrollbar">
-                          
-                          {/* Floating Indicator */}
-                          <div className="absolute top-3 right-3 text-[9px] font-mono font-semibold tracking-widest text-[#8C8370]/40 uppercase flex items-center gap-2">
-                            {selectedSection && (
-                              <button 
-                                onClick={() => setSelectedSection(null)}
-                                className="bg-[#12151A] hover:bg-[#1E232B] border border-[#1C2026] text-[#C9B284] rounded px-2 py-0.5 text-[8.5px] transition-all normal-case cursor-pointer"
-                              >
-                                ← Show Overview
-                              </button>
-                            )}
-                            <span>JSON</span>
-                          </div>
-
-                          {/* Displaying split formatted table rows */}
-                          <table className="w-full border-collapse select-text">
-                            <tbody>
-                              {jsonCodeLines.map((line, idx) => {
-                                let highlightedElement = <span>{line}</span>;
-                                const indent = line.match(/^\s*/)?.[0] || '';
-                                const trimmed = line.trim();
-
-                                if (trimmed.startsWith('"')) {
-                                  const parts = trimmed.split('":');
-                                  if (parts.length >= 2) {
-                                    const key = parts[0] + '"';
-                                    const remainingVal = parts.slice(1).join('":');
-                                    
-                                    let formattedValue = <span className="text-neutral-300">{remainingVal}</span>;
-                                    if (remainingVal.trim().startsWith('{') || remainingVal.trim().startsWith('[')) {
-                                      formattedValue = <span className="text-neutral-500">{remainingVal}</span>;
-                                    } else if (remainingVal.includes('"')) {
-                                      formattedValue = <span className="text-[#60a5fa]/90">{remainingVal}</span>;
-                                    } else if (/\d+/.test(remainingVal)) {
-                                      formattedValue = <span className="text-[#4ade80]/90">{remainingVal}</span>;
-                                    }
-
-                                    highlightedElement = (
-                                      <span>
-                                        {indent}
-                                        <span className="text-[#C9B284]">{key}</span>
-                                        <span className="text-neutral-500">:</span>
-                                        {formattedValue}
-                                      </span>
-                                    );
-                                  }
-                                } else if (['{', '}', '[', ']', '},', '],'].includes(trimmed)) {
-                                  highlightedElement = <span className="text-neutral-500">{line}</span>;
-                                }
-
-                                return (
-                                  <tr key={idx} className="hover:bg-white/[0.015]">
-                                    <td className="w-8 pr-3 text-right text-[#8C8370]/30 select-none text-[10px] font-mono border-r border-[#1C2026]/40">
-                                      {idx + 1}
-                                    </td>
-                                    <td className="pl-4 pb-0.5 font-mono whitespace-pre text-[12.5px] select-text">
-                                      {highlightedElement}
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    {/* Left Column: Agent Flow Pipeline */}
-                    <div className="w-full md:w-[38%] h-auto max-h-[40%] md:max-h-full border-b md:border-b-0 border-r-0 md:border-r border-[#1C2026] p-6 sm:p-7 flex flex-col bg-[#0B0D10]/20 overflow-y-auto custom-scrollbar shrink-0 md:shrink-none">
-                      <div className="flex items-center gap-2 mb-6 shrink-0">
-                        <GitMerge className="w-4 h-4 text-[#C9B284]" />
-                        <h3 className="text-[13px] font-mono tracking-wider text-[#E7D7B0] uppercase font-bold">Intelligence Pipeline</h3>
-                      </div>
-                      
-                      <div className="flex flex-col gap-3 relative">
-                        {/* Flow vertical line */}
-                        <div className="absolute left-6 top-6 bottom-6 w-px bg-gradient-to-b from-[#C9B284]/20 via-[#C9B284]/10 to-transparent z-0" />
-                        
-                        {AGENTS.map((agent, i) => {
-                           const isActive = activeAgentId === agent.id;
-                           return (
-                             <div 
-                               key={agent.id}
-                               onClick={() => handleSelectAgent(agent.id)}
-                               className={`relative z-10 flex gap-4 p-3 rounded-xl border transition-all cursor-pointer group ${isActive ? 'bg-[#12151A] border-[#C9B284]/40 shadow-sm' : 'bg-[#0E1115]/80 border-[#1C2026] hover:border-[#8C8370]/30 hover:bg-[#12151A]'}`}
-                             >
-                                <div className={`w-6 h-6 shrink-0 flex items-center justify-center rounded-lg border bg-[#0B0D10] ${agent.color} text-[10px]`}>
-                                  {i + 1}
-                                </div>
-                                <div className="flex flex-col flex-1">
-                                  <div className="flex justify-between items-center mb-0.5">
-                                    <span className={`text-[13px] font-medium font-sans ${isActive ? 'text-[#E7D7B0]' : 'text-neutral-300'}`}>{agent.name}</span>
-                                    <span className="text-[9px] uppercase tracking-widest font-mono text-[#8C8370]/50">{agent.type}</span>
-                                  </div>
-                                  <span className="text-[11px] font-mono tracking-wide text-[#8C8370]">{agent.role}</span>
-                                </div>
-                             </div>
-                           )
-                        })}
-                      </div>
-                    </div>
-                    
-                    {/* Right Column: Prompt Lab & Editor */}
-                    <div className="flex-1 flex flex-col bg-[#080A0D]/40 p-6 sm:p-7 overflow-hidden">
-                       <div className="flex items-center gap-2 mb-4 shrink-0">
-                          <Settings2 className="w-4 h-4 text-[#C9B284]" />
-                          <h3 className="text-[13px] font-mono tracking-wider text-[#E7D7B0] uppercase font-bold">Node Configuration</h3>
-                       </div>
-                       
-                       <div className="mb-4">
-                         <h4 className="text-sm font-sans text-white font-medium">{activeAgent.name}</h4>
-                         <p className="text-[11px] font-mono text-[#8C8370] tracking-wide mt-1">Role: {activeAgent.role} | Type: {activeAgent.type}</p>
-                       </div>
-                       
-                       <div className="flex-1 flex flex-col border border-[#1C2026] rounded-xl overflow-hidden bg-[#0A0D11] relative">
-                          {/* Header of Editor Component */}
-                          <div className="h-10 bg-[#12151A]/60 border-b border-[#1C2026] flex items-center justify-between px-4 shrink-0">
-                             <span className="text-[11px] font-mono text-[#C9B284] uppercase tracking-widest flex items-center gap-2">
-                               <PlaySquare className="w-3.5 h-3.5 text-[#8C8370]" />
-                               {activeAgent.type === 'rag' ? 'Memory Schema (JSON)' : (activeAgent.type === 'middleware' ? 'Runtime Logic' : 'System Prompt')}
-                             </span>
-                             {activeAgent.type !== 'middleware' && (
-                               <div className="flex items-center gap-3">
-                                 {isEditingPrompt ? (
-                                   <>
-                                      <button onClick={handleCancelEdit} className="text-[10px] uppercase font-mono text-[#8C8370] hover:text-white transition-colors cursor-pointer tracking-wider">Cancel</button>
-                                      <button onClick={handleSavePrompt} className="text-[10px] uppercase font-mono text-[#12151A] font-semibold bg-[#C9B284] hover:bg-[#E7D7B0] px-2.5 py-1 rounded transition-colors cursor-pointer tracking-wider">Save</button>
-                                   </>
-                                 ) : (
-                                   <>
-                                      <button onClick={handleRestoreDefault} className="text-[10px] uppercase font-mono text-red-400 hover:text-red-300 transition-colors cursor-pointer tracking-wider flex justify-center items-center gap-1"><Trash2 className="w-3 h-3"/> Reset</button>
-                                      <button onClick={handleEditPrompt} className="text-[10px] uppercase font-mono text-[#C9B284] hover:text-[#E7D7B0] transition-colors cursor-pointer tracking-wider flex justify-center items-center gap-1"><Edit3 className="w-3 h-3"/> Edit</button>
-                                   </>
-                                 )}
-                               </div>
-                             )}
-                          </div>
-                          {/* Editor Content Area */}
-                          <div className="flex-1 relative overflow-auto custom-scrollbar p-0">
-                             {isEditingPrompt ? (
-                               <textarea
-                                 value={editContent}
-                                 onChange={(e) => setEditContent(e.target.value)}
-                                 className="w-full h-full bg-transparent text-[#A6B2C0] font-mono text-[11.5px] leading-relaxed p-5 resize-none focus:outline-none placeholder:text-[#8C8370]/30"
-                                 placeholder="Enter prompt or schema structure here..."
-                               />
-                             ) : (
-                               <div className="p-5 text-[#A6B2C0] font-mono text-[11.5px] leading-relaxed whitespace-pre-wrap select-text">
-                                 {getCurrentAgentContent(activeAgent)}
-                               </div>
-                             )}
-                          </div>
-                       </div>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* Redesigned Footer Section containing clear-data actions */}
-              <div className="h-20 px-6 sm:px-8 border-t border-[#1C2026] flex items-center justify-between shrink-0 bg-[#0B0D10]/50 relative">
-                {/* Save feedback indicator Toast popup inside modal */}
+              <footer className="aw-modal-footer min-h-20 px-6 sm:px-8 border-t flex items-center justify-between shrink-0 relative">
                 {saveSuccess && (
-                  <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-[#0E2C1C] border border-[#22C55E]/20 text-[#4ADE80] font-mono text-[11px] rounded-lg px-4 py-1.5 shadow-xl flex items-center gap-2 animate-bounce">
-                    <ShieldCheck className="w-3.5 h-3.5" />
-                    {activeTab === 'state' ? 'Long-term profile snapshot written physically to persistence!' : 'Agent configuration updated and saved securely.'}
+                  <div className="absolute -top-12 left-1/2 -translate-x-1/2 aw-panel-muted px-4 py-2 aw-caption text-aw-success font-mono flex items-center gap-2 animate-bounce">
+                    <MaterialIcon name="verified" size={16} />
+                    {activeTab === 'state' ? t('developerView.stateSaved') : t('developerView.configSaved')}
                   </div>
                 )}
 
-                {/* Space holder */}
-                <div />
-
-                {/* Right region workflow controller */}
-                <div className="flex items-center gap-3">
-                  <button 
-                    onClick={onClose}
-                    className="px-5 py-2.5 bg-[#12151A] hover:bg-[#1E232B] border border-[#1C2026] hover:border-[#8C8370]/30 rounded-xl text-xs font-semibold text-neutral-400 hover:text-white tracking-wide transition-all cursor-pointer shadow-sm"
-                  >
-                    Close
-                  </button>
-                  {activeTab === 'state' && isEditingProfile && (
-                    <button 
-                      onClick={handleSaveProfile}
-                      className="px-5 py-2.5 bg-gradient-to-r from-[#C9B284] to-[#E7D7B0] hover:from-[#E7D7B0] hover:to-[#FFF2D4] text-black rounded-xl text-xs font-semibold tracking-wide shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer"
-                    >
-                      Save / Update Profile
+                <div>
+                  {onClearData && activeTab === 'state' && (
+                    <button type="button" onClick={onClearData} className="aw-button border border-aw-danger text-aw-danger hover:bg-aw-danger/10 cursor-pointer">
+                      {t('developerView.resetWorkspace')}
                     </button>
                   )}
                 </div>
 
-              </div>
-
+                <div className="flex items-center gap-3">
+                  <button type="button" onClick={onClose} className="aw-button aw-button-ghost cursor-pointer">{t('developerView.close')}</button>
+                  {activeTab === 'state' && isEditingProfile && (
+                    <button type="button" onClick={handleSaveProfile} className="aw-button aw-button-primary cursor-pointer">
+                      {t('developerView.saveProfile')}
+                    </button>
+                  )}
+                </div>
+              </footer>
             </motion.div>
           </div>
         </>

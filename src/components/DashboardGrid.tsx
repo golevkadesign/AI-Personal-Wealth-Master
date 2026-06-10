@@ -32,8 +32,8 @@ export const DashboardGrid: React.FC = () => {
   };
 
   return (
-    <div className="relative z-10 w-full mb-6 md:mb-8">
-      <div className="mx-auto flex w-full flex-col min-w-0 gap-5 md:gap-6">
+    <div className="aw-dashboard-stack relative z-10 w-full mb-2">
+      <div className="mx-auto flex w-full flex-col min-w-0 gap-2">
         {/* 动态微件区域 (Dynamic Widgets) */}
         <AnimatePresence>
           {data.dynamicWidgets && data.dynamicWidgets.length > 0 && (
@@ -51,7 +51,7 @@ export const DashboardGrid: React.FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
-            className="min-w-0"
+            className="aw-dashboard-schema-grid min-w-0"
           >
             <ErrorBoundary>
               <SDUIRenderer key="main-dashboard" schema={data.dashboardSchema} globalData={enhancedGlobalData} />
@@ -62,4 +62,3 @@ export const DashboardGrid: React.FC = () => {
     </div>
   );
 };
-

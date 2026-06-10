@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Send, Bot, User, Compass } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { getSettings } from '../lib/settings';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTranslation } from '../hooks/useTranslation';
 import { useWealthStore } from '../hooks/useWealthStore';
+import { MaterialIcon } from './ui/MaterialIcon';
 
 export interface WidgetCopilotProps {
   isOpen: boolean;
@@ -18,17 +18,9 @@ export interface WidgetCopilotProps {
   initialMessage?: string;
 }
 
-// Stylized Compass Reticle Icon for high-end advisory terminal header and advisor avatar
 const ReticleIcon: React.FC<{ className?: string }> = ({ className = "w-6 h-6" }) => (
-  <div className={`relative flex items-center justify-center shrink-0 rounded-full border border-[#C9B284]/30 bg-[#16181A] p-1.5 shadow-sm ${className}`}>
-    <svg viewBox="0 0 100 100" className="w-full h-full text-[#C9B284]" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="50" cy="50" r="42" stroke="currentColor" strokeWidth="4" strokeDasharray="8 8" className="opacity-40 animate-[spin_40s_linear_infinite]" />
-      <circle cx="50" cy="50" r="30" stroke="currentColor" strokeWidth="6" />
-      <circle cx="50" cy="50" r="12" stroke="currentColor" strokeWidth="6" />
-      <path d="M50 8 L50 92" stroke="currentColor" strokeWidth="6" />
-      <path d="M8 50 L92 50" stroke="currentColor" strokeWidth="6" />
-      <circle cx="50" cy="50" r="5" fill="#6B8E6B" className="animate-pulse" />
-    </svg>
+  <div className={`aw-chart-state-icon shrink-0 ${className}`}>
+    <MaterialIcon name="explore" size={20} className="text-aw-accent-mist" />
   </div>
 );
 
@@ -37,13 +29,14 @@ export const WidgetCopilot: React.FC<WidgetCopilotProps> = ({
   onClose,
   widgetTitle,
   widgetData,
-  expertRole = "首席组合策略师",
+  expertRole,
   globalData,
   onPromoteIntent,
   inline = false,
   initialMessage
 }) => {
   const { t } = useTranslation();
+  const resolvedExpertRole = expertRole || t('charts.portfolioStrategist');
   const [messages, setMessages] = useState<{ role: 'user' | 'model', content: string }[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -123,7 +116,7 @@ export const WidgetCopilot: React.FC<WidgetCopilotProps> = ({
              snapshotDiff
           },
           widgetTitle: widgetTitle,
-          expertRole: expertRole,
+	          expertRole: resolvedExpertRole,
           globalState: globalStateFromZustand,
           settings: getSettings()
         }),
@@ -269,59 +262,43 @@ export const WidgetCopilot: React.FC<WidgetCopilotProps> = ({
   // Modal / Container Classes (Redesigned contextual Expert Panel layout)
   const containerClass = inline 
     ? "flex flex-col h-full bg-transparent border-0 min-h-0" 
-    : "fixed inset-0 z-[60] bg-black/40 backdrop-blur-[1px] flex items-center justify-end p-4 md:p-6 transition-all duration-300";
+    : "fixed inset-0 z-[100] aw-drawer-backdrop flex justify-end transition-all duration-300";
 
   const modalClass = inline
     ? "w-full flex-1 flex flex-col min-h-0"
-    : "w-full sm:max-w-[465px] h-[calc(100vh-2rem)] sm:h-[calc(100vh-4rem)] max-h-[820px] flex flex-col bg-[#111315]/95 border border-[#C9B284]/15 rounded-2xl shadow-2xl overflow-hidden transition-all duration-300 relative";
+    : "w-full sm:max-w-[500px] h-screen flex flex-col aw-drawer-shell aw-workbench-shell overflow-hidden transition-all duration-300 relative";
 
   return (
     <div className={containerClass} onClick={!inline ? onClose : undefined}>
-      <style>{`
-        .copilot-markdown p { margin-bottom: 0.75rem; text-align: justify; }
-        .copilot-markdown p:last-child { margin-bottom: 0px; }
-        .copilot-markdown strong { color: #C9B284; font-weight: 600; }
-        .copilot-markdown ul, .copilot-markdown ol { margin: 0.5rem 0 0.75rem 1.25rem; }
-        .copilot-markdown ul { list-style-type: disc; }
-        .copilot-markdown ol { list-style-type: decimal; }
-        .copilot-markdown li { margin-bottom: 0.4rem; font-size: 13px; color: #E7D7B0; line-height: 1.6; }
-        .copilot-markdown li::marker { color: #8C8270; font-weight: bold; }
-        .copilot-markdown blockquote { border-left: 2px solid #C9B284; padding-left: 0.75rem; color: #8C8270; font-family: monospace; }
-        .custom-scroll::-webkit-scrollbar { width: 5px; }
-        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: rgba(201, 178, 132, 0.15); border-radius: 999px; }
-        .custom-scroll::-webkit-scrollbar-thumb:hover { background: rgba(201, 178, 132, 0.3); }
-      `}</style>
-
       <div className={modalClass} onClick={(e) => e.stopPropagation()}>
         
         {/* Header (Compass logo + title + expertRole with active status dot) */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#C9B284]/15 bg-[#121416] shrink-0">
+	        <div className="aw-drawer-header aw-workbench-header flex items-center justify-between px-5 py-4 border-b shrink-0">
           <div className="flex items-center gap-3">
             <ReticleIcon className="w-9 h-9" />
             <div className="flex flex-col">
-              <h3 className="text-[15px] font-medium text-[#E7D7B0] font-sans flex items-center gap-1.5 leading-tight">
+              <h3 className="aw-body font-semibold aw-text-primary flex items-center gap-1.5 leading-tight">
                 {widgetTitle}
               </h3>
               <div className="flex items-center gap-1.5 mt-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#6B8E6B] animate-pulse" />
-                <span className="text-[11px] text-[#8C8270] uppercase font-mono tracking-wider font-semibold">
-                  {expertRole}
+                <span className="aw-status-dot aw-status-success animate-pulse" />
+                <span className="aw-caption aw-text-tertiary uppercase font-mono font-semibold">
+	                  {resolvedExpertRole}
                 </span>
               </div>
             </div>
           </div>
           <button 
             onClick={onClose} 
-            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[#C9B284]/10 transition-colors text-[#8C8270] hover:text-[#E7D7B0] shrink-0"
-            aria-label="Close"
+            className="aw-icon-button"
+            aria-label={t('settings.close')}
           >
-            <X className="w-4 h-4 text-current" />
+            <MaterialIcon name="close" size={20} />
           </button>
         </div>
 
         {/* Scrollable Conversation area and metadata snap */}
-        <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto p-4 space-y-4 custom-scroll bg-[#121415]/65 min-h-[300px]">
+	        <div ref={scrollRef} onScroll={handleScroll} className="aw-workbench-scroll flex-1 overflow-y-auto p-4 space-y-4 custom-scroll min-h-[300px]">
           
           {/* Data Snapshot (With collapsible button toggle) */}
           <AnimatePresence>
@@ -331,49 +308,49 @@ export const WidgetCopilot: React.FC<WidgetCopilotProps> = ({
                 animate={{ opacity: 1, height: "auto", y: 0 }}
                 exit={{ opacity: 0, height: 0, y: -10 }}
                 transition={{ duration: 0.3 }}
-                className="overflow-hidden mb-4 rounded-xl border border-[#C9B284]/15 bg-[#16181A] p-3 text-xs shadow-sm font-sans"
+                className="aw-structured-card mb-4 overflow-hidden p-3 font-sans"
               >
-                <div className="flex items-center justify-between border-b border-[#C9B284]/10 pb-2 mb-2.5 font-mono">
-                  <div className="text-[10px] font-bold text-[#C9B284] uppercase tracking-wider">
-                    Data Snapshot
+                <div className="flex items-center justify-between border-b border-aw-border-subtle pb-2 mb-2.5 font-mono">
+                  <div className="aw-caption font-bold text-aw-accent-mist uppercase">
+                    {t('copilot.dataSnapshot')}
                   </div>
                   <button 
                     onClick={() => setShowSnapshot(false)} 
-                    className="text-[#8C8270] hover:text-[#C9B284] p-0.5 rounded transition-colors"
+                    className="aw-icon-button !h-7 !min-w-7"
                   >
-                    <X className="w-3 h-3" />
+                    <MaterialIcon name="close" size={16} />
                   </button>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {/* Card 1: Top Holding */}
-                  <div className="rounded-lg bg-[#111214] border border-[#C9B284]/10 p-2.5">
-                    <div className="text-[9px] uppercase font-mono tracking-wider text-[#8C8270]">Top Holding</div>
-                    <div className="text-sm font-bold text-[#E7D7B0] mt-1 font-sans">{topHoldingSymbol}</div>
-                    <div className="text-[10px] font-mono text-[#C9B284] mt-0.5">{topHoldingProportion}</div>
+                  <div className="aw-structured-card-muted p-2.5">
+                    <div className="aw-caption uppercase font-mono aw-text-tertiary">{t('copilot.topHolding')}</div>
+                    <div className="aw-body font-bold aw-text-primary mt-1 font-sans">{topHoldingSymbol}</div>
+                    <div className="aw-caption font-mono text-aw-accent-mist mt-0.5">{topHoldingProportion}</div>
                   </div>
 
                   {/* Card 2: Allocation */}
-                  <div className="rounded-lg bg-[#111214] border border-[#C9B284]/10 p-2.5">
-                    <div className="text-[9px] uppercase font-mono tracking-wider text-[#8C8270]">Allocation</div>
-                    <div className="text-sm font-bold text-[#E7D7B0] mt-1 font-sans">{allocationPercent}</div>
-                    <div className="text-[10px] font-mono text-[#8C8270] mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis">{allocationCategory}</div>
+                  <div className="aw-structured-card-muted p-2.5">
+                    <div className="aw-caption uppercase font-mono aw-text-tertiary">{t('copilot.allocation')}</div>
+                    <div className="aw-body font-bold aw-text-primary mt-1 font-sans">{allocationPercent}</div>
+                    <div className="aw-caption font-mono aw-text-tertiary mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis">{allocationCategory}</div>
                   </div>
 
                   {/* Card 3: Risk Level */}
-                  <div className="rounded-lg bg-[#111214] border border-[#C9B284]/10 p-2.5">
-                    <div className="text-[9px] uppercase font-mono tracking-wider text-[#8C8270]">Risk Level</div>
-                    <div className="text-sm font-bold text-[#E7D7B0] mt-1 font-sans">Moderate</div>
-                    <div className="w-full bg-neutral-800 h-1 rounded-full mt-2 overflow-hidden">
-                      <div className="bg-[#C9B284] h-full w-[60%]" />
+                  <div className="aw-structured-card-muted p-2.5">
+                    <div className="aw-caption uppercase font-mono aw-text-tertiary">{t('copilot.riskLevel')}</div>
+                    <div className="aw-body font-bold aw-text-primary mt-1 font-sans">{t('copilot.moderate')}</div>
+                    <div className="w-full bg-aw-surface-3 h-1 rounded-full mt-2 overflow-hidden">
+                      <div className="bg-aw-accent-mist h-full w-[60%]" />
                     </div>
                   </div>
 
                   {/* Card 4: Currency */}
-                  <div className="rounded-lg bg-[#111214] border border-[#C9B284]/10 p-2.5">
-                    <div className="text-[9px] uppercase font-mono tracking-wider text-[#8C8270]">Currency</div>
-                    <div className="text-sm font-bold text-[#E7D7B0] mt-1 font-sans">{currencyCode}</div>
-                    <div className="text-[10px] font-mono text-[#8C8270] mt-0.5">Asset Base</div>
+                  <div className="aw-structured-card-muted p-2.5">
+                    <div className="aw-caption uppercase font-mono aw-text-tertiary">{t('copilot.currency')}</div>
+                    <div className="aw-body font-bold aw-text-primary mt-1 font-sans">{currencyCode}</div>
+                    <div className="aw-caption font-mono aw-text-tertiary mt-0.5">{t('copilot.assetBase')}</div>
                   </div>
                 </div>
               </motion.div>
@@ -382,9 +359,9 @@ export const WidgetCopilot: React.FC<WidgetCopilotProps> = ({
 
           {messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center px-4 py-12 opacity-80">
-               <Compass className="w-8 h-8 text-[#C9B284] mb-4 opacity-40 animate-pulse" />
-               <p className="text-xs text-[#8C8270] leading-relaxed max-w-[280px]">
-                 {t('copilot.sandboxActive')} <span className="text-[#E7D7B0] font-medium">{widgetTitle}</span>{t('copilot.sandboxActive2')}
+               <MaterialIcon name="explore" size={32} className="text-aw-accent-mist mb-4 opacity-45 animate-pulse" />
+               <p className="aw-caption aw-text-tertiary leading-relaxed max-w-[280px]">
+                 {t('copilot.sandboxActive')} <span className="aw-text-primary font-medium">{widgetTitle}</span>{t('copilot.sandboxActive2')}
                </p>
             </div>
           ) : (
@@ -398,32 +375,32 @@ export const WidgetCopilot: React.FC<WidgetCopilotProps> = ({
                   transition={{ duration: 0.25, ease: 'easeOut' }}
                   className="flex flex-col items-start gap-1 w-full"
                 >
-                  <div className="flex items-center gap-1.5 text-[10px] font-mono text-[#8C8270]/90 uppercase tracking-wider mb-1 font-bold">
+                  <div className="flex items-center gap-1.5 aw-caption font-mono aw-text-tertiary uppercase mb-1 font-bold">
                     {isUser ? (
                       <>
-                        <div className="w-4 h-4 rounded-full border border-[#C9B284]/25 bg-[#16181A] flex items-center justify-center p-0.5 shrink-0">
-                          <User className="w-2.5 h-2.5 text-[#C9B284]" />
+                        <div className="aw-chart-state-icon !h-5 !w-5 shrink-0">
+                          <MaterialIcon name="person" size={16} className="text-aw-accent-mist" />
                         </div>
-                        <span className="text-[#C9B284]">You</span>
+                        <span className="text-aw-accent-mist">{t('copilot.you')}</span>
                       </>
                     ) : (
                       <>
                         <ReticleIcon className="w-4.5 h-4.5 !p-0.5 bg-transparent border-0" />
-                        <span className="text-[#C9B284]">{expertRole}</span>
+	                        <span className="text-aw-accent-mist">{resolvedExpertRole}</span>
                       </>
                     )}
                   </div>
 
-                  <div className="w-full bg-[#16181A] border border-[#C9B284]/15 rounded-2xl p-4 shadow-sm font-sans">
+                  <div className="aw-chat-bubble-assistant p-4 font-sans">
                     {isUser ? (
-                      <p className="text-[13px] leading-relaxed text-[#C9B284] whitespace-pre-wrap font-sans">
+                      <p className="aw-body leading-relaxed text-aw-accent-mist whitespace-pre-wrap font-sans">
                         {msg.content}
                       </p>
                     ) : (
-                      <div className="text-[13px] leading-relaxed text-[#E7D7B0] space-y-3 font-sans copilot-markdown">
+                      <div className="aw-body leading-relaxed aw-text-primary space-y-3 font-sans aw-copilot-markdown">
                         <Markdown>{msg.content}</Markdown>
                         {isTyping && idx === messages.length - 1 && (
-                          <span className="inline-block w-1.5 h-3.5 ml-1 align-middle bg-[#C9B284] animate-pulse rounded-sm" />
+                          <span className="inline-block w-1.5 h-3.5 ml-1 align-middle bg-aw-accent-mist animate-pulse rounded-sm" />
                         )}
                       </div>
                     )}
@@ -435,36 +412,36 @@ export const WidgetCopilot: React.FC<WidgetCopilotProps> = ({
           
           {isTyping && (
              <div className="flex justify-start font-mono">
-               <div className="bg-[#101113] border border-[#C9B284]/15 rounded-xl px-4 py-2.5 flex items-center gap-3 shadow-md max-w-[200px]">
+               <div className="aw-structured-card-muted px-4 py-2.5 flex items-center gap-3 max-w-[200px]">
                  <div className="flex gap-1.5 items-center">
-                   <span className="w-1.5 h-1.5 rounded-full bg-[#C9B284]/50 animate-bounce [animation-delay:-0.3s]" />
-                   <span className="w-1.5 h-1.5 rounded-full bg-[#C9B284]/80 animate-bounce [animation-delay:-0.15s]" />
-                   <span className="w-1.5 h-1.5 rounded-full bg-[#C9B284] animate-bounce" />
+                   <span className="aw-status-dot aw-status-success animate-bounce [animation-delay:-0.3s]" />
+                   <span className="aw-status-dot aw-status-success animate-bounce [animation-delay:-0.15s]" />
+                   <span className="aw-status-dot aw-status-success animate-bounce" />
                  </div>
-                 <span className="text-[9.5px] text-[#A39167] font-bold tracking-wider uppercase">{t('copilot.expertResearching')}</span>
+                 <span className="aw-caption aw-text-tertiary font-bold uppercase">{t('copilot.expertResearching')}</span>
                </div>
              </div>
           )}
         </div>
 
         {/* Input Composer area */}
-        <div className="p-4 border-t border-[#C9B284]/15 bg-[#121416] flex flex-col gap-3 shrink-0">
-          <div className="relative flex items-center bg-[#16181A] border border-[#C9B284]/15 rounded-xl focus-within:border-[#C9B284]/40 transition-all pl-3">
+	        <div className="aw-drawer-footer aw-workbench-footer p-4 border-t flex flex-col gap-3 shrink-0">
+          <div className="relative flex items-center aw-chat-input !rounded-xl !pl-3">
             <input
                type="text"
                value={input}
                onChange={(e) => setInput(e.target.value)}
                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                placeholder={t('copilot.placeholder')}
-               className="w-full bg-transparent border-none py-3 text-[13px] text-[#E7D7B0] placeholder:text-[#8C8270] focus:outline-none"
+               className="aw-body w-full bg-transparent border-none py-3 aw-text-primary placeholder:text-aw-text-tertiary focus:outline-none"
             />
             <button
                onClick={handleSend}
                disabled={!input.trim() || isTyping}
-               className="p-2.5 shrink-0 text-[#111315] disabled:text-[#8C8270] bg-[#C9B284] disabled:bg-[#C9B284]/15 m-[5px] rounded-lg transition-all"
-               aria-label="Send"
+               className="aw-button aw-button-primary !min-h-8 !px-2.5 shrink-0 disabled:opacity-40 m-[5px]"
+               aria-label={t('drawer.sendMessage')}
             >
-               <Send className="w-3.5 h-3.5 transform -rotate-45 translate-x-px -translate-y-[0.5px]" strokeWidth={2.5} />
+               <MaterialIcon name="send" size={16} />
             </button>
           </div>
           
@@ -472,11 +449,9 @@ export const WidgetCopilot: React.FC<WidgetCopilotProps> = ({
           <div className="flex items-center justify-center mt-0.5">
              <button
                onClick={handlePromote}
-               className="flex items-center gap-1.5 text-xs text-[#C9B284] hover:text-[#E7D7B0] transition-colors font-semibold tracking-wide"
+               className="aw-button aw-button-ghost !min-h-8 cursor-pointer"
              >
-               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-               </svg>
+               <MaterialIcon name="trending_up" size={16} />
                <span>{t('copilot.promoteToGlobal')}</span>
              </button>
           </div>

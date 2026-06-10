@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import * as echarts from 'echarts';
+import { AW_CHART_TOKENS } from '../lib/design-tokens';
 
 interface ReactEChartsProps {
   option: any;
@@ -24,9 +25,9 @@ export const ReactECharts: React.FC<ReactEChartsProps> = ({ option, style, class
       textStyle: { fontFamily: 'Inter, sans-serif' },
       ...option,
       tooltip: { 
-        backgroundColor: '#1e293b', 
-        borderColor: '#334155', 
-        textStyle: { color: '#f8fafc' },
+        backgroundColor: AW_CHART_TOKENS.surface,
+        borderColor: AW_CHART_TOKENS.border,
+        textStyle: { color: AW_CHART_TOKENS.text },
         ...(option.tooltip || {})
       }
     }, true);

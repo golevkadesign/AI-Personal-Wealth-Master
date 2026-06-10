@@ -1,5 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { ShieldAlert } from 'lucide-react';
+import { MaterialIcon } from './MaterialIcon';
+import { useTranslation } from '../../hooks/useTranslation';
 
 interface Props {
   children?: ReactNode;
@@ -7,6 +8,20 @@ interface Props {
 
 interface State {
   hasError: boolean;
+}
+
+function ErrorBoundaryFallback() {
+  const { t } = useTranslation();
+
+  return (
+    <div className="aw-panel flex flex-col items-center justify-center p-6 h-full min-h-[160px] border-dashed">
+      <MaterialIcon name="shield_alert" size={24} className="mb-3 text-aw-state-warning" />
+      <p className="aw-label text-center">
+        {t('chat.widgetError')}<br />
+        <span className="aw-caption mt-1.5 block">{t('chat.autoCalibrating')}</span>
+      </p>
+    </div>
+  );
 }
 
 export class ErrorBoundary extends Component<Props, State> {
@@ -25,24 +40,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   public render() {
     if (this.state.hasError) {
-      return (
-        <div 
-          className="flex flex-col items-center justify-center p-6 rounded-xl h-full min-h-[160px]"
-          style={{ 
-            backgroundColor: 'var(--color-dash-surface)', 
-            border: '1px dashed var(--color-dash-subtle)' 
-          }}
-        >
-          <ShieldAlert 
-            className="w-5 h-5 mb-3 opacity-80" 
-            style={{ color: 'var(--color-dash-gold)' }}
-          />
-          <p className="text-xs font-mono text-center tracking-wide" style={{ color: 'var(--color-dash-gold)' }}>
-            战略模组结构异常<br />
-            <span className="text-[10px] opacity-60 mt-1.5 block">引擎正在自动校准...</span>
-          </p>
-        </div>
-      );
+      return <ErrorBoundaryFallback />;
     }
 
     return this.props.children;

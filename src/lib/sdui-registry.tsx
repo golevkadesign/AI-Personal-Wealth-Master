@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Card } from '../components/Card';
 import { ReactECharts } from '../components/ReactECharts';
-import { Sparkles, Activity, AlertTriangle, Zap, ArrowRight, ShieldAlert } from 'lucide-react';
+import { MaterialIcon } from '@/src/components/ui/MaterialIcon';
 import { getSDUIPieOption, getDonutOption, getExpenseOption, getWaterfallOption, getHoldingsOption, getOptionsOption, getCurrencySymbol } from '../components/chart-configs';
 import { ChartWidget } from '../components/ChartWidget';
 import { SDUIComponent } from '../types/terminal';
@@ -14,34 +14,34 @@ import { getMetricVisibility, getChartVisibility } from './dashboard-visibility'
 import { DASHBOARD_LAYOUT } from './dashboard-layout';
 
 const bgMap: Record<string, string> = {
-  'surface-base': 'bg-dash-surface',
-  'surface-elevated': 'bg-dash-surface-hover',
-  'surface-highlight': 'bg-white/5',
-  'danger-muted': 'bg-red-500/10',
-  'warning-muted': 'bg-amber-500/10',
+  'surface-base': 'bg-aw-surface-1',
+  'surface-elevated': 'bg-aw-surface-2',
+  'surface-highlight': 'bg-aw-surface-3',
+  'danger-muted': 'bg-aw-danger/10',
+  'warning-muted': 'bg-aw-warning/10',
   'transparent': 'bg-transparent'
 };
 const textMap: Record<string, string> = {
-  'text-primary': 'text-white',
-  'text-muted': 'text-slate-400',
-  'text-accent': 'text-dash-primary',
-  'danger': 'text-red-400',
-  'warning': 'text-amber-400',
-  'success': 'text-emerald-400'
+  'text-primary': 'aw-text-primary',
+  'text-muted': 'aw-text-tertiary',
+  'text-accent': 'text-aw-accent-mist',
+  'danger': 'text-aw-danger',
+  'warning': 'text-aw-warning',
+  'success': 'text-aw-success'
 };
 const typoMap: Record<string, string> = {
-  'h1': 'text-3xl font-bold',
-  'h2': 'text-2xl font-bold',
-  'h3': 'text-xl font-semibold',
-  'h3-serif': 'text-xl font-serif font-medium tracking-wide',
-  'body': 'text-base',
-  'body-sm': 'text-sm',
-  'caption': 'text-xs uppercase tracking-wider'
+  'h1': 'aw-title font-bold',
+  'h2': 'aw-title font-semibold',
+  'h3': 'aw-label font-semibold',
+  'h3-serif': 'aw-label font-semibold',
+  'body': 'aw-body',
+  'body-sm': 'aw-body',
+  'caption': 'aw-caption uppercase font-mono font-semibold'
 };
 const borderMap: Record<string, string> = {
-  'border-subtle': 'border border-dash-subtle',
-  'border-strong': 'border border-slate-700',
-  'danger': 'border border-red-500/30',
+  'border-subtle': 'border border-aw-border-subtle',
+  'border-strong': 'border border-aw-border-strong',
+  'danger': 'border border-aw-danger/30',
   'none': 'border-none'
 };
 const paddingMap: Record<string, string> = {
@@ -221,45 +221,45 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
   },
   Box: ({ bg = 'transparent', border = 'none', padding = 'none', className = '', children, globalData }) => {
     const bgClasses = {
-      'surface': 'bg-dash-surface',
-      'surface-elevated': 'bg-dash-surface-hover shadow-lg shadow-black/50',
-      'danger-muted': 'bg-dash-red/10',
-      'accent-muted': 'bg-dash-primary/5',
+      'surface': 'bg-aw-surface-1',
+      'surface-elevated': 'bg-aw-surface-2',
+      'danger-muted': 'bg-aw-danger/10',
+      'accent-muted': 'bg-aw-surface-3',
     };
     const borderClasses = {
-      'subtle': 'border border-dash-subtle',
-      'danger': 'border border-dash-red/30',
-      'accent': 'border border-dash-primary/30',
+      'subtle': 'border border-aw-border-subtle',
+      'danger': 'border border-aw-danger/30',
+      'accent': 'border border-aw-border-strong',
     };
     const paddingClasses = { 'none': '', 'sm': 'p-3', 'md': 'p-5', 'lg': 'p-8' };
-    const boxClass = `rounded-2xl backdrop-blur-sm ${bgClasses[bg as keyof typeof bgClasses] || ''} ${borderClasses[border as keyof typeof borderClasses] || ''} ${paddingClasses[padding as keyof typeof paddingClasses] || 'p-5'} ${className || ''}`;
+    const boxClass = `aw-structured-card ${bgClasses[bg as keyof typeof bgClasses] || ''} ${borderClasses[border as keyof typeof borderClasses] || ''} ${paddingClasses[padding as keyof typeof paddingClasses] || 'p-5'} ${className || ''}`;
     return <div className={boxClass.trim()}>{children}</div>;
   },
   Typography: ({ variant = 'body', color = 'text-primary', text, className = '' }) => {
     const variantClasses = {
-      'h1': 'text-4xl font-serif font-bold text-white tracking-tight',
-      'h2': 'text-2xl font-serif font-semibold text-slate-100',
-      'h3-serif': 'text-xl font-serif font-semibold text-dash-primary',
-      'h3': 'text-lg font-bold text-white',
-      'body': 'text-sm text-slate-300 leading-relaxed',
-      'caption': 'text-xs text-slate-500 uppercase tracking-widest font-semibold',
+      'h1': 'aw-title font-bold aw-text-primary',
+      'h2': 'aw-title font-semibold aw-text-primary',
+      'h3-serif': 'aw-label font-semibold text-aw-accent-mist',
+      'h3': 'aw-label font-bold aw-text-primary',
+      'body': 'aw-body aw-text-secondary',
+      'caption': 'aw-caption aw-text-tertiary uppercase font-mono font-semibold',
     };
     const colorClasses = {
-      'text-accent': 'text-dash-primary',
-      'text-muted': 'text-slate-400',
-      'danger': 'text-dash-red',
-      'success': 'text-dash-green',
+      'text-accent': 'text-aw-accent-mist',
+      'text-muted': 'aw-text-tertiary',
+      'danger': 'text-aw-danger',
+      'success': 'text-aw-success',
     };
     const classes = `${variantClasses[variant as keyof typeof variantClasses] || variantClasses.body} ${colorClasses[color as keyof typeof colorClasses] || ''} ${className}`;
     return <div className={classes.trim()}>{text}</div>;
   },
   Badge: ({ intent = 'default', text, className = '' }) => {
     const badgeIntentClasses = {
-      'info': 'bg-dash-primary/10 text-dash-primary border-dash-primary/30',
-      'critical': 'bg-dash-red/10 text-dash-red border-dash-red/30',
-      'success': 'bg-dash-green/10 text-dash-green border-dash-green/30',
+      'info': 'aw-state-chip-info',
+      'critical': 'aw-state-chip-danger',
+      'success': 'aw-state-chip-success',
     };
-    const classes = `inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest border ${badgeIntentClasses[intent as keyof typeof badgeIntentClasses] || badgeIntentClasses.info} ${className}`;
+    const classes = `aw-state-chip ${badgeIntentClasses[intent as keyof typeof badgeIntentClasses] || badgeIntentClasses.info} ${className}`;
     return <span className={classes.trim()}>{text}</span>;
   },
   ActionButton: ({ actionIntent, prompt, label, variant = 'primary', className = '' }) => {
@@ -269,11 +269,11 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
       return null;
     }
     const variantStyles: Record<string, string> = {
-      'primary': 'bg-dash-primary text-black hover:bg-dash-primary/90',
-      'danger': 'bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/30',
-      'outline': 'bg-transparent border border-dash-subtle text-white hover:bg-dash-surface-hover'
+      'primary': 'aw-button aw-button-primary',
+      'danger': 'aw-button border border-aw-danger text-aw-danger hover:bg-aw-danger/10',
+      'outline': 'aw-button aw-button-ghost'
     };
-    const classes = `px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${variantStyles[variant] || variantStyles['primary']} ${className}`;
+    const classes = `${variantStyles[variant] || variantStyles.primary} cursor-pointer ${className}`;
     return (
       <button onClick={() => openDrawerWithIntent(resolvedIntent)} className={classes}>
         {label}
@@ -296,14 +296,14 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
 
     if (!data || data.length === 0) {
       return (
-        <div className="arbitra-panel arbitra-panel-hover rounded-2xl p-6 h-[350px] flex flex-col items-center justify-center animate-pulse">
-          <div className="w-40 h-40 rounded-full border-8 border-dash-subtle/30 border-t-dash-subtle/60 animate-spin" />
-          <div className="mt-6 h-3 w-24 bg-dash-subtle/50 rounded-full" />
+        <div className="aw-panel p-6 h-[350px] flex flex-col items-center justify-center animate-pulse">
+          <div className="w-40 h-40 rounded-full border-8 border-aw-border-subtle border-t-aw-border-strong animate-spin" />
+          <div className="mt-6 h-3 w-24 bg-aw-surface-3 rounded-full" />
         </div>
       );
     }
     return (
-      <div className="arbitra-panel arbitra-panel-hover rounded-2xl p-6 h-[350px] flex flex-col">
+      <div className="aw-panel p-6 h-[350px] flex flex-col">
          <div className="flex-1 min-h-0">
             <ReactECharts option={option} />
          </div>
@@ -313,15 +313,15 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
   Timeline12X: ({ title, nodes }) => {
     if (!nodes || nodes.length === 0) {
       return (
-         <div className="arbitra-panel arbitra-panel-hover rounded-2xl p-6 relative overflow-hidden animate-pulse">
-            <div className="h-6 w-48 bg-dash-subtle/50 rounded-lg mb-8" />
-            <div className="relative border-l border-dash-subtle ml-4 space-y-10 my-4">
+         <div className="aw-panel p-6 relative overflow-hidden animate-pulse">
+            <div className="h-6 w-48 bg-aw-surface-3 rounded-lg mb-8" />
+            <div className="relative border-l border-aw-border-subtle ml-4 space-y-10 my-4">
                {[1,2,3].map(i => (
                  <div key={i} className="pl-8 relative">
-                    <div className="absolute w-4 h-4 bg-dash-subtle rounded-full -left-[8.5px] top-1" />
-                    <div className="h-5 w-20 bg-dash-subtle/50 rounded-md mb-3" />
-                    <div className="h-6 w-1/3 bg-dash-subtle/50 rounded mb-2" />
-                    <div className="h-20 w-full bg-dash-surface rounded-2xl" />
+                    <div className="absolute w-4 h-4 bg-aw-surface-3 rounded-full -left-[8.5px] top-1" />
+                    <div className="h-5 w-20 bg-aw-surface-3 rounded-md mb-3" />
+                    <div className="h-6 w-1/3 bg-aw-surface-3 rounded mb-2" />
+                    <div className="h-20 w-full bg-aw-surface-2 rounded-xl" />
                  </div>
                ))}
             </div>
@@ -329,19 +329,19 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
       );
     }
     return (
-      <div className="arbitra-panel arbitra-panel-hover rounded-2xl p-6 relative overflow-hidden">
-        <h3 className="text-xl font-bold arbitra-text-primary mb-6 flex items-center gap-2 tracking-tight">
-            <Sparkles className="w-5 h-5 arbitra-text-gold" /> {title}
+      <div className="aw-panel p-6 relative overflow-hidden">
+        <h3 className="aw-label font-bold aw-text-primary mb-6 flex items-center gap-2 tracking-normal">
+            <MaterialIcon name="auto_awesome" size={20} className="text-aw-accent-mist" /> {title}
         </h3>
-        <div className="relative border-l border-dash-subtle ml-4 space-y-10 my-4">
+        <div className="relative border-l border-aw-border-subtle ml-4 space-y-10 my-4">
            {nodes?.map((item: any, idx: number) => (
              <div key={idx} className="pl-8 relative">
-                 <div className="absolute w-4 h-4 bg-dash-primary rounded-full -left-[8.5px] top-1 ring-4 ring-dash-base shadow-sm" />
-                 <div className="inline-block bg-dash-surface arbitra-text-gold arbitra-text-mono font-semibold text-xs px-3 py-1 rounded-md mb-3 border border-dash-subtle">
+                 <div className="absolute w-4 h-4 bg-aw-accent-mist rounded-full -left-[8.5px] top-1 ring-4 ring-aw-bg" />
+                 <div className="aw-state-chip mb-3">
                    {item.timeNode}
                  </div>
-                 <h4 className="text-lg font-medium arbitra-text-primary mb-2">{item.title}</h4>
-                 <p className="text-sm arbitra-text-secondary leading-relaxed bg-dash-surface p-4 rounded-xl border border-dash-subtle">
+                 <h4 className="aw-label font-medium aw-text-primary mb-2">{item.title}</h4>
+                 <p className="aw-body aw-text-secondary leading-relaxed bg-aw-surface-2 p-4 rounded-xl border border-aw-border-subtle">
                    {item.description}
                  </p>
              </div>
@@ -351,8 +351,8 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
     );
   },
   SystemAlert: ({ message }) => (
-    <div className="p-4 bg-dash-red/10 text-dash-red text-sm font-medium rounded-xl border border-dash-red/20 my-4 flex items-center gap-3">
-      <Activity className="w-5 h-5 shrink-0" />
+    <div className="aw-danger-panel p-4 my-4 flex items-center gap-3 aw-body text-aw-danger font-medium">
+      <MaterialIcon name="monitoring" size={20} className="shrink-0" />
       {message}
     </div>
   ),
@@ -361,30 +361,16 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
     const openDrawerWithIntent = useInteractionStore(state => state.openDrawerWithIntent);
     
     return (
-      <div className={`relative overflow-hidden rounded-2xl border p-6 shadow-xl w-full
-        ${isCritical ? 'bg-red-950/20 border-red-500/50 shadow-red-900/20' : 'bg-amber-950/20 border-amber-500/50 shadow-amber-900/20 hover:border-amber-500/80 transition-colors duration-300'}
-      `}>
-         {/* visual flair like a breathing light or corner accent */}
-         {isCritical && (
-           <div className="absolute top-0 right-0 p-4 opacity-20 pointer-events-none">
-             <div className="w-32 h-32 bg-red-500 blur-3xl rounded-full mix-blend-screen animate-pulse" />
-           </div>
-         )}
-         {!isCritical && (
-           <div className="absolute top-0 right-0 p-4 opacity-20 pointer-events-none">
-             <div className="w-32 h-32 bg-amber-500 blur-3xl rounded-full mix-blend-screen" />
-           </div>
-         )}
-          
+      <div className={`relative overflow-hidden p-6 w-full ${isCritical ? 'aw-danger-panel' : 'aw-warning-panel'}`}>
          <div className="relative z-10 flex items-start gap-4">
-            <div className={`mt-1 shrink-0 ${isCritical ? 'text-red-500 animate-pulse' : 'text-amber-500'}`}>
-               {isCritical ? <ShieldAlert className="w-8 h-8" /> : <AlertTriangle className="w-8 h-8" />}
+            <div className={`mt-1 shrink-0 ${isCritical ? 'text-aw-danger animate-pulse' : 'text-aw-warning'}`}>
+               <MaterialIcon name={isCritical ? 'shield_alert' : 'warning'} size={32} />
             </div>
             <div className="flex-1">
-               <h3 className={`text-xl font-bold mb-2 tracking-tight ${isCritical ? 'text-red-400' : 'text-amber-400'}`}>
+               <h3 className={`aw-label font-bold mb-2 tracking-normal ${isCritical ? 'text-aw-danger' : 'text-aw-warning'}`}>
                   {title}
                </h3>
-               <p className="text-sm text-dash-secondary leading-relaxed mb-6">
+               <p className="aw-body aw-text-secondary leading-relaxed mb-6">
                   {description}
                </p>
                
@@ -398,15 +384,15 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
                        <button
                          key={idx}
                          onClick={() => openDrawerWithIntent(intent)}
-                         className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200
+                         className={`aw-button cursor-pointer
                            ${isPrimary 
-                             ? (isCritical ? 'bg-red-500/20 text-red-100 hover:bg-red-500/40 border border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.2)]' : 'bg-amber-500/20 text-amber-100 hover:bg-amber-500/40 border border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.2)]') 
-                             : 'bg-black/40 text-dash-tertiary hover:text-dash-primary border border-dash-subtle hover:bg-black/60'}
+                             ? (isCritical ? 'border border-aw-danger text-aw-danger hover:bg-aw-danger/10' : 'border border-aw-warning text-aw-warning hover:bg-aw-warning/10') 
+                             : 'aw-button-ghost'}
                          `}
                        >
-                         {isPrimary && <Zap className="w-4 h-4" />}
+                         {isPrimary && <MaterialIcon name="bolt" size={16} />}
                          {action.label}
-                         {isPrimary && <ArrowRight className="w-4 h-4 ml-1 opacity-50" />}
+                         {isPrimary && <MaterialIcon name="arrow_forward" size={16} className="opacity-60" />}
                        </button>
                      );
                    })}
@@ -421,7 +407,7 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
     const openDrawerWithIntent = useInteractionStore(state => state.openDrawerWithIntent);
     if (!buttons || buttons.length === 0) return null;
     return (
-      <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t border-dash-subtle/50">
+      <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t border-aw-border-subtle">
         {buttons.map((btn: any, idx: number) => {
           const intent = btn.actionIntent || btn.prompt;
           if (!intent) return null;
@@ -430,15 +416,15 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
              <button
                key={idx}
                onClick={() => openDrawerWithIntent(intent)}
-               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200
+               className={`aw-button cursor-pointer
                  ${isPrimary 
-                   ? 'bg-dash-primary/20 text-dash-primary hover:bg-dash-primary/30 border border-dash-primary/30' 
-                   : 'bg-dash-surface text-dash-secondary hover:text-dash-primary border border-dash-subtle hover:bg-dash-surface-hover'}
+                   ? 'aw-button-primary' 
+                   : 'aw-button-ghost'}
                `}
              >
-               {isPrimary && <Zap className="w-4 h-4" />}
+               {isPrimary && <MaterialIcon name="bolt" size={16} />}
                {btn.label}
-               {isPrimary && <ArrowRight className="w-4 h-4 opacity-50" />}
+               {isPrimary && <MaterialIcon name="arrow_forward" size={16} className="opacity-60" />}
              </button>
           )
         })}
@@ -456,7 +442,7 @@ export const SDUIRenderer = ({ schema, globalData }: { schema?: SDUIComponent[],
         const Component = ComponentRegistry[block.type] || ComponentRegistry[(block as any).component];
         if (!Component) {
            return (
-             <div key={block.id || i} className="p-4 border border-dash-subtle rounded-xl bg-dash-surface text-dash-tertiary text-sm mb-4 border-dashed">
+             <div key={block.id || i} className="aw-panel-muted p-4 aw-body aw-text-tertiary mb-4 border-dashed">
                Unknown Component: {block.type || (block as any).component}
              </div>
            );

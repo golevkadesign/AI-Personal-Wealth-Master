@@ -87,6 +87,19 @@ const preserveLiveLongbridgeSlice = (prevData: TerminalState, incomingData: Term
 
 // We define persistence mode states
 export type PersistenceMode = 'disabled' | 'manual' | 'auto';
+type AppLanguage = 'zh-CN' | 'en-US';
+
+const LANGUAGE_STORAGE_KEY = 'ai_terminal_language';
+
+const getInitialLanguage = (): AppLanguage => {
+  if (typeof window === 'undefined') return 'zh-CN';
+  try {
+    const stored = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
+    return stored === 'en-US' || stored === 'zh-CN' ? stored : 'zh-CN';
+  } catch {
+    return 'zh-CN';
+  }
+};
 
 interface WealthState {
   data: TerminalState;
@@ -106,8 +119,8 @@ interface WealthState {
   setSelectedHolding: (holding: any) => void;
   fetchLongbridge: () => Promise<void>;
   fetchLongbridgeAccountPortfolios: () => Promise<void>;
-  language: 'zh-CN' | 'en-US';
-  setLanguage: (lang: 'zh-CN' | 'en-US') => void;
+  language: AppLanguage;
+  setLanguage: (lang: AppLanguage) => void;
   publicHoldingsSyncStatus: 'idle' | 'loading' | 'success' | 'empty' | 'error';
   publicHoldingsError?: string;
   publicHoldingsLastSyncAt?: number;
@@ -162,8 +175,15 @@ export const useWealthStore = create<WealthState>((set, get) => ({
   publicHoldingAccountsLastSyncAt: undefined,
   marketContextStatus: 'idle',
   marketContextError: undefined,
-  language: 'zh-CN',
-  setLanguage: (lang) => set({ language: lang }),
+  language: getInitialLanguage(),
+  setLanguage: (lang) => {
+    try {
+      window.localStorage.setItem(LANGUAGE_STORAGE_KEY, lang);
+    } catch {
+      // Keep the live UI responsive even when localStorage is unavailable.
+    }
+    set({ language: lang });
+  },
   selectedHolding: null,
   setSelectedHolding: (holding) => set({ selectedHolding: holding }),
   setUser: (user) => {
@@ -493,24 +513,65 @@ export const useWealthStore = create<WealthState>((set, get) => ({
                 });
                 const costPrice = totalQuantity > 0 ? (totalCost / totalQuantity) : (Number(firstPos.costPrice) || 0);
                 const totalMktVal = posList.reduce((sum, p) => sum + getSafeMktVal(p), 0);
+                const totalDailyPnl = posList.some(p => p.dailyPnl !== undefined)
+                  ? posList.reduce((sum, p) => sum + (Number(p.dailyPnl) || 0), 0)
+                  : undefined;
+                const totalPnl = posList.some(p => p.pnl !== undefined)
+                  ? posList.reduce((sum, p) => sum + (Number(p.pnl) || 0), 0)
+                  : undefined;
+                const weightedCurrentPrice = totalQuantity > 0
+                  ? posList.reduce((sum, p) => sum + ((Number(p.currentPrice) || 0) * (Number(p.quantity) || 0)), 0) / totalQuantity
+                  : Number(firstPos.currentPrice) || undefined;
+                const weightedPreviousClose = totalQuantity > 0
+                  ? posList.reduce((sum, p) => sum + ((Number(p.previousClose) || 0) * (Number(p.quantity) || 0)), 0) / totalQuantity
+                  : Number(firstPos.previousClose) || undefined;
                 
                 const breakdown = posList.map(p => ({
                   accountId: p.accountId,
                   accountName: p.accountName,
                   quantity: Number(p.quantity || 0),
-                  marketValue: getSafeMktVal(p)
+                  availableQuantity: p.availableQuantity,
+                  costPrice: p.costPrice,
+                  currentPrice: p.currentPrice,
+                  previousClose: p.previousClose,
+                  marketValue: getSafeMktVal(p),
+                  pnl: p.pnl,
+                  pnlPercent: p.pnlPercent,
+                  dailyPnl: p.dailyPnl,
+                  dailyPnlPercent: p.dailyPnlPercent,
+                  valuationSource: p.valuationSource,
+                  returnSource: p.returnSource
                 }));
                 
                 legacyPublicHoldings.push({
                   symbol,
                   name: firstPos.name || symbol,
                   quantity: totalQuantity,
+                  availableQuantity: posList.reduce((sum, p) => sum + (Number(p.availableQuantity) || 0), 0),
                   costPrice,
+                  currentPrice: weightedCurrentPrice,
+                  previousClose: weightedPreviousClose,
                   marketValue: totalMktVal,
                   value: totalMktVal,
+                  pnl: totalPnl,
+                  pnlPercent: totalCost !== 0 && totalPnl !== undefined ? (totalPnl / Math.abs(totalCost)) * 100 : undefined,
+                  dailyPnl: totalDailyPnl,
+                  dailyPnlPercent: weightedPreviousClose && weightedPreviousClose > 0 && weightedCurrentPrice
+                    ? ((weightedCurrentPrice - weightedPreviousClose) / weightedPreviousClose) * 100
+                    : undefined,
+                  valuationSource: firstPos.valuationSource,
+                  returnSource: firstPos.returnSource,
                   currency: firstPos.currency || 'USD',
+                  market: firstPos.market,
                   accountBreakdown: breakdown
                 });
+              });
+
+              const totalLegacyMktVal = legacyPublicHoldings.reduce((sum, item) => sum + (Number(item.marketValue) || 0), 0);
+              legacyPublicHoldings.forEach(item => {
+                if (totalLegacyMktVal > 0 && item.marketValue !== undefined) {
+                  item.ownedPercent = (Number(item.marketValue) / totalLegacyMktVal) * 100;
+                }
               });
 
               const prevData = state.data;

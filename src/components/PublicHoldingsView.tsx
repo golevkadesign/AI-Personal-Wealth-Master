@@ -3,6 +3,11 @@ import { ChartWidget } from './ChartWidget';
 import { ReactECharts } from './ReactECharts';
 import { getCurrencySymbol, getHoldingMarketValue } from './chart-configs';
 import { useWealthStore } from '../hooks/useWealthStore';
+import { MaterialIcon } from './ui/MaterialIcon';
+import { getAwChartPalette, readCssToken } from '../lib/design-tokens';
+import { useInteractionStore } from '../hooks/useInteractionStore';
+import { createPortfolioIntelligenceWorkbenchSession } from '../lib/workbench-session';
+import { PortfolioIntelligenceMapView } from './PortfolioIntelligenceMapView';
 
 interface PublicHoldingsViewProps {
   title: string;
@@ -30,6 +35,8 @@ export const PublicHoldingsView: React.FC<PublicHoldingsViewProps> = ({
   const [isRefreshing, setIsRefreshing] = React.useState(false);
   const fetchLongbridge = useWealthStore(state => state.fetchLongbridge);
   const fetchLongbridgeAccountPortfolios = useWealthStore(state => state.fetchLongbridgeAccountPortfolios);
+  const openWorkbench = useInteractionStore(state => state.openWorkbench);
+  const displayTitle = title === '多账户公开市场持仓' ? t('dashboard.multiAccountHoldings') : title;
 
   const handleReload = async () => {
     setIsRefreshing(true);
@@ -73,7 +80,7 @@ export const PublicHoldingsView: React.FC<PublicHoldingsViewProps> = ({
   const currSym = getCurrencySymbol(sortedArr[0]?.currency || 'CNY');
   const formattedTotal = currSym + ' ' + totalHoldingsVal.toLocaleString('en-US', { maximumFractionDigits: 0 });
 
-  const colors = ['#C9B284', '#6B8E6B', '#4A7FB0', '#A87BB0', '#D39C5E', '#A1A658', '#428C8C', '#8C8C8C'];
+  const colors = getAwChartPalette();
 
   const validPieData = sortedArr.filter((v: any) => getHoldingMarketValue(v) > 0).map((v: any) => ({ name: v.name || v.symbol, value: getHoldingMarketValue(v) }));
 
@@ -81,10 +88,10 @@ export const PublicHoldingsView: React.FC<PublicHoldingsViewProps> = ({
     backgroundColor: 'transparent',
     tooltip: {
       trigger: 'item',
-      backgroundColor: 'rgba(26, 29, 31, 0.95)',
-      borderColor: 'rgba(201, 178, 132, 0.28)',
+      backgroundColor: readCssToken('--aw-surface-1', 'rgb(18 20 19 / 0.95)'),
+      borderColor: readCssToken('--aw-border-strong', 'rgb(238 243 234 / 0.28)'),
       borderWidth: 1,
-      textStyle: { color: '#E7D7B0', fontFamily: 'Inter', fontSize: 11 },
+      textStyle: { color: readCssToken('--aw-text-primary', 'rgb(238 243 234)'), fontFamily: 'Inter', fontSize: 11 },
       formatter: (p: any) => `${p.name}: ${getCurrencySymbol(sortedArr[p.dataIndex]?.currency)}${(p.value || 0).toLocaleString()} (${p.percent}%)`
     },
     color: colors,
@@ -93,7 +100,7 @@ export const PublicHoldingsView: React.FC<PublicHoldingsViewProps> = ({
       radius: ['60%', '82%'],
       center: ['50%', '50%'],
       avoidLabelOverlap: false,
-      itemStyle: { borderRadius: 4, borderColor: '#121415', borderWidth: 2 },
+      itemStyle: { borderRadius: 4, borderColor: readCssToken('--aw-surface-0', 'rgb(18 20 19)'), borderWidth: 2 },
       label: { show: false },
       emphasis: { 
         scale: true,
@@ -113,63 +120,77 @@ export const PublicHoldingsView: React.FC<PublicHoldingsViewProps> = ({
     }
   };
 
+  const handleOpenPortfolioIntelligence = () => {
+    openWorkbench(createPortfolioIntelligenceWorkbenchSession({
+      terminalState: globalData,
+    }));
+  };
+
   return (
-    <ChartWidget
-      title={title}
-      type={chartType}
-      dataLength={distData.length}
-      insight={globalData?.insights?.public || ""}
-      delay={delay}
-      chartHeight={chartHeight}
-      badge={<span className="text-[10px] text-[#A39167] font-mono font-semibold tracking-wider">{t('dashboard.allocationAnalysis')}</span>}
-      status={widgetStatus}
-      onReload={handleReload}
-      showReload={true}
-      isReloading={isRefreshing}
-    >
+    <div className="space-y-2">
+      <PortfolioIntelligenceMapView
+        terminalState={globalData}
+        showAction
+        onOpenWorkbench={handleOpenPortfolioIntelligence}
+      />
+      <ChartWidget
+        title={displayTitle}
+        type={chartType}
+        dataLength={distData.length}
+        insight={globalData?.insights?.public || ""}
+        delay={delay}
+        chartHeight={chartHeight}
+        badge={<span className="aw-caption aw-text-tertiary font-mono font-semibold">{t('dashboard.allocationAnalysis')}</span>}
+        status={widgetStatus}
+        size="auto"
+        className="aw-public-holdings-card h-auto overflow-hidden"
+        onReload={handleReload}
+        showReload={true}
+        isReloading={isRefreshing}
+      >
       {/* If we have old data but status is loading/error, we show a lightweight banner at top */}
       {hasData && errorMessage && (
-        <div className="absolute top-0 inset-x-0 py-0.5 min-h-[24px] bg-amber-500/10 border-b border-amber-500/20 flex items-center justify-center -mx-6 sm:-mx-8 z-20 px-4">
-          <span className="text-[9px] font-mono text-amber-400 font-medium tracking-wide text-center">
+          <div className="absolute top-0 inset-x-0 py-0.5 min-h-[24px] bg-aw-warning/10 border-b border-aw-warning/30 flex items-center justify-center -mx-4 sm:-mx-5 z-20 px-4">
+          <span className="aw-caption font-mono text-aw-warning font-medium tracking-wide text-center">
             {errorMessage}
           </span>
         </div>
       )}
       {hasData && !errorMessage && rawStatus === 'error' && (
-        <div className="absolute top-0 inset-x-0 py-0.5 min-h-[24px] bg-rose-500/10 border-b border-rose-500/20 flex items-center justify-center -mx-6 sm:-mx-8 z-20 px-4">
-          <span className="text-[9px] font-mono text-rose-400 font-medium tracking-wide text-center">
+          <div className="absolute top-0 inset-x-0 py-0.5 min-h-[24px] bg-aw-danger/10 border-b border-aw-danger/30 flex items-center justify-center -mx-4 sm:-mx-5 z-20 px-4">
+          <span className="aw-caption font-mono text-aw-danger font-medium tracking-wide text-center">
             {t('drawer.syncFailed') || 'SYNC FAILED - SHOWING LAST KNOWN STATE'}
           </span>
         </div>
       )}
       {hasData && (rawStatus === 'loading' || isRefreshing) && (
-        <div className="absolute top-0 inset-x-0 h-1 bg-[#121415] z-50">
-           <div className="h-full bg-[#C9B284]/50 animate-pulse w-full origin-left" />
+        <div className="absolute top-0 inset-x-0 h-1 bg-aw-bg z-50">
+           <div className="h-full bg-aw-accent-mist/50 animate-pulse w-full origin-left" />
         </div>
       )}
 
-      <div className="flex flex-col lg:flex-row items-center gap-6 h-full min-h-[260px] relative z-10 pt-2">
+      <div className="flex flex-col lg:flex-row items-center gap-3 h-full min-h-[178px] relative z-10 pt-1">
         {/* Left: Pie Donut Chart (Col 5) */}
-        <div className="w-full lg:w-[42%] flex items-center justify-center relative min-h-[200px]">
-          <div className="w-[200px] h-[200px] relative shrink-0">
+        <div className="w-full lg:w-[42%] flex items-center justify-center relative min-h-[150px]">
+          <div className="w-[152px] h-[152px] relative shrink-0">
             <ReactECharts option={pieOption} onEvents={chartEvents} className="w-full h-full" />
             {/* Centered Total Assets Overlay */}
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <span className="text-[10px] font-mono text-[#8C8370] uppercase tracking-widest leading-none mb-1">{t('dashboard.totalLimit')}</span>
-              <span className="text-[13px] font-extrabold text-[#E7D7B0] font-mono leading-none tracking-tight">{formattedTotal}</span>
+              <span className="aw-caption font-mono aw-text-tertiary uppercase leading-none mb-1">{t('dashboard.totalLimit')}</span>
+              <span className="aw-body font-bold aw-text-primary font-mono leading-none tracking-normal">{formattedTotal}</span>
             </div>
           </div>
         </div>
 
         {/* Right: Interactive Holdings List (Col 7) */}
         <div className="w-full lg:w-[58%] flex flex-col justify-start custom-scroll pr-1 pb-1">
-          <div className="grid grid-cols-12 text-[9px] font-mono font-bold tracking-widest text-[#8C8370] uppercase pb-2 border-b border-[#C9B284]/12 mb-2 px-3">
+          <div className="grid grid-cols-12 aw-caption font-mono font-semibold aw-text-tertiary uppercase pb-2 border-b border-aw-border-subtle mb-2 px-3">
             <div className="col-span-6">{t('dashboard.instrument')}</div>
             <div className="col-span-4 text-right">{t('dashboard.estValue')}</div>
             <div className="col-span-2 text-right">{t('dashboard.ratio')}</div>
           </div>
 
-          <div className="space-y-1.5 max-h-[220px] overflow-y-auto custom-scroll pr-1">
+          <div className="space-y-1.5 max-h-[168px] overflow-y-auto custom-scroll pr-1">
             {sortedArr.map((item: any, idx: number) => {
               const isSelected = selectedHolding && (selectedHolding.symbol === item.symbol || selectedHolding.name === item.name);
               const val = getHoldingMarketValue(item);
@@ -180,31 +201,29 @@ export const PublicHoldingsView: React.FC<PublicHoldingsViewProps> = ({
                 <div
                   key={item.symbol || idx}
                   onClick={() => setSelectedHolding && setSelectedHolding(item)}
-                  className={`grid grid-cols-12 items-center px-3 py-2 cursor-pointer rounded-xl transition-all border ${
+	                  className={`aw-holding-row grid grid-cols-12 items-center px-3 py-2 cursor-pointer transition-all border ${
                     isSelected 
-                      ? 'bg-[#C9B284]/10 border-[#C9B284]/45 shadow-[0_2px_12px_rgba(201,178,132,0.12)] text-[#E7D7B0]' 
-                      : 'border-white/[0.02] hover:bg-white/5 text-slate-300'
+                      ? 'bg-aw-surface-3 border-aw-border-strong aw-text-primary'
+                      : 'border-aw-border-subtle hover:bg-aw-surface-3 aw-text-secondary'
                   }`}
                 >
                   {/* Name with Matching Dot */}
                   <div className="col-span-6 flex items-center gap-2 min-w-0">
                     <span className="w-2.5 h-2.5 rounded-full shrink-0 shadow-sm" style={{ backgroundColor: itemColor }} />
-                    <span className={`text-[12.5px] truncate ${isSelected ? 'font-bold text-[#E7D7B0] tracking-tight' : 'font-medium'}`}>
+                    <span className={`aw-body truncate ${isSelected ? 'font-bold aw-text-primary tracking-normal' : 'font-medium'}`}>
                       {item.name || item.symbol}
                     </span>
                   </div>
 
                   {/* Currency / Value */}
-                  <div className={`col-span-4 text-right font-mono ${val > 0 ? 'text-xs font-semibold text-slate-200' : 'text-[10px] text-rose-400 font-medium'}`}>
-                    {val > 0 ? `${currSym}${val.toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '估值缺失'}
+                  <div className={`col-span-4 text-right font-mono ${val > 0 ? 'aw-caption font-semibold aw-text-primary' : 'aw-caption text-aw-danger font-medium'}`}>
+                    {val > 0 ? `${currSym}${val.toLocaleString('en-US', { maximumFractionDigits: 0 })}` : t('dashboard.valuationMissing')}
                   </div>
 
                   {/* Percentage and action arrow */}
-                  <div className={`col-span-2 flex items-center justify-end gap-1.5 text-right font-mono text-xs font-semibold ${val > 0 ? 'text-[#C9B284]/90' : 'text-slate-500'}`}>
+                  <div className={`col-span-2 flex items-center justify-end gap-1.5 text-right font-mono aw-caption font-semibold ${val > 0 ? 'aw-text-secondary' : 'aw-text-tertiary'}`}>
                     <span>{val > 0 ? pct : '--'}</span>
-                    <svg className={`w-3 h-3 text-[#C9B284]/65 transition-transform ${isSelected ? 'translate-x-[2px]' : 'opacity-30'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.8} d="M9 5l7 7-7 7" />
-                    </svg>
+                    <MaterialIcon name="chevron_right" size={16} className={`transition-transform ${isSelected ? 'translate-x-0.5' : 'opacity-30'}`} />
                   </div>
                 </div>
               );
@@ -212,6 +231,7 @@ export const PublicHoldingsView: React.FC<PublicHoldingsViewProps> = ({
           </div>
         </div>
       </div>
-    </ChartWidget>
+      </ChartWidget>
+    </div>
   );
 };
