@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { useWealthStore } from '../hooks/useWealthStore';
+import { EMPTY_STATE, useWealthStore } from '../hooks/useWealthStore';
 import { MaterialIcon } from './ui/MaterialIcon';
 import { useTranslation } from '../hooks/useTranslation';
 
@@ -12,7 +12,7 @@ export function GoalTracker({ globalCurSymbol }: GoalTrackerProps) {
   const { t } = useTranslation();
   const goal = useWealthStore(state => state.data.goal);
 
-  if (!goal?.name || goal.name === '等待设定目标') {
+  if (!goal?.name || goal.name === EMPTY_STATE.goal.name) {
     return null;
   }
   const current = goal?.current || 0;

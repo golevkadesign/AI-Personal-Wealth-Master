@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { useInteractionStore } from '../hooks/useInteractionStore';
 import { MaterialIcon } from './ui/MaterialIcon';
 import { useTranslation } from '../hooks/useTranslation';
+import { EMPTY_STATE } from '../hooks/useWealthStore';
 
 const ReactEChartsLazy = React.lazy(() => import('./ReactECharts').then(m => ({ default: m.ReactECharts })));
 
@@ -80,7 +81,7 @@ export function ChartWidget({ title, type, dataLength, insight, option, delay = 
              className="aw-chart-action opacity-100 sm:opacity-0 sm:group-hover:opacity-100 cursor-pointer"
              onClick={() => {
 	               const roleName = titleText === t('dashboard.holdings') ? t('charts.portfolioStrategist') : t('charts.dataAnalyst');
-               useInteractionStore.getState().openCopilot(titleText, { insight }, roleName);
+               useInteractionStore.getState().openWidgetWorkbench(titleText, { insight }, roleName);
              }}
              title={t('charts.expertReview')}
              aria-label={t('charts.expertReview')}
@@ -142,7 +143,7 @@ export function ChartWidget({ title, type, dataLength, insight, option, delay = 
             </div>
           ) : null}
           
-          {insight && insight !== "暂无非公开资产数据" && insight !== "暂无公开市场持仓" && (
+          {insight && insight !== EMPTY_STATE.insights.private && insight !== t('dashboard.noPublicHoldings') && (
             <div className="mt-auto pt-4 border-t border-aw-border-subtle relative z-10 flex-1 overflow-y-auto custom-scroll pr-2">
               <h4 className="aw-caption font-semibold aw-text-tertiary mb-3 uppercase block w-full">{t('charts.terminalDiagnostics')}</h4>
               {typeof insight === 'string' ? (

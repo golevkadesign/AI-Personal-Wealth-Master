@@ -235,7 +235,7 @@ export function getLastSDUIIntakeDiagnostics(): SDUIIntakeDiagnostics | null {
  * 4. 【风控与硬重限流】：
  *    - 确保每轮主会话下发的 InterventionCard (强力红线预警) 至多只能展示 1 张；
  *    - 严格限制累计最终导出的 Top-level 洞察微件总数 <= 3 (Top3 Limit)，减少认知过载与雪崩；
- * 5. 【Action 安全清洗】：拦截任何恶意、不规范的 actionProps，强制将事件路由至标准 AI Drawer 调优模块。
+ * 5. 【Action 安全清洗】：拦截任何恶意、不规范的 actionProps，强制将事件路由至统一 Agent Workbench。
  * 
  * 📌 注意：
  * 本防御模块为纯粹的结构体流式切片清洗机制，不承载任何后端 prompt 的状态变更，不涉及 dashboardSchema 主动写入。

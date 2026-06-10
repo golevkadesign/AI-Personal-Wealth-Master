@@ -700,7 +700,7 @@ export const useWealthStore = create<WealthState>((set, get) => ({
         source = 'manual';
         accountPortfolios = [{
           accountId: 'fallback_manual_account',
-          accountName: '手动/单账户持仓 (旧兼容模式)',
+          accountName: '__manual_single_account_holdings__',
           positions: publicHoldings.map((h: any) => ({
             symbol: h.symbol,
             name: h.name || h.symbol,
@@ -710,7 +710,7 @@ export const useWealthStore = create<WealthState>((set, get) => ({
             marketValue: h.marketValue || (h.quantity * (h.currentPrice || h.lastPrice || 0)),
             currency: h.currency || 'USD',
             accountId: 'fallback_manual_account',
-            accountName: '手动/单账户持仓 (旧兼容模式)'
+            accountName: '__manual_single_account_holdings__'
           })),
           meta: {
             positionCount: publicHoldings.length,

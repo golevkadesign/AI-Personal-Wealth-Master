@@ -47,8 +47,7 @@ export type WorkbenchWidgetType =
   | 'intent_fingerprint'
   | 'missing_pieces'
   | 'suggested_tilt'
-  | 'projected_exposure'
-  | 'legacy_chat';
+  | 'projected_exposure';
 
 export type WorkbenchWidgetStatus =
   | 'ready'

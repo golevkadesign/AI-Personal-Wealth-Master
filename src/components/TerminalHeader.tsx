@@ -9,7 +9,7 @@ interface TerminalHeaderProps {
   user: any;
   setShowProfileReport: (show: boolean) => void;
   setShowDeveloperView: (show: boolean) => void;
-  setDrawerOpen: (open: boolean) => void;
+  onAskArbitra: () => void;
   setShowSettingsModal: (show: boolean) => void;
 }
 
@@ -17,7 +17,7 @@ export function TerminalHeader({
   user,
   setShowProfileReport,
   setShowDeveloperView,
-  setDrawerOpen,
+  onAskArbitra,
   setShowSettingsModal
 }: TerminalHeaderProps) {
   const { t, language, setLanguage } = useTranslation();
@@ -161,7 +161,7 @@ export function TerminalHeader({
           <motion.button 
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            onClick={() => setDrawerOpen(true)} 
+            onClick={onAskArbitra}
             className="aw-button aw-button-primary cursor-pointer"
             title={t('nav.askArbitra')}
             aria-label={t('nav.askArbitra')}

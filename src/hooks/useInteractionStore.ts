@@ -1,8 +1,9 @@
 import { create } from 'zustand';
 import { WorkbenchSessionSpec } from '../types/workbench';
+import { MemoryInboxDecisionType } from '../types/workbench';
 import {
   createPromptWorkbenchSession,
-  createWidgetCopilotWorkbenchSession,
+  createWidgetWorkbenchSession,
 } from '../lib/workbench-session';
 import { createWorkbenchFactsDebugSnapshot } from '../lib/workbench-facts';
 import {
@@ -10,31 +11,22 @@ import {
   runWorkbenchRailOrchestration,
 } from '../lib/workbench-rails';
 import {
+  applyMemoryInboxDecision,
   createMemoryProjectionDebugSnapshot,
   hydrateWorkbenchMemoryProjection,
 } from '../lib/workbench-memory';
 import { useWealthStore } from './useWealthStore';
 
-interface CopilotConfig {
-  isOpen: boolean;
-  title: string;
-  data: any;
-  role: string;
-}
-
 interface InteractionState {
-  isDrawerOpen: boolean;
   pendingGlobalIntent: string | null;
-  copilotConfig: CopilotConfig;
   activeWorkbenchSession: WorkbenchSessionSpec | null;
-  setDrawerOpen: (isOpen: boolean) => void;
-  openDrawerWithIntent: (intent: string) => void;
+  openWorkbenchWithIntent: (intent: string) => void;
   clearPendingIntent: () => void;
-  openCopilot: (title: string, data: any, role: string, sessionSpec?: WorkbenchSessionSpec) => void;
-  closeCopilot: () => void;
+  openWidgetWorkbench: (title: string, data: any, role: string, sessionSpec?: WorkbenchSessionSpec) => void;
   openWorkbench: (sessionSpec: WorkbenchSessionSpec) => void;
   closeWorkbench: () => void;
   closeWorkbenchForEntry: (entryType: WorkbenchSessionSpec['entryType']) => void;
+  decideMemoryInboxItem: (itemId: string, decision: MemoryInboxDecisionType) => void;
 }
 
 const publishWorkbenchDebugSession = (sessionSpec: WorkbenchSessionSpec | null) => {
@@ -54,7 +46,6 @@ const publishWorkbenchDebugSession = (sessionSpec: WorkbenchSessionSpec | null) 
       document.documentElement.dataset.arbitraWorkbenchTitle = sessionSpec.titleKey;
       document.documentElement.dataset.arbitraWorkbenchWidgetCount = String(sessionSpec.initialWidgets?.length || 0);
       document.documentElement.dataset.arbitraWorkbenchRenderWidgetCount = String(renderWidgetCount);
-      document.documentElement.dataset.arbitraWorkbenchLegacySurface = sessionSpec.legacy?.surface || '';
       document.documentElement.dataset.arbitraWorkbenchFactConfidence = factDebug?.confidence || 'unknown';
       document.documentElement.dataset.arbitraWorkbenchFactSourceCount = String(factDebug?.sourceCount || 0);
       document.documentElement.dataset.arbitraWorkbenchFactMissingCount = String(factDebug?.missingFactCount || 0);
@@ -89,7 +80,6 @@ const publishWorkbenchDebugSession = (sessionSpec: WorkbenchSessionSpec | null) 
       delete document.documentElement.dataset.arbitraWorkbenchTitle;
       delete document.documentElement.dataset.arbitraWorkbenchWidgetCount;
       delete document.documentElement.dataset.arbitraWorkbenchRenderWidgetCount;
-      delete document.documentElement.dataset.arbitraWorkbenchLegacySurface;
       delete document.documentElement.dataset.arbitraWorkbenchFactConfidence;
       delete document.documentElement.dataset.arbitraWorkbenchFactSourceCount;
       delete document.documentElement.dataset.arbitraWorkbenchFactMissingCount;
@@ -167,38 +157,27 @@ const openSessionWithRails = (
 };
 
 export const useInteractionStore = create<InteractionState>((set) => ({
-  isDrawerOpen: false,
   pendingGlobalIntent: null,
-  copilotConfig: { isOpen: false, title: '', data: null, role: '' },
   activeWorkbenchSession: null,
-  
-  setDrawerOpen: (isOpen) => set({ isDrawerOpen: isOpen }),
-  
-  openDrawerWithIntent: (intent) => {
+
+  openWorkbenchWithIntent: (intent) => {
     const sessionSpec = createPromptWorkbenchSession(intent, useWealthStore.getState().data);
     openSessionWithRails(set, sessionSpec, {
-      isDrawerOpen: true, 
       pendingGlobalIntent: intent,
     });
   },
   
   clearPendingIntent: () => set({ pendingGlobalIntent: null }),
   
-  openCopilot: (title, data, role, sessionSpec) => {
-    const nextSession = sessionSpec || createWidgetCopilotWorkbenchSession({
+  openWidgetWorkbench: (title, data, role, sessionSpec) => {
+    const nextSession = sessionSpec || createWidgetWorkbenchSession({
       title,
       data,
       role,
       terminalState: useWealthStore.getState().data,
     });
-    openSessionWithRails(set, nextSession, {
-      copilotConfig: { isOpen: true, title, data, role },
-    });
+    openSessionWithRails(set, nextSession);
   },
-  
-  closeCopilot: () => set((state) => ({ 
-    copilotConfig: { ...state.copilotConfig, isOpen: false } 
-  })),
 
   openWorkbench: (sessionSpec) => {
     openSessionWithRails(set, sessionSpec);
@@ -217,5 +196,53 @@ export const useInteractionStore = create<InteractionState>((set) => ({
     }
     publishWorkbenchDebugSession(null);
     return { activeWorkbenchSession: null };
+  }),
+
+  decideMemoryInboxItem: (itemId, decision) => set((state) => {
+    const session = state.activeWorkbenchSession;
+    const inbox = session?.memoryInbox;
+    const item = inbox?.items.find((candidate) => candidate.id === itemId);
+    if (!session || !inbox || !item) return {};
+
+    const profile = session.facts?.sovereignProfile || { version: 1 };
+    const result = applyMemoryInboxDecision({
+      item,
+      profile,
+      decision,
+      sessionSpec: session,
+    });
+    const items = inbox.items.map((candidate) => candidate.id === itemId ? result.item : candidate);
+    const nextInbox = {
+      ...inbox,
+      items,
+      pendingCount: items.filter((candidate) => candidate.status === 'pending').length,
+      acceptedCount: items.filter((candidate) => candidate.status === 'accepted').length,
+      rejectedCount: items.filter((candidate) => candidate.status === 'rejected').length,
+      mergedCount: items.filter((candidate) => candidate.status === 'merged').length,
+    };
+    const nextSession = {
+      ...session,
+      facts: {
+        ...(session.facts || {}),
+        sovereignProfile: result.profile,
+      },
+      memoryInbox: nextInbox,
+      dashboardProjection: result.dashboardProjection || session.dashboardProjection,
+    };
+    useWealthStore.getState().commitData({
+      userProfile: {
+        ...(useWealthStore.getState().data.userProfile || {}),
+        ...(result.profile.identity || {}),
+        sovereignProfile: result.profile,
+      },
+      userPersona: {
+        ...useWealthStore.getState().data.userPersona,
+        tags: Array.isArray(result.profile.behavioralPatterns?.tags)
+          ? result.profile.behavioralPatterns?.tags
+          : useWealthStore.getState().data.userPersona?.tags,
+      },
+    });
+    publishWorkbenchDebugSession(nextSession);
+    return { activeWorkbenchSession: nextSession };
   }),
 }));

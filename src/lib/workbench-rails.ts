@@ -1,5 +1,6 @@
 import {
   AgentRailResult,
+  MemoryCandidate,
   SharedFactBundle,
   WorkbenchRailDefinition,
   WorkbenchRailId,
@@ -8,6 +9,7 @@ import {
   WorkbenchWidgetStatus,
   WorkbenchWidgetType,
 } from '../types/workbench';
+import { buildPortfolioIntelligenceMap } from './portfolio-intelligence';
 
 export const WORKBENCH_RAIL_DEFINITIONS: WorkbenchRailDefinition[] = [
   {
@@ -48,7 +50,6 @@ const WIDGET_TITLE_KEY: Record<WorkbenchWidgetType, string> = {
   missing_pieces: 'workbench.missingPieces',
   suggested_tilt: 'workbench.suggestedTilt',
   projected_exposure: 'workbench.projectedExposure',
-  legacy_chat: 'workbench.legacyMode',
 };
 
 const mapFactConfidence = (confidence?: SharedFactBundle['confidence']): AgentRailResult['confidence'] => {
@@ -80,6 +81,143 @@ const getSummaryKey = (railId: WorkbenchRailId, status: WorkbenchWidgetStatus) =
   return `workbench.railSummaries.${railId}.awaiting`;
 };
 
+const nowId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+const hasPortfolioFacts = (facts?: Partial<SharedFactBundle>) =>
+  Boolean(
+    facts?.summary?.positionCount ||
+    facts?.summary?.publicHoldingCount ||
+    facts?.publicHoldingAccounts?.some((account) => account.positions?.length),
+  );
+
+const createMemoryCandidates = (
+  definition: WorkbenchRailDefinition,
+  sessionSpec: WorkbenchSessionSpec,
+  status: WorkbenchWidgetStatus,
+): MemoryCandidate[] => {
+  const facts = sessionSpec.facts;
+  const sourceRefs = facts?.sourceRefs || [];
+  const profileVersion = facts?.sovereignProfile?.version || 1;
+
+  if (definition.railId === 'equity' && hasPortfolioFacts(facts)) {
+    const portfolioMap = buildPortfolioIntelligenceMap({
+      accountPortfolios: facts?.publicHoldingAccounts,
+      terminalState: facts?.terminalState,
+    });
+    return [
+      {
+        id: nowId('memory-equity-intent'),
+        type: 'behavioral_pattern',
+        title: 'workbench.memory.equityIntentTitle',
+        body: portfolioMap.intentFingerprint.labelKey,
+        confidence: status === 'ready' ? 'high' : 'medium',
+        sourceRefs: [...sourceRefs, ...portfolioMap.sourceRefs],
+        structuredPatch: {
+          version: profileVersion,
+          behavioralPatterns: {
+            publicMarketIntent: portfolioMap.intentFingerprint,
+          },
+        },
+        status: 'pending',
+        createdAt: Date.now(),
+      },
+    ];
+  }
+
+  if (definition.railId === 'allocation' && hasPortfolioFacts(facts)) {
+    const portfolioMap = buildPortfolioIntelligenceMap({
+      accountPortfolios: facts?.publicHoldingAccounts,
+      terminalState: facts?.terminalState,
+    });
+    return [
+      {
+        id: nowId('memory-allocation-policy'),
+        type: 'decision_rule',
+        title: 'workbench.memory.allocationGuardrailTitle',
+        body: portfolioMap.missingPieces.length > 0
+          ? portfolioMap.missingPieces.map((piece) => piece.labelKey).join(', ')
+          : 'portfolioIntelligence.missing.none',
+        confidence: portfolioMap.dataQuality.valuationCoverage >= 0.8 ? 'high' : 'medium',
+        sourceRefs: [...sourceRefs, ...portfolioMap.sourceRefs],
+        structuredPatch: {
+          version: profileVersion,
+          allocationPolicy: {
+            exposureAxes: portfolioMap.axes,
+            suggestedTilts: portfolioMap.suggestedTilts,
+          },
+        },
+        status: 'pending',
+        createdAt: Date.now(),
+      },
+    ];
+  }
+
+  if (definition.railId === 'life' && facts?.sovereignProfile) {
+    return [
+      {
+        id: nowId('memory-life-profile'),
+        type: 'profile_fact',
+        title: 'workbench.memory.lifeProfileTitle',
+        body: 'workbench.memory.lifeProfileProjection',
+        confidence: facts.confidence === 'high' ? 'high' : 'medium',
+        sourceRefs,
+        structuredPatch: {
+          version: profileVersion,
+          decisionLedger: [
+            {
+              sessionId: sessionSpec.id,
+              entryType: sessionSpec.entryType,
+              capturedAt: Date.now(),
+              intentBias: sessionSpec.intentBias,
+            },
+          ],
+        },
+        status: 'pending',
+        createdAt: Date.now(),
+      },
+    ];
+  }
+
+  return [];
+};
+
+const createRailActions = (
+  definition: WorkbenchRailDefinition,
+  status: WorkbenchWidgetStatus,
+  missingFacts: string[],
+) => {
+  if (missingFacts.length > 0) {
+    return [
+      {
+        id: `${definition.railId}-complete-context`,
+        labelKey: 'workbench.actions.completeContext',
+        intentBias: definition.intentBias,
+        priority: 'medium' as const,
+        status: status === 'blocked' ? 'blocked' as const : 'pending' as const,
+        payload: {
+          missingFacts,
+        },
+      },
+    ];
+  }
+
+  const actionByRail: Record<WorkbenchRailId, string> = {
+    equity: 'workbench.actions.reviewExposure',
+    allocation: 'workbench.actions.runPortfolioMap',
+    life: 'workbench.actions.updateProfile',
+  };
+
+  return [
+    {
+      id: `${definition.railId}-next-action`,
+      labelKey: actionByRail[definition.railId],
+      intentBias: definition.intentBias,
+      priority: 'high' as const,
+      status: 'ready' as const,
+    },
+  ];
+};
+
 async function runSingleRail(
   definition: WorkbenchRailDefinition,
   sessionSpec: WorkbenchSessionSpec,
@@ -88,29 +226,20 @@ async function runSingleRail(
   const status = getRailStatus(definition, facts);
   const missingFacts = getRailMissingFacts(definition, facts);
   const summaryKey = getSummaryKey(definition.railId, status);
+  const memoryCandidates = createMemoryCandidates(definition, sessionSpec, status);
+  const actions = createRailActions(definition, status, missingFacts);
 
   return {
     railId: definition.railId,
     titleKey: definition.titleKey,
     status,
     summaryKey,
-    summary: '',
+    summary: summaryKey,
     confidence: status === 'ready' ? mapFactConfidence(facts?.confidence) : 'low',
     evidenceRefs: facts?.sourceRefs || [],
     missingFacts,
-    risks: [],
-    actions: missingFacts.length > 0 ? [
-      {
-        id: `${definition.railId}-complete-context`,
-        labelKey: 'workbench.actions.completeContext',
-        intentBias: definition.intentBias,
-        priority: 'medium',
-        status: 'blocked',
-        payload: {
-          missingFacts,
-        },
-      },
-    ] : [],
+    risks: missingFacts.length > 0 ? missingFacts.map((fact) => `missing:${fact}`) : [],
+    actions,
     widgetManifest: definition.widgetTypes.map((type, index) => ({
       id: `${definition.railId}-${type}`,
       type,
@@ -125,7 +254,7 @@ async function runSingleRail(
         missingFacts,
       },
     })),
-    memoryCandidates: [],
+    memoryCandidates,
   };
 }
 

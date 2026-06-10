@@ -91,7 +91,7 @@ export function AgentWorkbenchHost() {
   const activeWorkbenchSession = useInteractionStore(state => state.activeWorkbenchSession);
   const closeWorkbench = useInteractionStore(state => state.closeWorkbench);
 
-  if (!activeWorkbenchSession || activeWorkbenchSession.legacy) {
+  if (!activeWorkbenchSession) {
     return null;
   }
 

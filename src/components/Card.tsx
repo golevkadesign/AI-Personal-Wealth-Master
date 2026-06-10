@@ -92,7 +92,7 @@ export const Card: React.FC<CardProps> = ({ title, value, subValue, trendGood = 
             
             <button
                className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity aw-button aw-button-ghost px-2.5 py-1"
-               onClick={() => useInteractionStore.getState().openCopilot(title, { value, subValue }, t('dashboard.verticalExpert'))}
+               onClick={() => useInteractionStore.getState().openWidgetWorkbench(title, { value, subValue }, t('dashboard.verticalExpert'))}
                title={t('dashboard.expertReview')}
                aria-label={t('dashboard.expertReview')}
             >

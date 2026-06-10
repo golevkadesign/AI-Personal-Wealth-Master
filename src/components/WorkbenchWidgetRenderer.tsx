@@ -11,6 +11,7 @@ import { useTranslation } from '../hooks/useTranslation';
 import { MaterialIcon } from './ui/MaterialIcon';
 import { PortfolioIntelligenceMapView } from './PortfolioIntelligenceMapView';
 import { buildPortfolioIntelligenceMap } from '../lib/portfolio-intelligence';
+import { useInteractionStore } from '../hooks/useInteractionStore';
 
 interface WorkbenchWidgetRendererProps {
   session: WorkbenchSessionSpec;
@@ -32,7 +33,6 @@ const WIDGET_ICON: Record<WorkbenchWidgetType, string> = {
   missing_pieces: 'extension',
   suggested_tilt: 'near_me',
   projected_exposure: 'view_in_ar',
-  legacy_chat: 'forum',
 };
 
 const PORTFOLIO_INTELLIGENCE_WIDGETS = new Set<WorkbenchWidgetType>([
@@ -102,8 +102,18 @@ function MetricChip({ label, value }: { label: string; value: React.ReactNode })
   );
 }
 
+function translateMaybeKey(value: string, t: (key: string) => string) {
+  const prefixes = ['workbench.', 'portfolioIntelligence.'];
+  if (value.includes(', ')) {
+    return value.split(', ').map((item) => translateMaybeKey(item, t)).join(', ');
+  }
+  if (prefixes.some((prefix) => value.startsWith(prefix))) return t(value);
+  return value;
+}
+
 function WorkbenchWidgetBody({ session, widget }: WorkbenchWidgetRendererProps) {
   const { t } = useTranslation();
+  const decideMemoryInboxItem = useInteractionStore(state => state.decideMemoryInboxItem);
   const facts = getFactSummary(session.facts);
   const rails = getRailResults(session, widget);
   const rail = getWidgetRail(session, widget);
@@ -183,14 +193,43 @@ function WorkbenchWidgetBody({ session, widget }: WorkbenchWidgetRendererProps) 
   }
 
   if (widget.type === 'memory_candidate') {
-    const candidates = rails.flatMap((item) => item.memoryCandidates);
-    if (candidates.length === 0) {
+    const items = session.memoryInbox?.items || [];
+    if (items.length === 0) {
       return <p className="aw-body aw-text-secondary">{t('workbench.emptyStates.noMemoryCandidates')}</p>;
     }
     return (
-      <div className="flex flex-wrap gap-2">
-        {candidates.map((candidate) => (
-          <span key={candidate.id} className="aw-status-pill font-mono">{candidate.title}</span>
+      <div className="space-y-2">
+        {items.map((item) => (
+          <div key={item.id} className="aw-panel-muted space-y-2 px-3 py-2">
+            <div className="flex items-start justify-between gap-3">
+              <span>
+                <strong className="block aw-body aw-text-primary">{translateMaybeKey(item.candidate.title, t)}</strong>
+                <em className={`aw-caption font-mono not-italic uppercase ${statusClass(item.status === 'pending' ? 'waiting_signals' : 'ready')}`}>
+                  {t(`workbench.memory.status.${item.status}`)}
+                </em>
+              </span>
+              <span className="aw-status-pill font-mono">{item.candidate.confidence}</span>
+            </div>
+            <p className="aw-caption aw-text-secondary leading-relaxed">{translateMaybeKey(item.candidate.body, t)}</p>
+            {item.status === 'pending' && (
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="aw-button aw-button-ghost !min-h-8 !px-3"
+                  onClick={() => decideMemoryInboxItem(item.id, 'reject')}
+                >
+                  {t('workbench.memory.reject')}
+                </button>
+                <button
+                  type="button"
+                  className="aw-button !min-h-8 !px-3"
+                  onClick={() => decideMemoryInboxItem(item.id, 'accept')}
+                >
+                  {t('workbench.memory.accept')}
+                </button>
+              </div>
+            )}
+          </div>
         ))}
       </div>
     );
@@ -200,6 +239,19 @@ function WorkbenchWidgetBody({ session, widget }: WorkbenchWidgetRendererProps) 
     return (
       <div className="space-y-2">
         <p className="aw-body aw-text-secondary">{t('workbench.emptyStates.awaitingCio')}</p>
+        {rails.length > 0 && (
+          <div className="space-y-2">
+            {rails.map((item) => (
+              <div key={item.railId} className="aw-panel-muted px-3 py-2">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="aw-body aw-text-primary font-medium">{t(item.titleKey)}</span>
+                  <span className={`aw-caption font-mono uppercase ${statusClass(item.status)}`}>{statusLabel(item.status, t)}</span>
+                </div>
+                <p className="mt-1 aw-caption aw-text-secondary">{t(item.summaryKey)}</p>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="flex flex-wrap gap-2">
           <MetricChip label={t('workbench.metrics.readyRails')} value={session.railRun?.summary.readyCount || 0} />
           <MetricChip label={t('workbench.metrics.partialRails')} value={session.railRun?.summary.partialCount || 0} />
@@ -207,10 +259,6 @@ function WorkbenchWidgetBody({ session, widget }: WorkbenchWidgetRendererProps) 
         </div>
       </div>
     );
-  }
-
-  if (widget.type === 'legacy_chat') {
-    return <p className="aw-body aw-text-secondary">{t('workbench.legacyModeDesc')}</p>;
   }
 
   if (widget.type === 'portfolio_map' && !widget.railId) {

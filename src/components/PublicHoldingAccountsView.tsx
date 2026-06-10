@@ -89,6 +89,13 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
   else if (!hasData) widgetStatus = 'empty'; // fallback
 
   const colors = getAwChartPalette();
+  const formatAccountName = React.useCallback((account?: AccountPortfolio) => {
+    if (!account) return t('dashboard.accountFallback');
+    if (account.accountName === '__manual_single_account_holdings__') {
+      return t('dashboard.manualSingleAccountHoldings');
+    }
+    return account.accountName || account.accountId || t('dashboard.accountFallback');
+  }, [t]);
 
   // Header status badge and subtitle logic
   let statusText = t('nav.synced');
@@ -243,11 +250,11 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
               if (params.name && setSelectedHolding) {
                 const hit = sortedArr.find(h => h.name === params.name || h.symbol === params.name);
                 if (hit) {
-                  // Clicked position must retain accountId/accountName
+                  // Preserve account identity for downstream Workbench facts.
                   setSelectedHolding({
                     ...hit,
                     accountId: account.accountId,
-                    accountName: account.accountName
+                    accountName: formatAccountName(account)
                   });
                 }
               }
@@ -255,7 +262,7 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
           };
 
           const hasEstimated = account.meta?.estimatedValuationSymbols && account.meta.estimatedValuationSymbols.length > 0;
-          const displayAccountName = account.accountName || account.accountId || t('dashboard.accountFallback');
+          const displayAccountName = formatAccountName(account);
           const cardBadge = (
             <div className="flex flex-wrap items-center gap-2 relative mr-1 max-w-[240px] md:max-w-xs justify-end">
               {account.meta?.error && (
@@ -270,7 +277,7 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
               )}
               <span 
                 className="aw-caption aw-text-tertiary font-mono font-semibold truncate max-w-[120px] sm:max-w-[160px]"
-                title={account.accountName && account.accountId ? `${account.accountName} (${account.accountId})` : account.accountId}
+                title={displayAccountName && account.accountId ? `${displayAccountName} (${account.accountId})` : account.accountId}
               >
                 {displayAccountName}
               </span>
@@ -371,7 +378,7 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
                             onClick={() => setSelectedHolding && setSelectedHolding({
                               ...item,
                               accountId: account.accountId,
-                              accountName: account.accountName
+                              accountName: formatAccountName(account)
                             })}
 	                            className={`aw-holding-row grid grid-cols-[minmax(0,1.4fr)_minmax(100px,0.85fr)_minmax(56px,0.45fr)] gap-2 items-center px-3 py-2 cursor-pointer transition-all border ${
                               isSelected 

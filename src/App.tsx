@@ -7,7 +7,6 @@ import { SettingsModal } from './components/SettingsModal';
 import { loginWithGoogle, logout, db } from './lib/firebase';
 import { motion } from 'motion/react';
 import { DeveloperView } from './components/DeveloperView';
-import { Drawer } from './components/Drawer';
 import { useTerminalSync } from './hooks/useTerminalSync';
 import { useWealthStore, EMPTY_STATE } from './hooks/useWealthStore';
 import { useStrategyStream } from './hooks/useStrategyStream';
@@ -21,18 +20,16 @@ import { AuthTerminalLayout } from './layouts/AuthTerminalLayout';
 import Markdown from 'react-markdown';
 import { ChartWidget } from './components/ChartWidget';
 import { ProfileReportView } from './components/ProfileReportView';
-import { WidgetCopilot } from './components/WidgetCopilot';
 import { TerminalHeader } from './components/TerminalHeader';
 import { LifeStrategyTimeline } from './components/LifeStrategyTimeline';
 import { GoalTracker } from './components/GoalTracker';
 import { DashboardGrid } from './components/DashboardGrid';
 
-import { PositionIntelligenceDrawer } from './components/PositionIntelligenceDrawer';
-import { PortfolioReviewDrawer } from './components/PortfolioReviewDrawer';
 import { AgentWorkbenchHost } from './components/AgentWorkbenchHost';
 import { ComponentRegistry, SDUIRenderer } from './lib/sdui-registry';
 import {
   createDashboardBriefWorkbenchSession,
+  createHoldingWorkbenchSession,
   createManualChatWorkbenchSession,
   createPortfolioReviewWorkbenchSession,
 } from './lib/workbench-session';
@@ -59,10 +56,8 @@ export default function App() {
   const globalCurSymbol = getCurrencySymbol(globalCurrencyOption);
   const insights = useWealthStore(state => state.data.insights);
   const userPersona = useWealthStore(state => state.data.userPersona);
-  const selectedHolding = useWealthStore(state => state.selectedHolding);
-  const setSelectedHolding = useWealthStore(state => state.setSelectedHolding);
   const { nodePlans, executePlan, clearNodePlans } = useStrategyStream();
-  const { isDrawerOpen, setDrawerOpen, copilotConfig, closeCopilot, openCopilot, openDrawerWithIntent, openWorkbench, closeWorkbench } = useInteractionStore();
+  const { openWidgetWorkbench, openWorkbench } = useInteractionStore();
 
   useSentinel(); // Update useSentinel next.
 
@@ -72,7 +67,6 @@ export default function App() {
   const [showProfileReport, setShowProfileReport] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
-  const [showPortfolioReviewDrawer, setShowPortfolioReviewDrawer] = useState(false);
 
   const lastEvent = useSDUIEventStore(state => state.lastEvent);
   const clearEvent = useSDUIEventStore(state => state.clearEvent);
@@ -88,7 +82,6 @@ export default function App() {
         accountPortfolios: useWealthStore.getState().data.publicHoldingAccounts,
         terminalState: useWealthStore.getState().data,
       }));
-      setShowPortfolioReviewDrawer(true);
     };
     window.addEventListener('open-portfolio-review', handleOpenReview);
     return () => {
@@ -102,20 +95,18 @@ export default function App() {
       const holdings = useWealthStore.getState().data.distributions?.publicHoldings;
       if (holdings && params.name) {
         const hit = holdings.find((h: any) => h.name === params.name || h.symbol === params.name);
-        if (hit) useWealthStore.getState().setSelectedHolding(hit);
+        if (hit) {
+          useWealthStore.getState().setSelectedHolding(hit);
+          openWorkbench(createHoldingWorkbenchSession(hit, useWealthStore.getState().data));
+        }
       }
       clearEvent(); // 消费完必须清空
     }
-  }, [lastEvent, clearEvent]);
+  }, [lastEvent, clearEvent, openWorkbench]);
 
-  const handleDrawerOpenChange = useCallback((isOpen: boolean) => {
-    setDrawerOpen(isOpen);
-    if (isOpen) {
-      openWorkbench(createManualChatWorkbenchSession(useWealthStore.getState().data));
-    } else {
-      closeWorkbench();
-    }
-  }, [closeWorkbench, openWorkbench, setDrawerOpen]);
+  const handleAskArbitra = useCallback(() => {
+    openWorkbench(createManualChatWorkbenchSession(useWealthStore.getState().data));
+  }, [openWorkbench]);
 
   if (loadingAuth || !user) {
     return <AuthTerminalLayout loadingAuth={loadingAuth} />;
@@ -172,7 +163,7 @@ export default function App() {
         user={user}
           setShowProfileReport={setShowProfileReport}
           setShowDeveloperView={setShowDeveloperView}
-          setDrawerOpen={handleDrawerOpenChange}
+          onAskArbitra={handleAskArbitra}
           setShowSettingsModal={setShowSettingsModal}
         />
       
@@ -199,7 +190,7 @@ export default function App() {
               
               <button
                  className="aw-button aw-button-ghost z-20 cursor-pointer"
-                 onClick={() => openCopilot(
+                 onClick={() => openWidgetWorkbench(
                    t('dashboard.strategicBrief'),
                    insights?.global,
                    t('dashboard.chiefMacroStrategist'),
@@ -349,34 +340,7 @@ export default function App() {
 
       <SettingsModal isOpen={showSettingsModal} onClose={() => setShowSettingsModal(false)} onClearData={handleClearDataClick} />
       <ProfileReportView isOpen={showProfileReport} onClose={() => setShowProfileReport(false)} />
-      <WidgetCopilot 
-        isOpen={copilotConfig.isOpen}
-        onClose={closeCopilot}
-        widgetTitle={copilotConfig.title}
-        widgetData={copilotConfig.data}
-        expertRole={copilotConfig.role}
-        onPromoteIntent={openDrawerWithIntent}
-      />
-
-      <Drawer 
-        isDrawerOpen={isDrawerOpen} 
-        setIsDrawerOpen={handleDrawerOpenChange} 
-        user={user} 
-        setIsSynthesizing={setIsSynthesizing}
-      />
-
       <AgentWorkbenchHost />
-
-      <PositionIntelligenceDrawer 
-        isOpen={!!selectedHolding} 
-        holding={selectedHolding} 
-        onClose={() => setSelectedHolding(null)} 
-      />
-
-      <PortfolioReviewDrawer 
-        isOpen={showPortfolioReviewDrawer} 
-        onClose={() => setShowPortfolioReviewDrawer(false)} 
-      />
     </div>
   );
 }

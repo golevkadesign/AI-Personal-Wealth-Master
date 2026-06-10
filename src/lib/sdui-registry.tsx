@@ -263,7 +263,7 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
     return <span className={classes.trim()}>{text}</span>;
   },
   ActionButton: ({ actionIntent, prompt, label, variant = 'primary', className = '' }) => {
-    const openDrawerWithIntent = useInteractionStore(state => state.openDrawerWithIntent);
+    const openWorkbenchWithIntent = useInteractionStore(state => state.openWorkbenchWithIntent);
     const resolvedIntent = actionIntent || prompt;
     if (!resolvedIntent) {
       return null;
@@ -275,7 +275,7 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
     };
     const classes = `${variantStyles[variant] || variantStyles.primary} cursor-pointer ${className}`;
     return (
-      <button onClick={() => openDrawerWithIntent(resolvedIntent)} className={classes}>
+      <button onClick={() => openWorkbenchWithIntent(resolvedIntent)} className={classes}>
         {label}
       </button>
     );
@@ -358,7 +358,7 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
   ),
   InterventionCard: ({ title, description, level = 'warning', actions = [] }) => {
     const isCritical = level === 'critical';
-    const openDrawerWithIntent = useInteractionStore(state => state.openDrawerWithIntent);
+    const openWorkbenchWithIntent = useInteractionStore(state => state.openWorkbenchWithIntent);
     
     return (
       <div className={`relative overflow-hidden p-6 w-full ${isCritical ? 'aw-danger-panel' : 'aw-warning-panel'}`}>
@@ -383,7 +383,7 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
                      return (
                        <button
                          key={idx}
-                         onClick={() => openDrawerWithIntent(intent)}
+                         onClick={() => openWorkbenchWithIntent(intent)}
                          className={`aw-button cursor-pointer
                            ${isPrimary 
                              ? (isCritical ? 'border border-aw-danger text-aw-danger hover:bg-aw-danger/10' : 'border border-aw-warning text-aw-warning hover:bg-aw-warning/10') 
@@ -404,7 +404,7 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
     );
   },
   ActionGroup: ({ buttons = [] }) => {
-    const openDrawerWithIntent = useInteractionStore(state => state.openDrawerWithIntent);
+    const openWorkbenchWithIntent = useInteractionStore(state => state.openWorkbenchWithIntent);
     if (!buttons || buttons.length === 0) return null;
     return (
       <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t border-aw-border-subtle">
@@ -415,7 +415,7 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
           return (
              <button
                key={idx}
-               onClick={() => openDrawerWithIntent(intent)}
+               onClick={() => openWorkbenchWithIntent(intent)}
                className={`aw-button cursor-pointer
                  ${isPrimary 
                    ? 'aw-button-primary' 

@@ -75,12 +75,8 @@ export function createManualChatWorkbenchSession(terminalState?: TerminalState):
       sourceRefs: ['manual_chat.entry'],
       missingFacts: ['user_prompt', 'rail_outputs'],
     }),
-    allowedActions: ['chat', 'render_widgets', 'propose_memory'],
+    allowedActions: ['chat', 'run_rails', 'render_widgets', 'propose_memory', 'project_dashboard'],
     initialWidgets: sharedDecisionWidgets,
-    legacy: {
-      surface: 'drawer',
-      drawerOpen: true,
-    },
   });
 }
 
@@ -98,14 +94,10 @@ export function createPromptWorkbenchSession(userPrompt: string, terminalState?:
     }),
     allowedActions: ['chat', 'run_rails', 'render_widgets', 'propose_memory'],
     initialWidgets: sharedDecisionWidgets,
-    legacy: {
-      surface: 'drawer',
-      drawerOpen: true,
-    },
   });
 }
 
-export function createWidgetCopilotWorkbenchSession(input: {
+export function createWidgetWorkbenchSession(input: {
   title: string;
   data?: unknown;
   role?: string;
@@ -123,7 +115,7 @@ export function createWidgetCopilotWorkbenchSession(input: {
     subject: input.title,
     intentBias: 'general',
     facts,
-    allowedActions: ['chat', 'render_widgets', 'propose_memory'],
+    allowedActions: ['chat', 'run_rails', 'render_widgets', 'propose_memory', 'project_dashboard'],
     initialWidgets: [
       {
         id: 'source',
@@ -147,18 +139,13 @@ export function createWidgetCopilotWorkbenchSession(input: {
         priority: 3,
       },
       {
-        id: 'legacy-chat',
-        type: 'legacy_chat',
-        titleKey: 'workbench.legacyMode',
-        status: 'partial',
+        id: 'action-queue',
+        type: 'action_queue',
+        titleKey: 'workbench.actionQueue',
+        status: 'waiting_signals',
         priority: 4,
       },
     ],
-    legacy: {
-      surface: 'copilot',
-      copilotTitle: input.title,
-      copilotRole: input.role,
-    },
   });
 }
 
@@ -197,11 +184,6 @@ export function createDashboardBriefWorkbenchSession(input: {
         priority: 6,
       },
     ],
-    legacy: {
-      surface: 'copilot',
-      copilotTitle: 'Strategic Brief',
-      copilotRole: input.role,
-    },
   });
 }
 
@@ -251,10 +233,6 @@ export function createHoldingWorkbenchSession(holding: DistributionItem, termina
         priority: 4,
       },
     ],
-    legacy: {
-      surface: 'position_drawer',
-      positionSymbol: subject,
-    },
   });
 }
 
@@ -315,10 +293,6 @@ export function createPortfolioReviewWorkbenchSession(input: {
         priority: 5,
       },
     ],
-    legacy: {
-      surface: 'portfolio_review_drawer',
-      portfolioReviewSessionId: input.sessionId,
-    },
   });
 }
 
