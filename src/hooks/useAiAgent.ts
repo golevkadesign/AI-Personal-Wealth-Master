@@ -10,6 +10,7 @@ import { normalizeDynamicWidgetsForDashboard } from '../lib/sdui-intake-policy';
 import { filterAiWritableStatePatch } from '../lib/ai-state-permissions';
 import { parseSseBuffer } from '../lib/sse-parser';
 import { deriveTerminalStatePatchFromProfile } from '../lib/profile-to-terminal-state';
+import { getApiEndpoint } from '../lib/api-endpoints';
 import { LIVE_VALUATION_VERSION } from '../types/terminal';
 
 function normalizeMarketContextForStore(marketContext: any) {
@@ -33,7 +34,7 @@ const AGENT_TEXT_LIMIT = 1800;
 const AGENT_CONTEXT_STRING_LIMIT = 3000;
 const AGENT_CONTEXT_ARRAY_LIMIT = 60;
 const AGENT_CONTEXT_DEPTH_LIMIT = 7;
-const AGENT_REQUEST_TIMEOUT_MS = 115000;
+const AGENT_REQUEST_TIMEOUT_MS = 290000;
 
 function compactAgentText(value: unknown, limit = AGENT_TEXT_LIMIT): string {
   if (typeof value !== 'string') return '';
@@ -333,7 +334,7 @@ export function useAiAgent({ setIsSynthesizing }: any) {
         cleanedContextData.livePortfolioAccounts = publicHoldingAccounts;
       }
 
-      const contextRes = await fetch("/api/chat", {
+      const contextRes = await fetch(getApiEndpoint('/api/chat', { streaming: true }), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
