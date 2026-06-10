@@ -255,7 +255,7 @@ export function createPortfolioReviewWorkbenchSession(input: {
     subject: input.sessionId,
     intentBias: 'allocation',
     facts,
-    allowedActions: ['run_rails', 'render_widgets', 'run_simulation', 'propose_memory', 'project_dashboard'],
+    allowedActions: ['chat', 'run_rails', 'render_widgets', 'run_simulation', 'propose_memory', 'project_dashboard'],
     initialWidgets: [
       {
         id: 'portfolio-map',
@@ -315,7 +315,7 @@ export function createPortfolioIntelligenceWorkbenchSession(input: {
     titleKey: 'workbench.portfolioIntelligenceMap',
     intentBias: 'simulation',
     facts,
-    allowedActions: ['run_rails', 'render_widgets', 'run_simulation', 'propose_memory', 'project_dashboard'],
+    allowedActions: ['chat', 'run_rails', 'render_widgets', 'run_simulation', 'propose_memory', 'project_dashboard'],
     initialWidgets: [
       {
         id: 'portfolio-map',

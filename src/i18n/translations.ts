@@ -576,6 +576,9 @@ export const translations = {
       copyCode: '复制代码',
       close: '关闭',
       sendMessagePlaceholder: '发送消息...',
+      stopGeneration: '停止生成',
+      voiceInputComingSoon: '语音输入即将上线',
+      removeAttachment: '移除附件',
     },
     workbench: {
       agentWorkbench: 'Agent Workbench',
@@ -590,6 +593,9 @@ export const translations = {
       suggestedTilt: '建议倾斜',
       projectedExposure: '预测敞口',
       actionQueue: '行动队列',
+      conversation: '对话流',
+      phaseInitial: '初始态',
+      phaseReply: '回复态',
       yes: '是',
       no: '否',
       metrics: {
@@ -1305,6 +1311,9 @@ export const translations = {
       copyCode: 'Copy Code',
       close: 'Close',
       sendMessagePlaceholder: 'Send message...',
+      stopGeneration: 'Stop generation',
+      voiceInputComingSoon: 'Voice input coming soon',
+      removeAttachment: 'Remove attachment',
     },
     workbench: {
       agentWorkbench: 'Agent Workbench',
@@ -1319,6 +1328,9 @@ export const translations = {
       suggestedTilt: 'Suggested Tilt',
       projectedExposure: 'Projected Exposure',
       actionQueue: 'Action Queue',
+      conversation: 'Conversation',
+      phaseInitial: 'Initial',
+      phaseReply: 'Reply',
       yes: 'Yes',
       no: 'No',
       metrics: {

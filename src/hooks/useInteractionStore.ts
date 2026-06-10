@@ -24,6 +24,7 @@ interface InteractionState {
   clearPendingIntent: () => void;
   openWidgetWorkbench: (title: string, data: any, role: string, sessionSpec?: WorkbenchSessionSpec) => void;
   openWorkbench: (sessionSpec: WorkbenchSessionSpec) => void;
+  submitWorkbenchPrompt: (prompt: string) => void;
   closeWorkbench: () => void;
   closeWorkbenchForEntry: (entryType: WorkbenchSessionSpec['entryType']) => void;
   decideMemoryInboxItem: (itemId: string, decision: MemoryInboxDecisionType) => void;
@@ -156,7 +157,7 @@ const openSessionWithRails = (
   });
 };
 
-export const useInteractionStore = create<InteractionState>((set) => ({
+export const useInteractionStore = create<InteractionState>((set, get) => ({
   pendingGlobalIntent: null,
   activeWorkbenchSession: null,
 
@@ -181,6 +182,49 @@ export const useInteractionStore = create<InteractionState>((set) => ({
 
   openWorkbench: (sessionSpec) => {
     openSessionWithRails(set, sessionSpec);
+  },
+
+  submitWorkbenchPrompt: (prompt) => {
+    const session = get().activeWorkbenchSession;
+    const trimmedPrompt = prompt.trim();
+    if (!session || !trimmedPrompt) return;
+
+    const facts = session.facts || {};
+    const terminalState = facts.terminalState || useWealthStore.getState().data;
+    const sourceRefs = Array.from(new Set([...(facts.sourceRefs || []), 'workbench.chat']));
+    const missingFacts = (facts.missingFacts || []).filter((fact) => fact !== 'user_prompt' && fact !== 'shared_facts');
+    const nextSession: WorkbenchSessionSpec = {
+      ...session,
+      subject: session.subject || trimmedPrompt.slice(0, 80),
+      facts: {
+        ...facts,
+        terminalState,
+        userPrompt: trimmedPrompt,
+        sourceRefs,
+        missingFacts,
+        summary: {
+          ...(facts.summary || {
+            hasTerminalState: Boolean(terminalState),
+            hasSovereignProfile: Boolean(facts.sovereignProfile),
+            hasSelectedHolding: Boolean(facts.selectedHolding),
+            hasUserPrompt: true,
+            hasMarketContext: Boolean(facts.marketContext),
+            publicHoldingCount: terminalState?.distributions?.publicHoldings?.length || 0,
+            accountCount: facts.publicHoldingAccounts?.length || 0,
+            positionCount: facts.publicHoldingAccounts?.reduce((sum, account) => sum + (account.positions?.length || 0), 0) || 0,
+            sourceCount: sourceRefs.length,
+            missingFactCount: missingFacts.length,
+          }),
+          hasUserPrompt: true,
+          sourceCount: sourceRefs.length,
+          missingFactCount: missingFacts.length,
+        },
+      },
+    };
+
+    openSessionWithRails(set, nextSession, {
+      pendingGlobalIntent: trimmedPrompt,
+    });
   },
 
   closeWorkbench: () => {

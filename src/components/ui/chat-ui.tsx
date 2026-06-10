@@ -66,13 +66,17 @@ export const ChatList = React.memo(function ChatList({
   isTyping, 
   onRegenerate, 
   onQuickPrompt,
-  onApplySuggestedState
+  onApplySuggestedState,
+  className,
+  bottomPaddingClass = 'pb-[176px]',
 }: { 
   messages: any[], 
   isTyping: boolean, 
   onRegenerate?: () => void, 
   onQuickPrompt?: (p: string) => void,
-  onApplySuggestedState?: (patch: any, sourceChatIndex?: number) => void
+  onApplySuggestedState?: (patch: any, sourceChatIndex?: number) => void,
+  className?: string,
+  bottomPaddingClass?: string,
 }) {
   const { t } = useTranslation();
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -124,7 +128,11 @@ export const ChatList = React.memo(function ChatList({
   ];
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-5 custom-scroll pb-[176px]" ref={containerRef} onScroll={handleScroll}>
+    <div
+      className={cn("flex-1 overflow-y-auto p-4 sm:p-5 space-y-5 custom-scroll", bottomPaddingClass, className)}
+      ref={containerRef}
+      onScroll={handleScroll}
+    >
       {messages.length === 0 ? (
         <div className="h-full flex flex-col items-center justify-center text-center opacity-65 py-16 px-4">
           <MaterialIcon name="auto_awesome" size={32} className="mb-3 text-aw-accent-mist" />
@@ -513,7 +521,7 @@ export function ChatInput({ input, handleInputChange, handleSubmit, isLoading, o
               type="button"
               onClick={onStop}
               className="aw-icon-button w-10 h-10 sm:w-11 sm:h-11 text-aw-danger border border-aw-border-subtle"
-              title="Stop Generation"
+              title={t('chat.stopGeneration')}
             >
               <MaterialIcon name="stop_circle" size={24} />
             </motion.button>
@@ -538,7 +546,7 @@ export function ChatInput({ input, handleInputChange, handleSubmit, isLoading, o
               transition={{ type: "spring", stiffness: 400, damping: 25 }}
               type="button"
               className="aw-icon-button w-10 h-10 sm:w-11 sm:h-11 active:scale-95"
-              title="Voice Input (Coming soon)"
+              title={t('chat.voiceInputComingSoon')}
             >
               <MaterialIcon name="mic" size={24} />
             </motion.button>
