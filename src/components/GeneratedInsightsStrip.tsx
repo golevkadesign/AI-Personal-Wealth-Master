@@ -37,7 +37,7 @@ export const GeneratedInsightsStrip: React.FC<GeneratedInsightsStripProps> = ({
   return (
     <div className="aw-module-insight mb-7 md:mb-8 flex flex-col min-w-0 aw-panel p-4 md:p-5">
       {/* Header section with low emphasis title & hover-red clear button */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 border-b border-aw-border-subtle pb-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
         <div>
           <div className="flex items-center gap-1.5 aw-section-kicker">
             <MaterialIcon name="auto_awesome" size={16} /> Top Insights / AI 生成洞察

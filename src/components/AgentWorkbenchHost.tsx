@@ -60,6 +60,10 @@ const SESSION_FIRST_WIDGETS = new Set<WorkbenchWidgetType>([
   'portfolio_map',
 ]);
 
+const STICKY_GLASS_STYLE: React.CSSProperties = {
+  backdropFilter: 'blur(var(--aw-card-header-blur))',
+};
+
 function getWidgetPhase(session: WorkbenchSessionSpec): WorkbenchWidgetPhase {
   return session.facts?.userPrompt || session.facts?.summary?.hasUserPrompt ? 'reply' : 'initial';
 }
@@ -310,7 +314,10 @@ function AgentWorkbenchContent({
         data-aw-workbench-phase={widgetPhase}
         data-aw-visible-widget-count={widgets.length}
       >
-        <header className="aw-workbench-header flex items-center justify-between gap-4 border-b border-aw-border px-5 py-4">
+        <header
+          className="aw-workbench-header flex items-center justify-between gap-4 px-5 py-4"
+          style={STICKY_GLASS_STYLE}
+        >
           <div className="min-w-0">
             <p className="aw-caption aw-text-tertiary font-mono uppercase">{t('nav.brandName')}</p>
             <h2 className="aw-title aw-text-primary font-semibold tracking-normal">
@@ -357,7 +364,7 @@ function AgentWorkbenchContent({
           </section>
 
           <section className="aw-reference-card mt-4 flex min-h-[420px] flex-col overflow-hidden p-0">
-            <div className="flex items-center justify-between gap-3 border-b border-aw-border-subtle px-4 py-3">
+            <div className="flex items-center justify-between gap-3 px-4 pt-4 pb-2">
               <div className="flex min-w-0 items-center gap-2">
                 <div className="aw-chart-state-icon shrink-0">
                   <MaterialIcon name="forum" size={20} className="text-aw-success" />
@@ -384,7 +391,10 @@ function AgentWorkbenchContent({
           </section>
         </main>
 
-        <footer className="aw-workbench-footer space-y-3 border-t border-aw-border px-4 py-4">
+        <footer
+          className="aw-workbench-footer space-y-3 border-t border-aw-border px-4 py-4"
+          style={STICKY_GLASS_STYLE}
+        >
           {attachments.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {attachments.map((attachment, index) => (

@@ -200,7 +200,7 @@ export function TerminalHeader({
                 className="absolute right-0 mt-3 w-64 aw-panel overflow-hidden z-50 text-sans font-normal backdrop-blur-md animate-in fade-in slide-in-from-top-3 duration-200"
               >
                 {/* User info info cards */}
-                <div className="p-4 border-b border-aw-border-subtle bg-aw-surface-3 flex items-center gap-3">
+                <div className="px-4 pt-4 pb-2 flex items-center gap-3">
                   <div className="w-8 h-8 aw-avatar-frame flex items-center justify-center overflow-hidden shrink-0">
                     {shouldShowAvatarImage ? (
                       <img

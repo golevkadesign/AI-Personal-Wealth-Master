@@ -28,7 +28,7 @@ export function GoalTracker({ globalCurSymbol }: GoalTrackerProps) {
       transition={{ type: "spring", stiffness: 400, damping: 25 }}
       className="aw-panel aw-module-goal p-6 sm:p-8 relative overflow-hidden group mb-10 w-full"
     >
-      <div className="relative z-10 flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-6 pb-6 border-b border-aw-border-subtle">
+      <div className="relative z-10 flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-7">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-2">
             <span className="aw-chart-state-icon size-8 text-aw-accent-mist">

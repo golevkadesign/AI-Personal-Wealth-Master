@@ -93,6 +93,9 @@
   --aw-surface-1: #121413;
   --aw-surface-2: rgb(238 243 234 / 0.035);
   --aw-surface-3: rgb(238 243 234 / 0.06);
+  --aw-card-bg: #0B0D0C;
+  --aw-card-header-glass-bg: rgb(11 13 12 / 0.78);
+  --aw-card-header-blur: 18px;
 
   --aw-text-primary: #EEF3EA;
   --aw-text-secondary: rgb(221 232 216 / 0.72);
@@ -144,14 +147,8 @@
   --aw-bg-app:
     linear-gradient(180deg, rgb(238 243 234 / 0.018), rgb(0 0 0 / 0.10)),
     var(--aw-stage-bg);
-  --aw-bg-panel:
-    radial-gradient(circle at 58% 18%, rgb(221 232 216 / 0.035), transparent 34%),
-    linear-gradient(180deg, #171A18, #0B0D0C 74%);
-  --aw-bg-accent-panel: linear-gradient(
-    180deg,
-    #EEF3EA,
-    #DDE8D8
-  );
+  --aw-bg-panel: var(--aw-card-bg);
+  --aw-bg-accent-panel: var(--aw-card-bg);
 
   --aw-shadow-panel: 0 24px 56px rgb(0 0 0 / 0.38), inset 0 1px 0 rgb(238 243 234 / 0.035);
   --aw-shadow-float: 0 36px 72px rgb(0 0 0 / 0.46), 0 12px 28px rgb(0 0 0 / 0.28);
@@ -210,32 +207,13 @@ body {
   overflow: hidden;
   border-radius: var(--aw-radius-lg);
   border: 1px solid var(--aw-border-default);
-  background:
-    radial-gradient(circle at 50% 14%, rgb(221 232 216 / 0.035), transparent 38%),
-    linear-gradient(180deg, rgb(238 243 234 / 0.030), rgb(238 243 234 / 0.010) 34%, rgb(0 0 0 / 0) 70%),
-    var(--aw-surface-0);
+  background: var(--aw-card-bg);
   box-shadow: var(--aw-shadow-panel);
 }
 
-.aw-reference-card::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  border-radius: inherit;
-  background: linear-gradient(180deg, rgb(238 243 234 / 0.028), transparent 32%);
-}
-
+.aw-reference-card::before,
 .aw-reference-card::after {
-  content: "";
-  position: absolute;
-  inset: auto 10% -18% 10%;
-  height: 18%;
-  pointer-events: none;
-  border-radius: 999px;
-  background: rgb(0 0 0 / 0.32);
-  filter: blur(26px);
-  opacity: 0.44;
+  display: none;
 }
 
 .aw-card-content {
@@ -422,7 +400,7 @@ body {
 
 /* Glass panel styling reflecting the new premium aesthetic */
 .glass-panel {
-  background: var(--color-dash-surface);
+  background: var(--aw-card-bg);
   border: 1px solid var(--color-dash-subtle);
   border-radius: 12px;
   box-shadow: 0 4px 24px -4px rgba(0, 0, 0, 0.3);
@@ -542,33 +520,33 @@ body {
 }
 
 .aw-panel.aw-module-highlight {
-  background: var(--aw-bg-accent-panel);
-  color: var(--aw-text-inverse);
-  border-color: rgb(0 0 0 / 0.12);
+  background: var(--aw-card-bg);
+  color: var(--aw-text-primary);
+  border-color: var(--aw-border-default);
 }
 
 .aw-panel.aw-module-highlight .aw-text-primary,
 .aw-panel.aw-module-highlight .aw-section-kicker {
-  color: var(--aw-text-inverse);
+  color: var(--aw-text-primary);
 }
 
 .aw-panel.aw-module-highlight .aw-text-secondary {
-  color: rgb(18 20 19 / 0.70);
+  color: var(--aw-text-secondary);
 }
 
 .aw-panel.aw-module-highlight .aw-text-tertiary {
-  color: rgb(18 20 19 / 0.48);
+  color: var(--aw-text-tertiary);
 }
 
 .aw-panel.aw-module-highlight .aw-panel-muted,
 .aw-panel.aw-module-highlight .aw-status-pill {
-  background: rgb(0 0 0 / 0.06);
-  border-color: rgb(0 0 0 / 0.14);
-  color: rgb(0 0 0 / 0.70);
+  background: var(--aw-card-bg);
+  border-color: var(--aw-border-subtle);
+  color: var(--aw-text-secondary);
 }
 
 .aw-panel.aw-module-highlight .aw-status-pill {
-  color: rgb(18 20 19 / 0.62);
+  color: var(--aw-text-secondary);
 }
 
 .aw-empty-chart-bars {
@@ -1096,22 +1074,22 @@ body {
 }
 
 .aw-panel {
-  background: var(--aw-bg-panel), var(--aw-surface-1);
+  background: var(--aw-card-bg);
   border: 1px solid var(--aw-border-default);
   border-radius: var(--aw-radius-lg);
   box-shadow: var(--aw-shadow-panel);
 }
 
 .aw-panel-muted {
-  background: var(--aw-surface-2);
+  background: var(--aw-card-bg);
   border: 1px solid var(--aw-border-subtle);
   border-radius: var(--aw-radius-md);
 }
 
 .aw-panel-accent {
   background: var(--aw-bg-accent-panel);
-  color: var(--aw-text-inverse);
-  border: 1px solid rgb(0 0 0 / 0.10);
+  color: var(--aw-text-primary);
+  border: 1px solid var(--aw-border-default);
   border-radius: var(--aw-radius-lg);
 }
 
@@ -1146,7 +1124,7 @@ body {
 }
 
 .aw-chart-shell {
-  background: var(--aw-bg-panel), var(--aw-surface-1);
+  background: var(--aw-card-bg);
   border: 1px solid var(--aw-border-default);
   border-radius: var(--aw-radius-lg);
   box-shadow: var(--aw-shadow-panel);
@@ -1444,8 +1422,6 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: var(--aw-space-4);
-  border-bottom: 1px solid var(--aw-border-subtle);
-  padding-bottom: var(--aw-space-4);
   margin-bottom: var(--aw-space-5);
 }
 
@@ -1837,21 +1813,21 @@ body {
 }
 
 .aw-structured-card {
-  background: var(--aw-bg-panel), var(--aw-surface-1);
+  background: var(--aw-card-bg);
   border: 1px solid var(--aw-border-default);
   border-radius: var(--aw-radius-lg);
   box-shadow: var(--aw-shadow-panel);
 }
 
 .aw-structured-card-muted {
-  background: var(--aw-surface-2);
+  background: var(--aw-card-bg);
   border: 1px solid var(--aw-border-subtle);
   border-radius: var(--aw-radius-sm);
 }
 
 .aw-table-shell {
   overflow: hidden;
-  background: var(--aw-surface-1);
+  background: var(--aw-card-bg);
   border: 1px solid var(--aw-border-default);
   border-radius: var(--aw-radius-md);
 }
@@ -1888,7 +1864,7 @@ body {
 
 .aw-workbench-shell,
 .aw-drawer-shell {
-  background: var(--aw-bg-panel), var(--aw-surface-0);
+  background: var(--aw-card-bg);
   border-left: 1px solid var(--aw-border-default);
   box-shadow: var(--aw-shadow-float);
 }
@@ -1901,9 +1877,9 @@ body {
 .aw-drawer-footer,
 .aw-workbench-header,
 .aw-workbench-footer {
-  background:
-    linear-gradient(180deg, rgb(255 255 255 / 0.055), rgb(255 255 255 / 0.025)),
-    color-mix(in srgb, var(--aw-surface-0) 88%, transparent);
+  background: var(--aw-card-header-glass-bg);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
   border-color: var(--aw-border-subtle);
 }
 
@@ -1928,21 +1904,14 @@ body {
   overflow: hidden;
   border: 1px solid var(--aw-border-default);
   border-radius: var(--aw-radius-sm);
-  background:
-    linear-gradient(180deg, rgb(238 243 234 / 0.035), rgb(238 243 234 / 0.010)),
-    rgb(11 13 12 / 0.62);
+  background: var(--aw-card-bg);
   padding: var(--aw-space-2);
   color: var(--aw-text-secondary);
   box-shadow: inset 0 0 0 1px rgb(238 243 234 / 0.024);
 }
 
 .aw-workbench-signal-card::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: radial-gradient(circle at 50% 0%, currentColor, transparent 54%);
-  opacity: 0.035;
+  display: none;
 }
 
 .aw-workbench-signal-card > span {
@@ -2070,11 +2039,11 @@ body {
 
 .aw-chat-bubble-user {
   border-color: var(--aw-border-strong);
-  background: var(--aw-surface-2);
+  background: var(--aw-card-bg);
 }
 
 .aw-chat-bubble-assistant {
-  background: var(--aw-bg-panel), var(--aw-surface-1);
+  background: var(--aw-card-bg);
 }
 
 .aw-chat-input {
@@ -2129,7 +2098,7 @@ body {
 }
 
 .aw-chat-code-block {
-  background: var(--aw-surface-1);
+  background: var(--aw-card-bg);
   border: 1px solid var(--aw-border-default);
   border-radius: var(--aw-radius-md);
   box-shadow: var(--aw-shadow-panel);

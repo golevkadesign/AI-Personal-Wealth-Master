@@ -398,12 +398,10 @@ export const AssistantResponseRenderer: React.FC<AssistantResponseRendererProps>
         const validPrompts = block.prompts.filter(p => typeof p === 'string' && p.trim().length > 0);
         if (validPrompts.length === 0) return null;
         return (
-          <div key={idx} className="space-y-2 border-t border-aw-border-subtle pt-3">
+          <div key={idx} className="space-y-2 pt-3">
             {block.title && (
               <div className="aw-caption font-mono aw-text-tertiary uppercase font-semibold flex items-center gap-1.5">
-                <span className="flex-1 border-t border-aw-border-subtle"></span>
                 {block.title}
-                <span className="flex-1 border-t border-aw-border-subtle"></span>
               </div>
             )}
             <div className="flex flex-col gap-1.5">
@@ -517,7 +515,7 @@ export const AssistantResponseRenderer: React.FC<AssistantResponseRendererProps>
   return (
     <div className="w-full text-left font-sans flex flex-col space-y-4 select-text">
       {/* Container header / Terminal Meta Header info */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-aw-border-subtle pb-3 aw-caption font-mono aw-text-tertiary">
+      <div className="flex flex-wrap items-center justify-between gap-2 aw-caption font-mono aw-text-tertiary">
         <div className="flex items-center gap-1.5">
           <MaterialIcon name="smart_toy" size={16} className="text-aw-accent-mist" />
           <span className="aw-text-primary font-medium tracking-normal">{t('chat.analysisTitle')}</span>

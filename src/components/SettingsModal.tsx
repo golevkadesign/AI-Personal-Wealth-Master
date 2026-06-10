@@ -234,7 +234,7 @@ export const SettingsModal = ({ isOpen, onClose, onClearData }: { isOpen: boolea
   );
 
   const SectionTitle = ({ children }: { children: React.ReactNode }) => (
-    <h3 className="aw-section-kicker border-b border-aw-border-subtle pb-3">{children}</h3>
+    <h3 className="aw-section-kicker mb-4">{children}</h3>
   );
 
   const StatusLine = ({ minutes = '1 minute ago' }: { minutes?: string }) => (

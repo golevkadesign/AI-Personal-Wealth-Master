@@ -18,7 +18,7 @@ const CodeBlock = React.memo(({ inline, className, children, setFullScreenCode, 
 
   return (
     <div className="aw-chat-code-block relative group/code my-6">
-      <div className="flex items-center justify-between px-5 py-3 border-b border-aw-border-subtle bg-aw-surface-3">
+      <div className="flex items-center justify-between px-5 pt-3 pb-1">
         <span className="aw-caption aw-text-tertiary font-mono font-semibold uppercase">{match?.[1] || 'Code'}</span>
         <div className="flex gap-1.5 opacity-70 hover:opacity-100 transition-opacity">
             <button onClick={() => {
@@ -242,7 +242,7 @@ export const ChatList = React.memo(function ChatList({
 
                         {msg.aiSuggestedState && (
                           <div className="aw-panel-muted mt-4 p-4 space-y-3">
-                            <div className="flex items-center justify-between gap-2 border-b border-aw-border-subtle pb-2">
+                            <div className="flex items-center justify-between gap-2">
                               <div>
                                 <h4 className="aw-body font-bold text-aw-accent-mist flex items-center gap-1.5 font-sans">
                                   <MaterialIcon name="auto_awesome" size={16} />
