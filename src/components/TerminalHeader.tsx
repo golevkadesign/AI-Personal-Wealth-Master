@@ -7,17 +7,17 @@ import { MaterialIcon } from './ui/MaterialIcon';
 
 interface TerminalHeaderProps {
   user: any;
-  setShowProfileReport: (show: boolean) => void;
   setShowDeveloperView: (show: boolean) => void;
   onAskArbitra: () => void;
+  onOpenMemoryWorkbench: () => void;
   setShowSettingsModal: (show: boolean) => void;
 }
 
 export function TerminalHeader({
   user,
-  setShowProfileReport,
   setShowDeveloperView,
   onAskArbitra,
+  onOpenMemoryWorkbench,
   setShowSettingsModal
 }: TerminalHeaderProps) {
   const { t, language, setLanguage } = useTranslation();
@@ -232,7 +232,7 @@ export function TerminalHeader({
                   <button
                     onClick={() => {
                       setIsDropdownOpen(false);
-                      setShowProfileReport(true);
+                      onOpenMemoryWorkbench();
                     }}
                     className="w-full aw-button aw-button-ghost !justify-start !px-3 !py-2 !min-h-9 text-left cursor-pointer"
                   >

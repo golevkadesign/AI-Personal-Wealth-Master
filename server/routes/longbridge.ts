@@ -1,7 +1,16 @@
 import express from 'express';
 import { aggregateLongbridgePortfolios, fetchLongbridgeAccountPortfolios } from '../services/longbridgeAdapter';
+import { getLongbridgeNativeStatus } from '../services/longbridgeNative';
 
 const router = express.Router();
+
+router.get('/native-health', async (_req, res) => {
+    const status = await getLongbridgeNativeStatus();
+    res.status(status.ok ? 200 : 503).json({
+        success: status.ok,
+        data: status
+    });
+});
 
 router.get('/positions', async (req, res) => {
     try {

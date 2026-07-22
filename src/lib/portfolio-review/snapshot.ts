@@ -1,14 +1,18 @@
 import { AccountPortfolio } from '../../types/terminal';
 import { PortfolioReviewSnapshot, ReviewHolding } from '../../types/portfolio-review';
+import { translateI18n, type AppLanguage } from '../../i18n/translations';
 
 interface CreateSnapshotParams {
   accountPortfolios: AccountPortfolio[];
   source?: 'longbridge' | 'screenshot' | 'manual' | 'mixed';
+  language?: AppLanguage;
 }
 
 export function createPortfolioReviewSnapshot(params: CreateSnapshotParams): PortfolioReviewSnapshot {
   const accountPortfolios = params.accountPortfolios || [];
   const source = params.source || 'manual';
+  const language = params.language || 'zh-CN';
+  const t = (key: string, values?: Record<string, string | number>) => translateI18n(language, key, values);
   
   const id = typeof crypto !== 'undefined' && crypto.randomUUID 
     ? crypto.randomUUID() 
@@ -28,7 +32,9 @@ export function createPortfolioReviewSnapshot(params: CreateSnapshotParams): Por
   accountPortfolios.forEach(acc => {
     const positions = acc.positions || [];
     if (positions.length === 0) {
-      warnings.push(`账户 "${acc.accountName || acc.accountId}" 未包含任何持仓。`);
+      warnings.push(t('portfolioReview.snapshotWarnings.accountNoPositions', {
+        account: acc.accountName || acc.accountId || '-',
+      }));
     }
 
     positions.forEach(pos => {
@@ -51,7 +57,11 @@ export function createPortfolioReviewSnapshot(params: CreateSnapshotParams): Por
       }
 
       if (missingInPos.length > 0) {
-        missingFields.push(`${acc.accountName || acc.accountId}/${pos.symbol || pos.name || '未知标的'}: 缺失 ${missingInPos.join(', ')}`);
+        missingFields.push(t('portfolioReview.snapshotWarnings.missingFields', {
+          account: acc.accountName || acc.accountId || '-',
+          symbol: pos.symbol || pos.name || t('portfolioReview.snapshotWarnings.unknownInstrument'),
+          fields: missingInPos.join(', '),
+        }));
       }
 
       // Calculate holding's value
@@ -88,15 +98,15 @@ export function createPortfolioReviewSnapshot(params: CreateSnapshotParams): Por
   let dataConfidence: 'high' | 'medium' | 'low' = 'high';
   if (accountCount === 0 || totalMeasuredPositions === 0) {
     dataConfidence = 'low';
-    warnings.push('没有检测到有效的证券账户或持仓数据，置信度评级为低 (low)。');
+    warnings.push(t('portfolioReview.snapshotWarnings.noValidHoldings'));
   } else {
     const validRatio = validMarketValueCount / totalMeasuredPositions;
     if (validRatio < 0.5) {
       dataConfidence = 'low';
-      warnings.push('超过半数的持仓数据缺失关键估值，置信度评级为低 (low)。');
+      warnings.push(t('portfolioReview.snapshotWarnings.lowValuationCoverage'));
     } else if (validRatio < 0.85 || missingFields.length > 0) {
       dataConfidence = 'medium';
-      warnings.push('部分持仓字段不完整，置信度评级为中 (medium)。');
+      warnings.push(t('portfolioReview.snapshotWarnings.incompleteFields'));
     }
   }
 

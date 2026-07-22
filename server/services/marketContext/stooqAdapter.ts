@@ -46,6 +46,10 @@ export async function fetchStooqDaily(
     if (lines.length <= 1) return [];
 
     const header = lines[0].toLowerCase().split(',');
+    if (!header.includes('date') || !header.includes('close')) {
+      console.warn(`[stooq-adapter] Non-CSV response for ${stooqSymbol}; upstream may require browser verification.`);
+      return [];
+    }
     const dateIdx = header.indexOf('date');
     const openIdx = header.indexOf('open');
     const highIdx = header.indexOf('high');

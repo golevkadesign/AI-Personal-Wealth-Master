@@ -2,6 +2,7 @@ import { createMarketContext } from '../../../src/lib/market-context';
 import type { MarketContext, MarketInstrumentSnapshot, MarketDataQuality } from '../../../src/types/market-context';
 import { DEFAULT_MARKET_UNIVERSE, MarketUniverseInstrument } from './instrumentUniverse';
 import { fetchStooqDaily } from './stooqAdapter';
+import { fetchYahooDaily } from './yahooAdapter';
 import {
   calculateReturn,
   calculateVolatility20D,
@@ -48,6 +49,12 @@ const marketContextCacheMap = new Map<string, { timestamp: number; data: MarketC
 
 const MARKET_CONTEXT_CACHE_TTL = 15 * 60 * 1000;
 
+type InstrumentFetchSource = 'stooq' | 'yahoo';
+
+function getYahooSymbol(item: MarketUniverseInstrument) {
+  return item.yahooSymbol || item.symbol;
+}
+
 export async function buildMarketContext(options?: {
   universe?: MarketUniverseInstrument[];
   timeoutMs?: number;
@@ -70,14 +77,36 @@ export async function buildMarketContext(options?: {
   try {
     const instruments: MarketInstrumentSnapshot[] = [];
     const warnings: string[] = [];
+    const sourceStats = {
+      stooqSuccessCount: 0,
+      stooqFailedCount: 0,
+      yahooSuccessCount: 0,
+      yahooFailedCount: 0,
+    };
 
     // Parallel fetch with concurrency limit of 4 to protect upstream/Stooq servers
     await asyncPool(4, universe, async (item) => {
       try {
-        const bars = await fetchStooqDaily(item.stooqSymbol, { timeoutMs });
+        let bars = await fetchStooqDaily(item.stooqSymbol, { timeoutMs });
+        let source: InstrumentFetchSource = 'stooq';
+
+        if (bars && bars.length > 0) {
+          sourceStats.stooqSuccessCount += 1;
+        } else {
+          sourceStats.stooqFailedCount += 1;
+          const yahooSymbol = getYahooSymbol(item);
+          const yahooBars = await fetchYahooDaily(yahooSymbol, { timeoutMs });
+          if (yahooBars && yahooBars.length > 0) {
+            bars = yahooBars;
+            source = 'yahoo';
+            sourceStats.yahooSuccessCount += 1;
+          } else {
+            sourceStats.yahooFailedCount += 1;
+          }
+        }
         
         if (!bars || bars.length === 0) {
-          warnings.push(`无法获取或解析标的 ${item.symbol} (${item.stooqSymbol}) 的 Stooq 数据。`);
+          warnings.push(`无法获取或解析标的 ${item.symbol} 的公共延迟/历史日线数据。`);
           return;
         }
 
@@ -97,13 +126,15 @@ export async function buildMarketContext(options?: {
         const maxDrawdown3M = calculateMaxDrawdown(bars, 63);
 
         const has3MReturn = change3M !== undefined;
-        const dataQuality: MarketDataQuality = has3MReturn ? 'high' : 'medium';
+        const dataQuality: MarketDataQuality = has3MReturn
+          ? (source === 'stooq' ? 'high' : 'medium')
+          : (source === 'stooq' ? 'medium' : 'low');
 
         const snapshot: MarketInstrumentSnapshot = {
           symbol: item.symbol,
           label: item.label,
           category: item.category,
-          source: 'stooq',
+          source,
           asOf,
           close,
           change1D,
@@ -124,12 +155,24 @@ export async function buildMarketContext(options?: {
     });
 
     // Call shared pure calculation layer
+    if (sourceStats.yahooSuccessCount > 0) {
+      warnings.push(`Stooq 暂不可用或无数据，${sourceStats.yahooSuccessCount} 个标的已使用 Yahoo 延迟/历史日线兜底。`);
+    }
+
+    const sourceSummary = [
+      sourceStats.stooqSuccessCount > 0 ? 'Stooq delayed/historical daily market data' : undefined,
+      sourceStats.yahooSuccessCount > 0 ? 'Yahoo Finance delayed/historical daily fallback data' : undefined,
+    ].filter((item): item is string => Boolean(item));
+
     const context = createMarketContext({
       instruments,
       freshness: 'daily',
-      sourceSummary: ['Stooq delayed/historical daily market data'],
+      sourceSummary: sourceSummary.length > 0 ? sourceSummary : ['Public delayed/historical daily market data'],
       warnings
     });
+    if (sourceStats.yahooSuccessCount > 0 && sourceStats.stooqSuccessCount === 0) {
+      context.dataQuality = 'medium';
+    }
 
     // Parallel fetch enhancements if requested securely
     const [fredEnhancements, alphaEnhancements] = await Promise.all([
@@ -204,23 +247,43 @@ export async function buildMarketContext(options?: {
       confidence = 'low';
     } else if (status === 'degraded') {
       confidence = 'medium';
-    } else if (instrumentCoverageRatio >= 0.8 && (!enhancementCoverageRatio || enhancementCoverageRatio >= 0.5)) {
+    } else if (
+      instrumentCoverageRatio >= 0.8 &&
+      sourceStats.yahooSuccessCount === 0 &&
+      (!enhancementCoverageRatio || enhancementCoverageRatio >= 0.5)
+    ) {
       confidence = 'high';
     } else {
       confidence = 'medium';
     }
 
-    const stooqWarningCount = warnings.filter(w => w.includes('Stooq') || w.includes('标的')).length;
+    const stooqWarningCount = sourceStats.stooqFailedCount;
+    const yahooWarningCount = sourceStats.yahooFailedCount;
 
     const sourceHealth: any[] = [
       {
         source: 'stooq',
-        status: instrumentSuccessCount === expectedInstrumentCount ? 'ok' : instrumentSuccessCount > 0 ? 'partial' : 'failed',
+        status: sourceStats.stooqSuccessCount === expectedInstrumentCount ? 'ok' : sourceStats.stooqSuccessCount > 0 ? 'partial' : 'failed',
         expectedCount: expectedInstrumentCount,
-        successCount: instrumentSuccessCount,
+        successCount: sourceStats.stooqSuccessCount,
         warningCount: stooqWarningCount,
         lastUpdatedAt: Date.now(),
-        notes: []
+        notes: sourceStats.stooqFailedCount > 0
+          ? ['Some Stooq requests returned no usable CSV and were routed to Yahoo fallback.']
+          : []
+      },
+      {
+        source: 'yahoo',
+        status: sourceStats.yahooSuccessCount === 0
+          ? (sourceStats.stooqFailedCount > 0 ? 'failed' : 'not_configured')
+          : sourceStats.yahooFailedCount > 0 ? 'partial' : 'ok',
+        expectedCount: sourceStats.stooqFailedCount,
+        successCount: sourceStats.yahooSuccessCount,
+        warningCount: yahooWarningCount,
+        lastUpdatedAt: Date.now(),
+        notes: sourceStats.yahooSuccessCount > 0
+          ? ['Yahoo Finance is used only as delayed/historical fallback context, not execution-grade quote data.']
+          : []
       },
       {
         source: 'fred',
@@ -248,7 +311,9 @@ export async function buildMarketContext(options?: {
     } else if (status === 'degraded') {
       summaryText = 'Market context is available but some configured sources returned partial or no usable data.';
     } else {
-      summaryText = 'Market context is ready with broad Stooq coverage and optional macro enhancements where configured.';
+      summaryText = sourceStats.yahooSuccessCount > 0
+        ? 'Market context is ready with public delayed/historical coverage; Yahoo fallback was used where Stooq was unavailable.'
+        : 'Market context is ready with broad Stooq coverage and optional macro enhancements where configured.';
     }
 
     context.qualitySummary = {
@@ -308,6 +373,7 @@ export async function buildMarketContext(options?: {
       enhancementCoverageRatio: undefined,
       sourceHealth: [
         { source: 'stooq', status: 'failed', expectedCount: universe.length, successCount: 0, warningCount: 1, lastUpdatedAt: Date.now(), notes: ['Market context refresh failed and no cache is available.'] },
+        { source: 'yahoo', status: 'failed', expectedCount: universe.length, successCount: 0, warningCount: 1, lastUpdatedAt: Date.now(), notes: ['Yahoo fallback was unavailable during market context refresh.'] },
         { source: 'fred', status: fredConfigured ? 'failed' : 'not_configured', expectedCount: fredConfigured ? 5 : 0, successCount: 0, warningCount: fredConfigured ? 1 : 0, lastUpdatedAt: Date.now() },
         { source: 'alpha_vantage', status: avConfigured ? 'failed' : 'not_configured', expectedCount: avConfigured ? 4 : 0, successCount: 0, warningCount: avConfigured ? 1 : 0, lastUpdatedAt: Date.now() }
       ],

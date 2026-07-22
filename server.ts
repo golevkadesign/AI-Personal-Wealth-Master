@@ -13,6 +13,9 @@ import { quantRouter } from "./server/routes/quant";
 import longbridgeRouter from "./server/routes/longbridge";
 import portfolioReviewRouter from "./server/routes/portfolio-review";
 import marketContextRouter from "./server/routes/market-context";
+import workbenchRouter from "./server/routes/workbench";
+import memoryRouter from "./server/routes/memory";
+import dashboardRouter from "./server/routes/dashboard";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -20,6 +23,7 @@ const __dirname = dirname(__filename);
 async function startServer() {
   const app = express();
   const PORT = Number(process.env.PORT) || 3000;
+  const HOST = process.env.HOST || "0.0.0.0";
 
   // Rate Limiting Utility (Simple In-Memory)
   const createRateLimitMiddleware = (limit: number, windowMs: number) => {
@@ -61,6 +65,8 @@ async function startServer() {
         if (
           !origin ||
           origin.includes('localhost') ||
+          origin.includes('127.0.0.1') ||
+          origin.includes('[::1]') ||
           origin.includes('.run.app') ||
           origin.includes('.web.app') ||
           origin.includes('.firebaseapp.com') ||
@@ -96,6 +102,9 @@ async function startServer() {
   app.use("/api/quant", quantRouter);
   app.use("/api/v1/wealth/longbridge", longbridgeRouter);
   app.use("/api/market-context", marketContextRateLimit, marketContextRouter);
+  app.use("/api/workbench", workbenchRouter);
+  app.use("/api/memory", memoryRouter);
+  app.use("/api/dashboard", dashboardRouter);
 
   // Health check
   app.get("/api/health", (req, res) => {
@@ -113,6 +122,14 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), "dist");
+    const assetsPath = path.join(distPath, "assets");
+    app.use("/assets", express.static(assetsPath, {
+      immutable: true,
+      maxAge: "1y",
+    }));
+    app.get("/assets/*", (req, res) => {
+      res.status(404).type("text/plain").send("Asset not found");
+    });
     app.use(express.static(distPath, {
       setHeaders: (res, path, stat) => {
         if (path.endsWith('index.html')) {
@@ -131,8 +148,8 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+  app.listen(PORT, HOST, () => {
+    console.log(`Server running on http://${HOST === "0.0.0.0" ? "localhost" : HOST}:${PORT}`);
   });
 }
 

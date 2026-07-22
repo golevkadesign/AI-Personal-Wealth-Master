@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { EMPTY_STATE, useWealthStore } from '../hooks/useWealthStore';
 import { MaterialIcon } from './ui/MaterialIcon';
 import { useTranslation } from '../hooks/useTranslation';
+import { isKnownI18nText } from '../i18n/translations';
 
 interface GoalTrackerProps {
   globalCurSymbol: string;
@@ -12,7 +13,7 @@ export function GoalTracker({ globalCurSymbol }: GoalTrackerProps) {
   const { t } = useTranslation();
   const goal = useWealthStore(state => state.data.goal);
 
-  if (!goal?.name || goal.name === EMPTY_STATE.goal.name) {
+  if (!goal?.name || goal.name === EMPTY_STATE.goal.name || isKnownI18nText(goal.name, 'dashboard.goalAwaitingName')) {
     return null;
   }
   const current = goal?.current || 0;

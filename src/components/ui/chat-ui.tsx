@@ -69,6 +69,11 @@ export const ChatList = React.memo(function ChatList({
   onApplySuggestedState,
   className,
   bottomPaddingClass = 'pb-[176px]',
+  emptyTitle,
+  emptyDescription,
+  emptyContextLabel,
+  emptyContextValue,
+  quickPrompts,
 }: { 
   messages: any[], 
   isTyping: boolean, 
@@ -77,6 +82,11 @@ export const ChatList = React.memo(function ChatList({
   onApplySuggestedState?: (patch: any, sourceChatIndex?: number) => void,
   className?: string,
   bottomPaddingClass?: string,
+  emptyTitle?: string,
+  emptyDescription?: string,
+  emptyContextLabel?: string,
+  emptyContextValue?: string,
+  quickPrompts?: string[],
 }) {
   const { t } = useTranslation();
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -120,13 +130,6 @@ export const ChatList = React.memo(function ChatList({
     }
   }, [messages, isTyping]);
 
-  const quickPrompts = [
-    t('prompts.cashflow'),
-    t('prompts.hedge'),
-    t('prompts.defensive'),
-    t('prompts.privateReview')
-  ];
-
   return (
     <div
       className={cn("flex-1 overflow-y-auto p-4 sm:p-5 space-y-5 custom-scroll", bottomPaddingClass, className)}
@@ -134,12 +137,35 @@ export const ChatList = React.memo(function ChatList({
       onScroll={handleScroll}
     >
       {messages.length === 0 ? (
-        <div className="h-full flex flex-col items-center justify-center text-center opacity-65 py-16 px-4">
+        <div className="aw-chat-empty-state h-full flex flex-col items-center justify-center text-center py-12 px-4">
           <MaterialIcon name="auto_awesome" size={32} className="mb-3 text-aw-accent-mist" />
-          <p className="aw-section-kicker mb-2">{t('chat.awaiting')}</p>
+          <p className="aw-section-kicker mb-2">{emptyTitle || t('chat.awaiting')}</p>
           <p className="aw-caption aw-text-tertiary max-w-sm tracking-tight leading-relaxed font-sans">
-            {t('chat.awaitingDesc')}
+            {emptyDescription || t('chat.awaitingDesc')}
           </p>
+          {emptyContextLabel && emptyContextValue && (
+            <div className="aw-panel-muted mt-4 flex max-w-md items-center gap-3 px-3 py-2 text-left">
+              <MaterialIcon name="hub" size={16} className="text-aw-success" />
+              <span className="aw-caption aw-text-tertiary font-mono uppercase">{emptyContextLabel}</span>
+              <strong className="aw-caption aw-text-primary truncate">{emptyContextValue}</strong>
+            </div>
+          )}
+          {quickPrompts && quickPrompts.length > 0 && onQuickPrompt && (
+            <div className="mt-4 grid w-full max-w-md gap-2">
+              {quickPrompts.map((prompt) => (
+                <button
+                  key={prompt}
+                  type="button"
+                  disabled={isTyping}
+                  onClick={() => onQuickPrompt(prompt)}
+                  className="aw-button aw-button-ghost !h-auto min-h-9 justify-start whitespace-normal px-3 py-2 text-left"
+                >
+                  <MaterialIcon name="north_east" size={16} className="text-aw-success" />
+                  <span>{prompt}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       ) : (
         messages.map((msg, i) => {
@@ -234,6 +260,7 @@ export const ChatList = React.memo(function ChatList({
                             timeTaken: msg.timeTaken,
                             hasMemoryUpdate: msg.hasMemoryUpdate,
                             liveSources: msg._liveSources,
+                            workbenchSession: msg.workbenchSession,
                           }}
                           isStreaming={isTyping && i === messages.length - 1}
                           isInteractionDisabled={isTyping}
@@ -521,6 +548,7 @@ export function ChatInput({ input, handleInputChange, handleSubmit, isLoading, o
               type="button"
               onClick={onStop}
               className="aw-icon-button w-10 h-10 sm:w-11 sm:h-11 text-aw-danger border border-aw-border-subtle"
+              aria-label={t('chat.stopGeneration')}
               title={t('chat.stopGeneration')}
             >
               <MaterialIcon name="stop_circle" size={24} />
@@ -534,6 +562,8 @@ export function ChatInput({ input, handleInputChange, handleSubmit, isLoading, o
               transition={{ type: "spring", stiffness: 400, damping: 25 }}
               type="submit"
               className="aw-button aw-button-primary w-10 h-10 sm:w-11 sm:h-11 !px-0 active:scale-95"
+              aria-label={t('chat.sendMessage')}
+              title={t('chat.sendMessage')}
             >
               <MaterialIcon name="send" size={24} />
             </motion.button>
@@ -545,7 +575,10 @@ export function ChatInput({ input, handleInputChange, handleSubmit, isLoading, o
               exit={{ scale: 0.8, opacity: 0 }}
               transition={{ type: "spring", stiffness: 400, damping: 25 }}
               type="button"
-              className="aw-icon-button w-10 h-10 sm:w-11 sm:h-11 active:scale-95"
+              disabled
+              aria-disabled="true"
+              aria-label={t('chat.voiceInputComingSoon')}
+              className="aw-icon-button w-10 h-10 sm:w-11 sm:h-11 cursor-not-allowed opacity-40"
               title={t('chat.voiceInputComingSoon')}
             >
               <MaterialIcon name="mic" size={24} />

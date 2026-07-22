@@ -7,6 +7,14 @@ const clients = new Set<any>();
 let lastTriggerTime = 0;
 const COOLDOWN_MS = 3600000; // 1小时冷却
 
+function hasSentinelModelCredential(settings: any = {}) {
+  const provider = settings.provider || 'gemini';
+  if (provider === 'openai') {
+    return Boolean(settings.openaiKey || process.env.OPENAI_API_KEY);
+  }
+  return Boolean(settings.geminiKey || process.env.GEMINI_API_KEY || process.env.API_KEY);
+}
+
 sentinelRouter.get('/stream', (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache');
@@ -44,6 +52,13 @@ sentinelRouter.post("/scan", async (req, res) => {
 
   try {
     const { terminalState, settings } = req.body;
+    if (!hasSentinelModelCredential(settings)) {
+      return res.json({
+        success: true,
+        triggered: false,
+        reason: "Sentinel scan skipped because no model credential is configured.",
+      });
+    }
     
     const historySnapshots = terminalState.historicalSnapshots || [];
     const temporalContext = historySnapshots.length > 0 

@@ -789,6 +789,28 @@ interface WorkbenchWidgetManifest {
 - widgets 必须可追溯 sourceRefs。
 - 同一风险不要重复生成多个 widget。
 
+### 10.5 回复态 Widget 编排规则
+
+Agent 回复态不是把旧版专家分析文本简单塞回 Markdown，也不是穷举全部 widgets。
+
+回复态必须遵守：
+
+- 旧版 `expertAnalysis` 分段仍是重要分析成果，必须保留并进入 Workbench 桥接层。
+- 桥接层负责把专家分段映射为入口专属 widgets，而不是由 UI 组件临时猜测。
+- 回复 widgets 的排序必须优先尊重入口 preset，不被通用 priority 或 memory candidate 打乱。
+- 聊天气泡内嵌 widgets 与右侧 widget rail 必须读取同一份 `WorkbenchSessionSpec`。
+- 当算法结构化数据可用时，widget 展示算法结果；当结构化数据暂缺但专家分段已返回时，widget 以 degraded section summary 呈现，不显示空白等待态。
+- 所有回复 widgets 必须携带 `sourceRefs` 和 `props.sections`，保证可追溯、可审计、可降级。
+
+入口映射基线：
+
+- `holding`：优先展示 `holding_strategy_deductions`、`holding_quant_indicators`、`holding_trend_chart`、`intent_fingerprint`、`suggested_tilt`。
+- `portfolio_review` / `portfolio_intelligence`：优先展示 `portfolio_map`、`intent_fingerprint`、`missing_pieces`、`suggested_tilt`、`projected_exposure`。
+- `life_strategy`：优先展示 `action_queue`，必要时带出 memory candidate。
+- `profile_memory`：优先展示 memory candidate，但只有真实候选记忆存在时才作为记忆写入入口。
+
+这条规则的目标是保留 1.0 中各类抽屉的初始化分析成果，同时把它们收敛到 2.0 的统一 Workbench 和 Widget Manifest 基建中。
+
 ## 11. 后端 API 设计
 
 ### 11.1 创建 Workbench Session
@@ -2071,18 +2093,30 @@ Golden Master 3：Portfolio Intelligence Map
 
 前端实现约束：
 
-- 真实数据图表必须最终使用 Canvas/WebGL/Three.js/React Three Fiber/ECharts GL 等确定性前端技术实现；不得用静态生图冒充真实数据。
-- 当前没有数据时，可先实现 deterministic empty visual，占位仍需符合 3D 数据舱气质。
+- 真实数据图表必须最终使用 ECharts / Canvas / SVG 等确定性前端技术实现；不得用静态生图冒充真实数据。
+- 当前没有数据时，可先实现 deterministic empty visual，占位必须符合初代 design system 的克制 2D 仪表气质。
 - 所有可见文字必须来自 i18n；Golden Master 中的文字只作为翻译 key 的语义来源。
 - 所有颜色、阴影、圆角、间距、边框、glow 必须通过 design token 与 CSS class 映射，不允许散落组件内。
 
+#### 23.4.2 2D Chart Display Contract 补充规范
+
+2026-06-11 线上 3D 图表试做暴露出明确问题：代码驱动的 Three.js 图表在当前开发效率和视觉稳定性上无法达到目标品质，且容易稀释 PRD2.0 的产品链路重点。后续图表展示层回归克制 2D：以 ECharts / Canvas / SVG 的确定性数据图表为主，不再以 3D 图表作为默认策略。
+
+新增硬性约束：
+
+- Strategic Brief、Portfolio Intelligence、公开市场持仓 mini chart、Workbench widget 均必须使用同一套 design token 驱动的 2D chart display contract。
+- 图表类型由模块语义决定：持仓分布使用 donut / list，资产暴露使用 radar / polar，趋势路径使用 line / timeline，排行与数量对比使用 bar。
+- 图表展示层可替换，但不得改变 PRD2.0 的 Agent Workbench、三路并行、profile/memory/dashboard 更新链路、数据入参、出参和内容层级。
+- 所有颜色、边框、tooltip、字体、空态图均必须映射到初代 design system token；禁止组件内散落新视觉常量。
+- 任何可见文字必须来自 i18n 或真实数据源；图表自身不得生成新的硬编码业务文案。
+
 关键视觉约束：
 
-- 页面气质从“企业深色面板”调整为“灰色舞台背景上的黑色悬浮 3D 数据卡片”。
+- 页面气质保持“quiet black instrument panel”：黑色纯色卡片、低饱和状态色、紧凑模块网格。
 - 卡片是独立悬浮物，必须有黑色实体底、强阴影、柔和高光和克制边框。
-- 图表是卡片主视觉，而不是小装饰：3D grid、发光散点、曲面/波形、雷达/几何图形应成为 Portfolio / CIO / Workbench 的核心视觉语言。
+- 图表是卡片主视觉，而不是小装饰：donut、radar、bar、line、timeline 应成为 Portfolio / CIO / Workbench 的核心视觉语言。
 - UI 信息密度必须保持参考图的紧凑节奏：标题、图表、核心指标、少量排行/状态行；避免长篇说明文字占据卡片。
-- 所有视觉效果必须能被代码确定性实现：ECharts custom series、SVG、Canvas、d3-hierarchy、Three.js 可用；不得依赖不可复现的纯生成图片表达真实数据。
+- 所有视觉效果必须能被代码确定性实现：ECharts、SVG、Canvas、d3-hierarchy 可用；不得依赖不可复现的纯生成图片表达真实数据。
 - 任何样式值不得散落在组件里，必须先进入统一 design token system，再由 CSS utility/component class 映射到具体 UI。
 - 任何可见 UI 文案不得硬编码，必须来自 i18n key；样例数据图表 label 也应进入 i18n 或由真实数据源提供。
 
@@ -2973,3 +3007,263 @@ Handoff explicitly states that redesign only changes presentation/UI composition
 - 第 25 节 UI 改造已完成一个可运行版本，但未达到 Golden Master 精度；
 - 第 26 节产品能力改造尚未完成；
 - 当前从 Phase 1 开始执行，要求每一轮完成后应用都可独立运行和 review。
+
+## 27. Workbench Rescue 修复基线：保留 1.0 专业抽屉能力并接入 2.0 统一基建
+
+本节是 2026-06-12 复盘后的强制修订。PRD2.0 的真实目标不是删除 1.0 的垂直专业抽屉，也不是把所有入口压平成一组泛化 widgets；目标是保留 1.0 各入口沉淀出的专业初始化信息、算法结果、Agent 上下文和回复格式化能力，并将其抽象为统一 Workbench 下可编排、可追溯、可复用的 widgets 与 tools。
+
+### 27.1 纠偏原则
+
+1. 统一的是 Workbench 壳、事实包、工具注册、widget manifest、对话流和记忆闭环，不统一掉入口专业能力。
+2. `PositionIntelligenceDrawer`、`PortfolioReviewDrawer` 等 1.0 专业抽屉里的有效信息结构必须迁移为 domain widgets，不允许被 `current_exposure / intent_fingerprint / confidence` 等泛化 widgets 直接替代。
+3. 个股持仓入口必须保留旧版即时分析价值：标的身份、价格/涨跌、总估值、组合占比、同步状态、趋势图、技术指标、风险/机会/建议动作。
+4. 旧版量化与 Agent 能力必须作为 Workbench tools 接回，不允许只保留 UI 外壳。
+5. 对话流是 Workbench 主体；入口初始化 widgets 是上下文资产，不应压缩对话窗口高度。
+6. Agent 回复过程允许动态调用 widgets，并在消息流内渲染结构化结果。
+7. 所有新增 UI 文案必须进入 i18n；所有展示样式必须走统一 design token。
+8. 不改变现有 API 的原始出入参语义，不改变用户资产数据、Agent 原始文本、持仓事实和 Profile 内容层级。
+
+### 27.2 1.0 个股持仓抽屉必须保留的能力
+
+旧版 `PositionIntelligenceDrawer` 是持仓分析入口，不是普通详情页。迁移后必须继续保留以下信息模块：
+
+1. `holding_quote_snapshot`
+   - symbol/name/type/domicile/currentPrice/changePercent/source/fallbackUsed。
+   - 缺少行情时显示 degraded state，不制造假价格。
+
+2. `holding_value_summary`
+   - marketValue、currency、portfolioAllocation、quantity、cost/current price 关联信息。
+   - 市值与占比必须标明来自 broker、manual state 或 fallback。
+
+3. `holding_sync_status`
+   - lastSyncTime、source、fallback、analysisStatus。
+   - 支持 no sync / loading / partial / ready / error。
+
+4. `holding_trend_chart`
+   - 1Y 或可用区间历史趋势。
+   - 优先使用 `/api/quant/analysis` 返回的 history；历史不足时显示 degraded chart。
+
+5. `holding_quant_indicators`
+   - BB Low、BB High、RSI、ADX、MA5、MA20、MACD histogram、signal。
+   - 不足样本显示 missingIndicators，不允许用空字符串掩盖。
+
+6. `holding_strategy_deductions`
+   - deterministicAdvice.risks。
+   - deterministicAdvice.opportunities。
+   - deterministicAdvice.suggestedActions。
+   - 必须保留“风险/机会/建议动作”的分组结构。
+
+7. `holding_analysis_snapshot_diff`
+   - 继续利用 `agentMemorySnapshots`，支持本次分析与上次分析差异。
+   - 无历史快照时明确显示 no previous snapshot。
+
+8. `holding_agent_context`
+   - 将 quantSignals、deterministicAdvice、historySummary、holdingSnapshot、sourceRefs 注入 Workbench facts。
+   - Agent 对话必须能读取这些事实，并在 thinking/evidence 中追溯。
+
+### 27.3 2.0 统一 Workbench 中的正确入口行为
+
+#### Holding Entry
+
+打开时：
+
+1. 创建 `WorkbenchSessionSpec(entryType: 'holding')`。
+2. 传入完整 `selectedHolding` 与 `terminalState`。
+3. 执行 `holdingQuantAnalysisTool`，调用现有 `/api/quant/analysis` 或同源服务函数。
+4. 将结果写入 `facts.selectedHoldingAnalysis` 或等价结构。
+5. 生成初始化 widgets：
+   - `holding_quote_snapshot`
+   - `holding_value_summary`
+   - `holding_trend_chart`
+   - `holding_quant_indicators`
+   - `holding_strategy_deductions`
+   - `confidence`
+6. 再运行三路 rails 与 CIO synthesis。
+7. 对话窗口保持主要高度，初始化 widgets 以 compact context dock 或 inline prelude 形式出现。
+
+用户继续对话时：
+
+1. `/api/chat` 继续负责真实 Agent 流、thinking 和原始回复。
+2. `/api/workbench/run` 负责把 chatResult、tool results、rail results 合并为 session projection。
+3. Agent 可在回复内容中要求渲染 widget manifest。
+4. `AssistantResponseRenderer` 与 `WorkbenchWidgetRenderer` 共享 widget registry，不再形成两套互不理解的展示系统。
+
+#### Portfolio Review Entry
+
+打开时：
+
+1. 继续使用统一 Workbench 壳。
+2. 保留 1.0 组合复盘中对账户、持仓、成本、市值、风险、建议的专业分析成果。
+3. 与 2.0 `PortfolioIntelligenceMap` 合并去重，形成 portfolio domain widgets。
+
+#### Manual Chat / Dashboard Brief / Profile Memory Entry
+
+1. 保持 2.0 的 shared facts、three rails、CIO synthesis、memory candidate、dashboard projection 逻辑。
+2. 不得被 holding 专业 widgets 污染。
+3. 仅在 Agent 明确需要持仓上下文时动态调用 holding/portfolio widgets。
+
+### 27.4 工程目标架构
+
+必须形成四层解耦：
+
+1. `WorkbenchEntryManifest`
+   - 定义 entryType、defaultWidgets、replyWidgets、toolChain、requiredFacts、layoutPolicy、quickPrompts。
+
+2. `WorkbenchToolRegistry`
+   - `holdingQuantAnalysisTool`
+   - `portfolioExposureTool`
+   - `marketContextTool`
+   - `memoryProfileTool`
+   - `railOrchestrationTool`
+
+3. `WorkbenchWidgetRegistry`
+   - 基础 widgets：source、evidence、confidence、memory_candidate、action_queue、cio_brief。
+   - 组合 widgets：portfolio_map、current_exposure、intent_fingerprint、missing_pieces、suggested_tilt、projected_exposure。
+   - 持仓 widgets：holding_quote_snapshot、holding_value_summary、holding_sync_status、holding_trend_chart、holding_quant_indicators、holding_strategy_deductions、holding_analysis_snapshot_diff。
+
+4. `AssistantMessageBlocks`
+   - markdown。
+   - thinking trace。
+   - structured judgment cards。
+   - widget manifest blocks。
+   - evidence/source/confidence blocks。
+   - memory/action blocks。
+
+### 27.5 修复迭代总步骤：7 步
+
+#### Step 1：契约与 PRD 基线
+
+输出：
+
+- 更新本节 PRD。
+- 扩展 Workbench 类型，加入持仓专业 widgets 与 analysis facts。
+- `createHoldingWorkbenchSession` 生成正确持仓 widget manifest。
+
+验收：
+
+- TypeScript 可通过或仅暴露与本步无关的既有错误。
+- 点击持仓打开 Workbench 时，session debug 能看到 `entryType=holding` 与持仓 widgets。
+- 不改变现有持仓数据来源、点击入口、对话发送 API。
+
+#### Step 2：接回持仓量化工具链
+
+输出：
+
+- 新增 `holdingQuantAnalysisTool`。
+- Workbench run 对 `entryType=holding` 执行量化分析。
+- 将 quantSignals、deterministicAdvice、historySummary、history、sourceRefs 写入 session facts。
+
+验收：
+
+- `/api/quant/analysis` 继续可用。
+- Workbench holding session 中出现 `selectedHoldingAnalysis`。
+- history 不进入大模型大 payload；Agent 只读脱水后的 summary 与 indicators。
+
+#### Step 3：实现持仓专业 widgets
+
+输出：
+
+- 渲染 quote/value/sync/trend/quant/deductions/snapshot widgets。
+- 使用现有 2D chart strategy，不引入 3D。
+- UI 使用统一 token 与 i18n。
+
+验收：
+
+- 旧截图中的主要信息模块在统一 Workbench 中恢复。
+- 缺失数据有 degraded state。
+- 卡片内部背景不使用渐变。
+
+#### Step 4：Workbench 布局纠偏
+
+输出：
+
+- 对话流恢复为主体。
+- 初始化 widgets 改为 compact context dock、可折叠上下文区或首条 prelude。
+- 不再用顶部大块 widgets 压缩对话窗口。
+
+验收：
+
+- 打开发起对话时，输入框、thinking、回复流可持续可见。
+- 关闭再打开时，thinking 中的会话不丢失。
+
+#### Step 5：回复内 widget blocks 合流
+
+输出：
+
+- `AssistantResponseRenderer` 支持 widget manifest block。
+- Agent 回复中的结构化结果可复用 WorkbenchWidgetRenderer。
+- 旧的格式化回复与新版 widgets 去重。
+
+验收：
+
+- Agent 回复可以在气泡内展示风险/机会/建议动作 widgets。
+- 原文查看与 Markdown fallback 保留。
+
+#### Step 6：Agent 与 evidence 桥接
+
+输出：
+
+- holding quant result 进入 equity rail evidence。
+- CIO synthesis 可引用个股量化信号。
+- memory candidate 不直接写入，必须进入确认流。
+
+验收：
+
+- thinking/evidence 中能看到 holding quant sourceRef。
+- Agent 不伪造缺失指标。
+
+#### Step 7：全链路回归与发布准备
+
+输出：
+
+- 跑 lint/build。
+- 跑持仓点击、Workbench 打开、对话发送、关闭重开、量化 API、i18n 的用例。
+- 生成修复报告。
+
+验收：
+
+- 本地可独立运行 review。
+- 线上发布前无阻断级错误。
+- 旧 1.0 专业能力已通过 widgets 形式进入 2.0 统一 Workbench。
+
+## 28. 2026-07-22 体验与质量治理完成定义
+
+本节是 PRD 2.0 后续迭代的强制回归基线。产品能力、真实数据合同和 Agent 出入参不因视觉治理而改变。
+
+### 28.1 数据真实性
+
+1. 未接入真实账户、估值、画像或市场上下文时，界面只显示“等待上下文 / 等待信号 / —”，不得把未知值显示为 0、0.0%、0 个账户或虚构日期。
+2. 长桥负成本持仓必须保留标的并使用实时/最近报价估算市值；负成本不得被判定为估值缺失。
+3. 市场上下文必须展示数据源、新鲜度与质量；Yahoo 只能作为 Stooq 不可用时的延迟/历史兜底，不得表达为交易执行报价。
+4. Agent 回复中的内部事实 ID 只保留在 trace/audit，不得以 `sovereign_profile`、`rail_outputs` 等协议名暴露给用户。
+
+### 28.2 Agent Workbench
+
+1. 所有入口继续使用同一 Workbench 壳与对话基础设施。
+2. manual chat、dashboard brief、holding、portfolio intelligence、life strategy 至少形成四套不同的入口初始化 widget 组合。
+3. 每轮编排必须同时运行 equity、allocation、life 三路 Rail，并由 CIO 统一裁决冲突。
+4. 回复态 widgets 必须跟随对应 assistant turn 持久化；关闭再打开不得丢失 thinking、回复或 widgets。
+5. 新会话必须显式触发，不得因关闭抽屉或切换二级界面隐式清空。
+
+### 28.3 记忆、档案与大盘
+
+1. Agent 画像结论默认只生成 memory candidate，不得直接写入主权档案。
+2. accept、merge、edit-and-accept、reject、temporary、revoke 均必须留下可审计决策记录。
+3. 接受或合并候选后，profile version 与 dashboard projection 必须在同一事务链路中更新。
+4. Memory Inbox 必须提前说明接受后影响的档案区块和大盘刷新结果。
+
+### 28.4 Design System 与响应式
+
+1. 字体、颜色、间距、圆角和状态色只允许由统一 `--aw-*` tokens 与 `design-tokens.ts` 映射。
+2. 设计师语义上的卡片及其嵌套卡片统一使用 `--aw-card-bg`，卡片背景禁止渐变。
+3. 卡片 header 底部禁止分割线；只有 header 覆盖滚动内容时才允许使用毛玻璃层级。
+4. 空图表使用紧凑语义高度，不继承有数据图表的 340px 以上展示高度。
+5. 390px 视口不得出现横向滚动；组合智能地图无数据态总高不得超过 480px。
+6. Settings、Developer View、Profile 与 Workbench 均为可关闭、可焦点循环、可恢复焦点的 modal/dialog。
+
+### 28.5 性能与发布门禁
+
+1. Settings、Developer View、Profile 与 Workbench 必须按需加载。
+2. ECharts 仅注册柱、折线、饼环、雷达及必要组件，并在图表挂载时加载。
+3. 每次发布至少通过：TypeScript、i18n hardcode、PRD2 quality、Agent result、widget selection、response widgets、chat session、events、memory lifecycle、profile center、write policy、audit、API contract、portfolio depth、LongBridge negative cost、browser E2E。
+4. 线上验收必须同时检查 `/api/health`、真实 Hosting 静态资源、Workbench 对话、关闭重开、移动端空态和运行时 i18n。

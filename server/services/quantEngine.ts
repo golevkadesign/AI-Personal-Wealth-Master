@@ -1,4 +1,8 @@
 import { format, subDays } from 'date-fns';
+import YahooFinance from 'yahoo-finance2';
+import { loadLongbridgeSdk } from './longbridgeNative';
+
+const yahooFinance = new YahooFinance({ suppressNotices: ['ripHistorical'] });
 
 // --- 纯数学指标计算函数 ---
 const calculateMA = (data: any[], period: number) => { if (data.length < period) return data.map(d => ({ ...d, [`MA${period}`]: null })); let result = []; for (let i = 0; i < data.length; i++) { if (i < period - 1) { result.push({ ...data[i], [`MA${period}`]: null }); continue; } let sum = 0; for (let j = 0; j < period; j++) { sum += data[i - j].close; } result.push({ ...data[i], [`MA${period}`]: sum / period }); } return result; };
@@ -26,6 +30,89 @@ const calculateSignals = (data: any[], config: any) => {
 
 // 核心抓取与清洗引擎
 const getYahooSymbol = (sym: string) => sym.trim().toUpperCase().replace(/\.US$/i, '');
+const getLongbridgeSymbol = (sym: string, lbConfig?: any) => {
+    const raw = String(sym || '').trim().toUpperCase();
+    if (!raw) return '';
+    if (raw.includes('.')) return raw;
+    const market = String(lbConfig?.market || lbConfig?.defaultMarket || 'US').trim().toUpperCase();
+    return market ? `${raw}.${market}` : raw;
+};
+
+const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> => {
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error(`${label} timeout after ${timeoutMs}ms`)), timeoutMs);
+    });
+    try {
+        return await Promise.race([promise, timeout]);
+    } finally {
+        if (timeoutId) clearTimeout(timeoutId);
+    }
+};
+
+const fetchWithTimeout = async (url: string, init: RequestInit, timeoutMs: number) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        return await fetch(url, { ...init, signal: controller.signal });
+    } finally {
+        clearTimeout(timeoutId);
+    }
+};
+
+const normalizeHistoryRows = (rows: any[]) => rows
+    .map((row) => {
+        const date = row.date instanceof Date
+            ? format(row.date, 'yyyy-MM-dd')
+            : String(row.date || '').slice(0, 10);
+        return [date, row.open, row.close, row.low, row.high];
+    })
+    .filter((item: any[]) => item[0] && item[1] != null && item[2] != null && item[3] != null && item[4] != null)
+    .slice(-150);
+
+const parseDecimalNumber = (value: unknown) => {
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (value && typeof (value as any).toString === 'function') {
+        const parsed = Number((value as any).toString());
+        if (Number.isFinite(parsed)) return parsed;
+    }
+    const parsed = Number(String(value ?? '').replace(/[$,%\s,]/g, ''));
+    return Number.isFinite(parsed) ? parsed : null;
+};
+
+const normalizeLongbridgeCandlesticks = (candles: any[]) => {
+    return candles
+        .map((candle) => {
+            const raw = typeof candle?.toJSON === 'function' ? candle.toJSON() : candle;
+            const timestamp = candle?.timestamp || raw?.timestamp || raw?.time || raw?.date;
+            const date = timestamp instanceof Date
+                ? format(timestamp, 'yyyy-MM-dd')
+                : String(timestamp || '').slice(0, 10);
+            return [
+                date,
+                parseDecimalNumber(candle?.open ?? raw?.open),
+                parseDecimalNumber(candle?.close ?? raw?.close),
+                parseDecimalNumber(candle?.low ?? raw?.low),
+                parseDecimalNumber(candle?.high ?? raw?.high),
+            ];
+        })
+        .filter((item: any[]) => item[0] && item[1] != null && item[2] != null && item[3] != null && item[4] != null)
+        .sort((a: any[], b: any[]) => String(a[0]).localeCompare(String(b[0])))
+        .slice(-150);
+};
+
+const parseMarketNumber = (value: unknown) => {
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    const parsed = Number(String(value ?? '').replace(/[$,%\s,]/g, ''));
+    return Number.isFinite(parsed) ? parsed : null;
+};
+
+const parseNasdaqDate = (value: unknown) => {
+    const raw = String(value ?? '').trim();
+    const match = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (!match) return '';
+    return `${match[3]}-${match[1].padStart(2, '0')}-${match[2].padStart(2, '0')}`;
+};
 
 export const analyzeHistory = (historyArr: any[], holdingSnapshot?: any) => {
     if (!historyArr || historyArr.length === 0) return null;
@@ -179,56 +266,154 @@ export const analyzeStock = async (rawSymbol: string) => {
     }
 };
 
-// 提取出的 Yahoo 兜底抓取函数 (增加了 User-Agent 伪装)
-const fetchFromYahooFallback = async (symbol: string) => {
-    console.log(`[QuantEngine] 降级使用 Yahoo 公共数据源获取 ${symbol} 历史数据...`);
-    const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=1y&interval=1d`, {
-        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' } // 💥 关键修复
-    });
-    if (!res.ok) return null;
-    const json = await res.json();
-    const result = json.chart?.result?.[0];
-    if (!result) return null;
-    
-    const quotes = result.indicators.quote[0];
-    return result.timestamp.map((ts: number, i: number) => {
-        const d = new Date(ts * 1000);
-        return [
-            `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
-            quotes.open[i], quotes.close[i], quotes.low[i], quotes.high[i]
-        ];
-    }).filter((item: any[]) => item[1] != null && item[2] != null && item[3] != null && item[4] != null).slice(-150);
+const fetchFromNasdaqFallback = async (symbol: string) => {
+    console.log(`[QuantEngine] 使用 Nasdaq 公共数据源获取 ${symbol} 历史数据...`);
+    const nasdaqSymbol = symbol.replace(/\.US$/i, '').replace(/[^A-Z0-9.-]/gi, '');
+    const period2 = new Date();
+    const period1 = subDays(period2, 370);
+    const assetClasses = ['stocks', 'etf'];
+    for (const assetClass of assetClasses) {
+        try {
+            const url = `https://api.nasdaq.com/api/quote/${encodeURIComponent(nasdaqSymbol)}/historical?assetclass=${assetClass}&fromdate=${format(period1, 'yyyy-MM-dd')}&todate=${format(period2, 'yyyy-MM-dd')}&limit=9999`;
+            const res = await fetchWithTimeout(url, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0',
+                    'Accept': 'application/json',
+                    'Origin': 'https://www.nasdaq.com',
+                    'Referer': 'https://www.nasdaq.com/',
+                },
+            }, 4500);
+            if (!res.ok) {
+                console.warn(`[QuantEngine] Nasdaq ${symbol}/${assetClass} 返回 ${res.status} ${res.statusText}。`);
+                continue;
+            }
+            const json = await res.json();
+            const rows = json?.data?.tradesTable?.rows || [];
+            const history = rows
+                .map((row: any) => [
+                    parseNasdaqDate(row.date),
+                    parseMarketNumber(row.open),
+                    parseMarketNumber(row.close),
+                    parseMarketNumber(row.low),
+                    parseMarketNumber(row.high),
+                ])
+                .filter((item: any[]) => item[0] && item[1] != null && item[2] != null && item[3] != null && item[4] != null)
+                .sort((a: any[], b: any[]) => String(a[0]).localeCompare(String(b[0])))
+                .slice(-150);
+            if (history.length > 0) return history;
+        } catch (e: any) {
+            console.warn(`[QuantEngine] Nasdaq ${symbol}/${assetClass} 拉取失败:`, e?.message || e);
+        }
+    }
+    return null;
 };
 
-// 预留的长桥抓取通道
+// 提取出的公共行情兜底抓取函数
+const fetchFromYahooFallback = async (symbol: string) => {
+    console.log(`[QuantEngine] 降级使用 Yahoo 公共数据源获取 ${symbol} 历史数据...`);
+    try {
+        const res = await fetchWithTimeout(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=1y&interval=1d`, {
+            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+        }, 4500);
+        if (res.ok) {
+            const json = await res.json();
+            const result = json.chart?.result?.[0];
+            const quotes = result?.indicators?.quote?.[0];
+            if (result?.timestamp?.length && quotes) {
+                const chartHistory = result.timestamp.map((ts: number, i: number) => {
+                    const d = new Date(ts * 1000);
+                    return [
+                        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
+                        quotes.open[i], quotes.close[i], quotes.low[i], quotes.high[i]
+                    ];
+                }).filter((item: any[]) => item[1] != null && item[2] != null && item[3] != null && item[4] != null).slice(-150);
+                if (chartHistory.length > 0) return { history: chartHistory, source: 'yahoo' };
+            }
+        } else {
+            console.warn(`[QuantEngine] Yahoo Chart ${symbol} 返回 ${res.status} ${res.statusText}，准备使用 SDK 备用源。`);
+        }
+    } catch (e: any) {
+        console.warn(`[QuantEngine] Yahoo Chart ${symbol} 拉取超时或失败，准备使用 SDK 备用源:`, e?.message || e);
+    }
+
+    try {
+        const period2 = new Date();
+        const period1 = subDays(period2, 365);
+        const rows = await withTimeout(
+            yahooFinance.historical(symbol, { period1, period2, interval: '1d' }) as Promise<any[]>,
+            4500,
+            `Yahoo SDK ${symbol}`,
+        );
+        const sdkHistory = normalizeHistoryRows(rows || []);
+        if (sdkHistory.length > 0) return { history: sdkHistory, source: 'yahoo' };
+        console.warn(`[QuantEngine] Yahoo SDK ${symbol} 未返回可用历史行情。`);
+    } catch (e: any) {
+        console.warn(`[QuantEngine] Yahoo SDK ${symbol} 拉取失败:`, e?.message || e);
+    }
+
+    const nasdaqHistory = await fetchFromNasdaqFallback(symbol);
+    return nasdaqHistory ? { history: nasdaqHistory, source: 'nasdaq' } : null;
+};
+
 const fetchFromLongbridge = async (symbol: string, lbConfig: any): Promise<any[]> => {
     console.log(`[QuantEngine] ⚡ 使用长桥(Longbridge)实盘专线获取 ${symbol} 历史数据...`);
-    // TODO: 结合你本地的 test-lb2.ts 或 Longbridge SDK，在这里发起真实的长桥 OpenAPI K 线请求
-    // 返回格式必须同样是: [ [日期字符串, open, close, low, high], ... ]
-    return []; 
+    const lb = await loadLongbridgeSdk();
+    const Config = lb.Config;
+    const QuoteContext = lb.QuoteContext;
+    if (!Config || !QuoteContext?.new) {
+        throw new Error('LongBridge QuoteContext is unavailable in the native SDK');
+    }
+
+    const appKey = String(lbConfig?.appKey || '').trim();
+    const appSecret = String(lbConfig?.appSecret || '').trim();
+    const accessToken = String(lbConfig?.accessToken || '').trim();
+    const config = appKey && appSecret && accessToken
+        ? Config.fromApikey(appKey, appSecret, accessToken)
+        : Config.fromApikeyEnv();
+    const quoteContext = QuoteContext.new(config);
+    const period = lb.Period?.Day ?? 14;
+    const adjustType = lb.AdjustType?.NoAdjust ?? 0;
+    const tradeSessions = lb.TradeSessions?.Intraday ?? 0;
+    const candles = await withTimeout<any[]>(
+        quoteContext.candlesticks(symbol, period, 150, adjustType, tradeSessions),
+        6500,
+        `LongBridge candlesticks ${symbol}`,
+    );
+    return normalizeLongbridgeCandlesticks(candles || []);
 };
 
 export const fetchStockHistory = async (rawSymbol: string, useLongbridge: boolean = false, lbConfig?: any) => {
-    const symbol = getYahooSymbol(rawSymbol);
+    const yahooSymbol = getYahooSymbol(rawSymbol);
+    const longbridgeSymbol = getLongbridgeSymbol(rawSymbol, lbConfig);
     try {
         if (useLongbridge) {
             try {
-                const lbHistory = await fetchFromLongbridge(symbol, lbConfig);
+                const lbHistory = await fetchFromLongbridge(longbridgeSymbol, lbConfig);
                 if (lbHistory && lbHistory.length > 0) {
                     return { history: lbHistory, source: 'longbridge', fallbackUsed: false };
                 }
             } catch (e) {
-                console.warn(`[QuantEngine] 长桥获取 ${symbol} 失败，准备降级兜底...`, e);
+                console.warn(`[QuantEngine] 长桥获取 ${longbridgeSymbol} 失败，准备降级兜底...`, e);
             }
         }
         // 如果未绑定长桥，或长桥拉取失败，安全降级到 Yahoo
-        const fallbackHistory = await fetchFromYahooFallback(symbol);
-        if (fallbackHistory && fallbackHistory.length > 0) {
-            return { history: fallbackHistory, source: 'yahoo', fallbackUsed: useLongbridge };
+        const fallbackResult = await fetchFromYahooFallback(yahooSymbol);
+        if (fallbackResult?.history && fallbackResult.history.length > 0) {
+            return {
+                history: fallbackResult.history,
+                source: fallbackResult.source,
+                fallbackUsed: useLongbridge || fallbackResult.source !== 'yahoo',
+            };
         }
         return null;
     } catch (e) {
-        console.error(`[QuantEngine] ${symbol} 所有历史数据源拉取均失败:`, e);
+        console.error(`[QuantEngine] ${rawSymbol} 所有历史数据源拉取均失败:`, e);
         return null;
     }
+};
+
+export const __quantEngineTestHooks = {
+    getYahooSymbol,
+    getLongbridgeSymbol,
+    normalizeLongbridgeCandlesticks,
 };

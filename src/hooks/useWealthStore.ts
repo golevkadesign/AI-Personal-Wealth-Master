@@ -12,10 +12,26 @@ import { normalizeDashboardSchema } from '../lib/dashboard-schema-migration';
 import { PortfolioReviewSession, PortfolioReviewMemory } from '../types/portfolio-review';
 import { createPortfolioReviewSnapshot } from '../lib/portfolio-review/snapshot';
 import { diffPortfolioSnapshots } from '../lib/portfolio-review/diff';
+import {
+  acceptPortfolioReviewMemoryCandidate,
+  createPortfolioReviewMemoryCandidate,
+  createPortfolioReviewMemoryFromSession,
+} from '../lib/portfolio-review-memory';
+import {
+  createDashboardProjectionRefreshPatch,
+  DashboardProjectionRefreshTrigger,
+} from '../lib/dashboard-projection-sync';
+import { translateI18n, type AppLanguage } from '../i18n/translations';
 
+export const EMPTY_STATE_TEXT = {
+  userPersonaDescription: '__empty_state.user_persona_description__',
+  goalName: '__empty_state.goal_name__',
+  globalInsight: '__empty_state.global_insight__',
+  privateInsight: '__empty_state.private_insight__',
+} as const;
 
 export const EMPTY_STATE: TerminalState = {
-  userPersona: { tags: [], description: "唤起总监生成您的个人资产画像模型" },
+  userPersona: { tags: [], description: '' },
   userProfile: {},
   metrics: { 
     netWorth: undefined, 
@@ -26,8 +42,8 @@ export const EMPTY_STATE: TerminalState = {
     fcfSummary: undefined
   },
   distributions: { liquidity: [], expenses: [], privateAssets: [], publicHoldings: [], fixedAssets: [], options: [] },
-  goal: { name: '等待设定目标', current: undefined, target: undefined, index: undefined },
-  insights: { global: "等待数据注入...", private: "暂无非公开资产数据" },
+  goal: { name: '', current: undefined, target: undefined, index: undefined },
+  insights: { global: '', private: '' },
   lifeStrategiesShort: [],
   lifeStrategiesLong: [],
   dynamicWidgets: [],
@@ -36,6 +52,23 @@ export const EMPTY_STATE: TerminalState = {
   historicalSnapshots: [],
   marketContext: undefined,
   marketContextLastFetchedAt: undefined,
+};
+
+const clearLegacyEmptyStateText = (data: TerminalState): TerminalState => {
+  const next = data;
+  if (next.userPersona?.description === EMPTY_STATE_TEXT.userPersonaDescription) {
+    next.userPersona.description = '';
+  }
+  if (next.goal?.name === EMPTY_STATE_TEXT.goalName) {
+    next.goal.name = '';
+  }
+  if (next.insights?.global === EMPTY_STATE_TEXT.globalInsight) {
+    next.insights.global = '';
+  }
+  if (next.insights?.private === EMPTY_STATE_TEXT.privateInsight) {
+    next.insights.private = '';
+  }
+  return next;
 };
 
 const getSafeMktVal = (p: any): number => {
@@ -87,7 +120,6 @@ const preserveLiveLongbridgeSlice = (prevData: TerminalState, incomingData: Term
 
 // We define persistence mode states
 export type PersistenceMode = 'disabled' | 'manual' | 'auto';
-type AppLanguage = 'zh-CN' | 'en-US';
 
 const LANGUAGE_STORAGE_KEY = 'ai_terminal_language';
 
@@ -100,6 +132,10 @@ const getInitialLanguage = (): AppLanguage => {
     return 'zh-CN';
   }
 };
+
+const formatStoreText = (language: AppLanguage | undefined, key: string, params?: Record<string, string | number>) => (
+  translateI18n(language || getInitialLanguage(), key, params)
+);
 
 interface WealthState {
   data: TerminalState;
@@ -130,6 +166,7 @@ interface WealthState {
   marketContextStatus: 'idle' | 'loading' | 'success' | 'error';
   marketContextError?: string;
   fetchMarketContext: (options?: { forceRefresh?: boolean }) => Promise<void>;
+  refreshDashboardProjection: (trigger?: DashboardProjectionRefreshTrigger) => Promise<void>;
   portfolioReviewSessions: PortfolioReviewSession[];
   activePortfolioReviewSessionId?: string;
   createPortfolioReviewSession: () => PortfolioReviewSession | null;
@@ -148,6 +185,19 @@ const syncToCloud = (uid: string, data: any) => {
           console.error("Failed to manually save cloud checkpoint:", e);
       });
 };
+
+const mergeProjectionPatch = (prevData: TerminalState, terminalPatch: any): TerminalState => ({
+  ...prevData,
+  ...terminalPatch,
+  insights: {
+    ...(prevData.insights || {}),
+    ...(terminalPatch.insights || {}),
+  },
+  sovereignProfileProjection: {
+    ...(prevData as any).sovereignProfileProjection,
+    ...(terminalPatch.sovereignProfileProjection || {}),
+  },
+});
 
 export const useWealthStore = create<WealthState>((set, get) => ({
   data: EMPTY_STATE,
@@ -223,7 +273,7 @@ export const useWealthStore = create<WealthState>((set, get) => ({
   },
   setLoadingAuth: (loadingAuth) => set({ loadingAuth }),
   setData: (newData, options) => set((state) => {
-    const normalizedData = normalizeDashboardSchema(newData);
+    const normalizedData = clearLegacyEmptyStateText(normalizeDashboardSchema(newData));
     const shouldPreserve = options?.preserveLiveData !== false;
     
     if (shouldPreserve) {
@@ -328,7 +378,7 @@ export const useWealthStore = create<WealthState>((set, get) => ({
         }
       }
 
-      const normalizedFullData = normalizeDashboardSchema(fullData);
+      const normalizedFullData = clearLegacyEmptyStateText(normalizeDashboardSchema(fullData));
 
       if (state.user?.uid) {
           localStorage.setItem(`ai_terminal_data_${state.user.uid}`, JSON.stringify(normalizedFullData));
@@ -343,11 +393,23 @@ export const useWealthStore = create<WealthState>((set, get) => ({
       return { data: normalizedFullData };
     });
   },
+  refreshDashboardProjection: async (trigger = 'manual') => {
+    const { data, commitData } = get();
+    const result = await createDashboardProjectionRefreshPatch({
+      terminalState: data,
+      trigger,
+    });
+    const terminalPatch = result.terminalPatch as any;
+    if (!terminalPatch.dashboardProjection && !terminalPatch.sovereignProfileProjection) return;
+
+    commitData((prevData: TerminalState) => mergeProjectionPatch(prevData, terminalPatch));
+  },
   fetchLongbridge: async () => {
     const settings = getSettings();
     if (!settings.longbridgeAccounts || settings.longbridgeAccounts.length === 0) return;
     const { user } = get();
     if (!user) return;
+    const language = get().language;
     
     set({ publicHoldingsSyncStatus: 'loading', publicHoldingsError: undefined });
 
@@ -369,7 +431,7 @@ export const useWealthStore = create<WealthState>((set, get) => ({
                  if (!isGenuinelyEmpty) {
                      return {
                          publicHoldingsSyncStatus: 'error',
-                         publicHoldingsError: 'API returned empty list without empty confirmation. Retaining old data.'
+                         publicHoldingsError: formatStoreText(language, 'store.errors.emptyPositionsAmbiguous')
                      };
                  }
               }
@@ -432,7 +494,9 @@ export const useWealthStore = create<WealthState>((set, get) => ({
               let syncError: string | undefined = undefined;
 
               if (meta.quoteCoverage !== undefined && meta.quoteCoverage < 1) {
-                  syncError = `部分持仓缺少实时价格：${(meta.missingQuoteSymbols || []).join(', ')}`;
+                  syncError = formatStoreText(language, 'store.errors.missingQuoteSymbols', {
+                    symbols: (meta.missingQuoteSymbols || []).join(', ')
+                  });
                   if (process.env.NODE_ENV !== 'production') console.log(`[useWealthStore] fetchLongbridge warning: ${syncError}`);
               }
 
@@ -444,10 +508,11 @@ export const useWealthStore = create<WealthState>((set, get) => ({
                   publicHoldingsError: syncError
               };
           });
+            void get().refreshDashboardProjection('live_holdings_sync');
       } else {
          set({
              publicHoldingsSyncStatus: 'error',
-             publicHoldingsError: response.data?.error || response.data?.message || "Unknown error fetching positions"
+             publicHoldingsError: response.data?.error || response.data?.message || formatStoreText(language, 'store.errors.unknownPositionsError')
          });
       }
     } catch (err: any) {
@@ -463,6 +528,7 @@ export const useWealthStore = create<WealthState>((set, get) => ({
     if (!settings.longbridgeAccounts || settings.longbridgeAccounts.length === 0) return;
     const { user } = get();
     if (!user) return;
+    const language = get().language;
     
     set({ publicHoldingAccountsSyncStatus: 'loading', publicHoldingAccountsError: undefined });
 
@@ -597,7 +663,9 @@ export const useWealthStore = create<WealthState>((set, get) => ({
               let syncError: string | undefined = undefined;
 
               if (meta.accountErrors && Object.keys(meta.accountErrors).length > 0) {
-                  syncError = `部分账户同步失败: ${Object.entries(meta.accountErrors).map(([acc, err]) => `${acc}: ${err}`).join(', ')}`;
+                  syncError = formatStoreText(language, 'store.errors.accountSyncFailed', {
+                    details: Object.entries(meta.accountErrors).map(([acc, err]) => `${acc}: ${err}`).join(', ')
+                  });
               }
 
               return {
@@ -610,10 +678,11 @@ export const useWealthStore = create<WealthState>((set, get) => ({
                   publicHoldingsError: syncError
               };
           });
+            void get().refreshDashboardProjection('account_holdings_sync');
       } else {
          set({
              publicHoldingAccountsSyncStatus: 'error',
-             publicHoldingAccountsError: response.data?.error || response.data?.message || "Unknown error fetching account portfolios"
+             publicHoldingAccountsError: response.data?.error || response.data?.message || formatStoreText(language, 'store.errors.unknownAccountPortfoliosError')
          });
       }
     } catch (err: any) {
@@ -625,6 +694,7 @@ export const useWealthStore = create<WealthState>((set, get) => ({
     }
   },
   fetchMarketContext: async (options) => {
+    const language = get().language;
     const { data: stateData } = get();
     const marketContext = stateData.marketContext;
     const lastFetchedAt = stateData.marketContextLastFetchedAt;
@@ -677,11 +747,12 @@ export const useWealthStore = create<WealthState>((set, get) => ({
           marketContextError: undefined
         };
       });
+        void get().refreshDashboardProjection('market_context_refresh');
     } catch (error: any) {
       console.error('[fetchMarketContext] Failed:', error);
       set({
         marketContextStatus: 'error',
-        marketContextError: error.message || 'Failed to fetch market context'
+        marketContextError: error.message || formatStoreText(language, 'store.errors.marketContextFetchFailed')
       });
     }
   },
@@ -730,7 +801,8 @@ export const useWealthStore = create<WealthState>((set, get) => ({
     // 4. 使用 createPortfolioReviewSnapshot 生成 currentSnapshot。
     const currentSnapshot = createPortfolioReviewSnapshot({
       accountPortfolios,
-      source
+      source,
+      language: get().language
     });
 
     // 5. 使用 diffPortfolioSnapshots(previousSnapshot, currentSnapshot) 生成 deltas。
@@ -795,6 +867,7 @@ export const useWealthStore = create<WealthState>((set, get) => ({
   },
   analyzePortfolioReviewSession: async (id, userRiskPolicy?: any) => {
     const { portfolioReviewSessions, user, updatePortfolioReviewSession, portfolioReviewMemory } = get();
+    const language = get().language;
     if (!user) return;
     
     const session = portfolioReviewSessions.find(s => s.id === id);
@@ -840,7 +913,7 @@ export const useWealthStore = create<WealthState>((set, get) => ({
       } else {
         updatePortfolioReviewSession(id, {
           status: 'error',
-          error: response.data?.error || '分析失败：服务器返回了无效数据。'
+          error: response.data?.error || formatStoreText(language, 'store.errors.portfolioReviewInvalidData')
         });
       }
     } catch (err: any) {
@@ -852,48 +925,14 @@ export const useWealthStore = create<WealthState>((set, get) => ({
     }
   },
   savePortfolioReviewMemoryFromSession: (sessionId: string, riskPreferenceObserved?: string) => {
-    const { portfolioReviewSessions, user } = get();
+    const { portfolioReviewSessions, user, data } = get();
     if (!user) return;
     
     const session = portfolioReviewSessions.find(s => s.id === sessionId);
     if (!session || !session.report) return;
 
-    const report = session.report;
-
-    // 1. recurringMistakes from avoidActions
-    const recurringMistakes = [...(report.portfolioDiagnosis?.avoidActions || [])];
-
-    // 2. lastActionItems: shortTerm and midTerm priority high/medium
-    const allShort = report.actionPlan?.shortTerm || [];
-    const allMid = report.actionPlan?.midTerm || [];
-    const lastActionItems = [...allShort, ...allMid].filter(
-      item => item.priority === 'high' || item.priority === 'medium'
-    );
-
-    // 3. nextReviewFocus from nextReviewNeeds
-    const nextReviewFocus = [...(report.nextReviewNeeds || [])];
-
-    // 4. behavioralPatterns extracted from summary and avoidActions without nested AI calls
-    const summarySentences = (report.summary || '')
-      .split(/[。！？\.]/)
-      .map(s => s.trim())
-      .filter(s => s.length > 5)
-      .slice(0, 2);
-    
-    const behavioralPatterns = [
-      ...summarySentences,
-      ...(report.portfolioDiagnosis?.avoidActions || []).map(act => `规避动作：${act}`)
-    ];
-
-    const memory: PortfolioReviewMemory = {
-      lastReviewId: session.id,
-      updatedAt: Date.now(),
-      behavioralPatterns,
-      recurringMistakes,
-      lastActionItems,
-      nextReviewFocus,
-      riskPreferenceObserved
-    };
+    const memory = createPortfolioReviewMemoryFromSession(session, riskPreferenceObserved);
+    if (!memory) return;
 
     set({ portfolioReviewMemory: memory });
 
@@ -901,5 +940,49 @@ export const useWealthStore = create<WealthState>((set, get) => ({
       `ai_terminal_portfolio_review_memory_${user.uid}`,
       JSON.stringify(memory)
     );
+
+    const existingSovereignProfile = data.userProfile?.sovereignProfile;
+    const baseProfile = existingSovereignProfile && typeof existingSovereignProfile === 'object'
+      ? existingSovereignProfile
+      : {
+        version: 1,
+        identity: data.userProfile || {},
+        behavioralPatterns: {
+          tags: data.userPersona?.tags || [],
+          description: data.userPersona?.description,
+        },
+        sourceRefs: ['terminal.userProfile', 'terminal.userPersona'],
+      };
+    const candidate = createPortfolioReviewMemoryCandidate({
+      session,
+      memory,
+      profileVersion: baseProfile.version || 1,
+    });
+    const accepted = acceptPortfolioReviewMemoryCandidate({
+      reviewSession: session,
+      terminalState: data,
+      candidate,
+      baseProfile,
+    });
+
+    if (accepted?.terminalPatch) {
+      get().commitData((prevData: any) => ({
+        ...prevData,
+        ...accepted.terminalPatch,
+        userProfile: {
+          ...(prevData.userProfile || {}),
+          ...(accepted.terminalPatch.userProfile || {}),
+        },
+        userPersona: {
+          ...(prevData.userPersona || {}),
+          ...(accepted.terminalPatch.userPersona || {}),
+        },
+        insights: {
+          ...(prevData.insights || {}),
+          ...(accepted.terminalPatch.insights || {}),
+        },
+      }));
+      void get().refreshDashboardProjection('portfolio_review_memory');
+    }
   }
 }));

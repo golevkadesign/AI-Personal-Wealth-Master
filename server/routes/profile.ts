@@ -1,8 +1,153 @@
 import { Router } from "express";
 import { getUniversalAiClient } from "../utils/ai-universal";
 import { analyzeIntentWithFlash } from '../services/orchestrator';
+import { createDashboardProjection } from "../../src/lib/workbench-memory";
+import { deriveTerminalPatchFromSovereignProfile } from "../../src/lib/sovereign-profile-projection";
+import type { SovereignProfile, WorkbenchSessionSpec } from "../../src/types/workbench";
 
 export const profileRouter = Router();
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+
+const unique = (items: Array<string | undefined | null>) =>
+  Array.from(new Set(items.filter((item): item is string => Boolean(item))));
+
+function parseJsonHeader<T>(value: unknown): T | undefined {
+  if (typeof value !== 'string' || !value.trim()) return undefined;
+  try {
+    const decoded = Buffer.from(value, 'base64').toString('utf-8');
+    return JSON.parse(decoded) as T;
+  } catch {
+    try {
+      return JSON.parse(value) as T;
+    } catch {
+      return undefined;
+    }
+  }
+}
+
+function mergeRecords(
+  base: Record<string, unknown> | undefined,
+  patch: Record<string, unknown> | undefined,
+): Record<string, unknown> {
+  if (!patch) return { ...(base || {}) };
+  return Object.entries(patch).reduce<Record<string, unknown>>((next, [key, value]) => {
+    const current = next[key];
+    if (Array.isArray(value)) {
+      next[key] = Array.isArray(current) ? [...current, ...value] : [...value];
+      return next;
+    }
+    if (isRecord(value)) {
+      next[key] = mergeRecords(isRecord(current) ? current : undefined, value);
+      return next;
+    }
+    next[key] = value;
+    return next;
+  }, { ...(base || {}) });
+}
+
+function mergeProfile(profile: SovereignProfile, patch?: Partial<SovereignProfile>): SovereignProfile {
+  const now = Date.now();
+  if (!patch) return { ...profile };
+  return {
+    ...profile,
+    ...patch,
+    version: Math.max(Number(profile.version || 1), Number(patch.version || profile.version || 1)) + 1,
+    updatedAt: now,
+    identity: mergeRecords(profile.identity, patch.identity),
+    lifeConstraints: mergeRecords(profile.lifeConstraints, patch.lifeConstraints),
+    riskPreferences: mergeRecords(profile.riskPreferences, patch.riskPreferences),
+    allocationPolicy: mergeRecords(profile.allocationPolicy, patch.allocationPolicy),
+    behavioralPatterns: mergeRecords(profile.behavioralPatterns, patch.behavioralPatterns),
+    decisionLedger: [
+      ...(profile.decisionLedger || []),
+      ...(patch.decisionLedger || []),
+    ],
+    sourceRefs: unique([...(profile.sourceRefs || []), ...(patch.sourceRefs || []), 'profile.patch']),
+  };
+}
+
+profileRouter.get("/", (req, res) => {
+  const profile = parseJsonHeader<SovereignProfile>(req.headers['x-sovereign-profile']);
+  res.json({
+    success: true,
+    mode: 'stateless',
+    profile: profile || null,
+    note: profile ? undefined : 'Pass x-sovereign-profile or use PATCH /api/profile with a profile payload.',
+  });
+});
+
+profileRouter.patch("/", (req, res) => {
+  const profile = (req.body?.profile || req.body?.currentProfile || { version: 1 }) as SovereignProfile;
+  const patch = (req.body?.patch || req.body?.profilePatch || {}) as Partial<SovereignProfile>;
+  const nextProfile = mergeProfile(profile, patch);
+  res.json({
+    success: true,
+    mode: 'stateless',
+    profile: nextProfile,
+  });
+});
+
+profileRouter.get("/source-index", (req, res) => {
+  const profile = parseJsonHeader<SovereignProfile>(req.headers['x-sovereign-profile']);
+  res.json({
+    success: true,
+    mode: 'stateless',
+    sourceIndex: (profile as any)?.sourceIndex || profile?.sourceRefs || [],
+  });
+});
+
+profileRouter.post("/source-index", (req, res) => {
+  const profile = (req.body?.profile || {}) as SovereignProfile;
+  res.json({
+    success: true,
+    mode: 'stateless',
+    sourceIndex: (profile as any)?.sourceIndex || profile.sourceRefs || [],
+  });
+});
+
+profileRouter.get("/decision-ledger", (req, res) => {
+  const profile = parseJsonHeader<SovereignProfile>(req.headers['x-sovereign-profile']);
+  res.json({
+    success: true,
+    mode: 'stateless',
+    decisionLedger: profile?.decisionLedger || [],
+  });
+});
+
+profileRouter.post("/decision-ledger", (req, res) => {
+  const profile = (req.body?.profile || {}) as SovereignProfile;
+  res.json({
+    success: true,
+    mode: 'stateless',
+    decisionLedger: profile.decisionLedger || [],
+  });
+});
+
+profileRouter.post("/recompute-projection", (req, res) => {
+  const sessionSpec = (req.body?.sessionSpec || req.body?.session) as WorkbenchSessionSpec | undefined;
+  const profile = (req.body?.profile || sessionSpec?.facts?.sovereignProfile) as SovereignProfile | undefined;
+
+  if (!sessionSpec || !profile) {
+    res.status(400).json({ success: false, error: 'Missing sessionSpec or profile' });
+    return;
+  }
+
+  const dashboardProjection = createDashboardProjection(sessionSpec, profile, sessionSpec.memoryInbox);
+  const terminalPatch = deriveTerminalPatchFromSovereignProfile({
+    profile,
+    dashboardProjection,
+  });
+
+  res.json({
+    success: true,
+    mode: 'stateless',
+    profile,
+    dashboardProjection,
+    terminalPatch,
+  });
+});
 
 profileRouter.post("/generate", async (req, res) => {
   try {

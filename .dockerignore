@@ -1,10 +1,15 @@
-node_modules
-dist
 .git
+.gitignore
+.DS_Store
 .firebase
 .firebaserc
 .env
 .env.*
+node_modules
+dist
+coverage
 npm-debug.log*
 firebase-debug.log*
 firestore-debug.log*
+Wealth Mater V2/
+AI-Personal-Wealth-Master-pre-PRD2-backup-*/

@@ -14,32 +14,33 @@ interface CardProps {
   delay?: number;
   className?: string;
   badge?: React.ReactNode;
+  metricKey?: string;
 }
 
-const getCardIcon = (title: string) => {
+const inferMetricSeed = (title: string, metricKey?: string) => {
+  if (metricKey) return metricKey;
   const t = title.toLowerCase();
-  if (t.includes('net worth') || t.includes('净资产')) {
+  if (t.includes('net worth')) return 'netWorth';
+  if (t.includes('liquidity')) return 'liquidity';
+  if (t.includes('safety')) return 'safetyRatio';
+  if (t.includes('fcf') || t.includes('free cash flow')) return 'fcf';
+  return '';
+};
+
+const getCardIcon = (seed: string) => {
+  if (seed === 'netWorth') {
     return <MaterialIcon name="work" size={20} className="text-aw-accent-mist" />;
   }
-  if (t.includes('liquidity') || t.includes('可用现金') || t.includes('现金池')) {
+  if (seed === 'liquidity') {
     return <MaterialIcon name="water_drop" size={20} className="text-aw-accent-mist" />;
   }
-  if (t.includes('safety') || t.includes('抗风险') || t.includes('系数')) {
+  if (seed === 'safetyRatio') {
     return <MaterialIcon name="shield" size={20} className="text-aw-accent-mist" />;
   }
-  if (t.includes('fcf') || t.includes('自由现金流') || t.includes('月自由')) {
+  if (seed === 'fcf') {
     return <MaterialIcon name="trending_up" size={20} className="text-aw-accent-mist" />;
   }
   return null;
-};
-
-const getTrendSeed = (title: string) => {
-  const t = title.toLowerCase();
-  if (t.includes('net worth') || t.includes('净资产')) return 'netWorth';
-  if (t.includes('liquidity') || t.includes('可用现金') || t.includes('现金池')) return 'liquidity';
-  if (t.includes('safety') || t.includes('抗风险') || t.includes('系数')) return 'safetyRatio';
-  if (t.includes('fcf') || t.includes('自由现金流') || t.includes('月自由')) return 'fcf';
-  return '';
 };
 
 const MiniTrendLine: React.FC<{ seed: string }> = ({ seed }) => {
@@ -63,13 +64,13 @@ const MiniTrendLine: React.FC<{ seed: string }> = ({ seed }) => {
   );
 };
 
-export const Card: React.FC<CardProps> = ({ title, value, subValue, trendGood = true, isLongSubText = false, children, delay, className = "", badge }) => {
+export const Card: React.FC<CardProps> = ({ title, value, subValue, trendGood = true, isLongSubText = false, children, delay, className = "", badge, metricKey }) => {
   const { t } = useTranslation();
-  const isPositive = subValue ? (subValue.includes('+') || subValue.includes('▲') || subValue.includes('升')) : false;
-  const isNegative = subValue ? (subValue.includes('-') || subValue.includes('▼') || subValue.includes('降')) : false;
+  const isPositive = subValue ? (subValue.includes('+') || subValue.includes('▲')) : false;
+  const isNegative = subValue ? (subValue.includes('-') || subValue.includes('▼')) : false;
   const statusColor = isPositive ? 'text-aw-success' : (isNegative ? 'text-aw-danger' : 'aw-text-tertiary');
-  const cardIcon = getCardIcon(title);
-  const trendSeed = getTrendSeed(title);
+  const trendSeed = inferMetricSeed(title, metricKey);
+  const cardIcon = getCardIcon(trendSeed);
 
   return (
     <motion.div 

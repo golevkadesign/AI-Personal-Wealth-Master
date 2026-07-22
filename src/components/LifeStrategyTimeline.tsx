@@ -63,7 +63,7 @@ export function LifeStrategyTimeline({
                   </div>
                   
                   <button 
-                    onClick={() => plan?.status === 'thinking' ? null : handleInlineNodePlan(isLong ? '长线策略' : '短线策略', item, isLong, idx)}
+                    onClick={() => plan?.status === 'thinking' ? null : handleInlineNodePlan(isLong ? t('dashboard.longStrategy') : t('dashboard.shortStrategy'), item, isLong, idx)}
                     disabled={plan?.status === 'thinking'}
                     className="aw-button aw-button-ghost aw-timeline-action cursor-pointer disabled:cursor-wait disabled:opacity-70"
                   >

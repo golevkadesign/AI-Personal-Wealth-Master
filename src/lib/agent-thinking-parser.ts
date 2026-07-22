@@ -26,8 +26,10 @@ export function buildAgentThinkingTrace(rawThinking: string, options?: {
     const isStreaming = Boolean(options?.isStreaming);
     return {
       rawText: '',
-      headline: '等待推演信号',
-      currentLabel: '等待 Agent 进度',
+      headline: 'Awaiting reasoning signal',
+      headlineKey: 'chat.thinkingAwaitingSignal',
+      currentLabel: 'Awaiting Agent progress',
+      currentLabelKey: 'chat.thinkingAwaitingAgentProgress',
       status: isStreaming ? 'running' : 'pending',
       steps: [],
       meta: {
@@ -58,8 +60,8 @@ export function buildAgentThinkingTrace(rawThinking: string, options?: {
       step = {
         id: kind,
         kind,
-        label: def.label || (kind === 'unknown' ? '其他推演过程' : kind),
-        role: def.role || (kind === 'unknown' ? '系统日志' : 'Internal Node'),
+        label: def.label || (kind === 'unknown' ? 'Other reasoning process' : kind),
+        role: def.role || (kind === 'unknown' ? 'System Log' : 'Internal Node'),
         status: 'pending',
         messages: []
       };
@@ -112,11 +114,14 @@ export function buildAgentThinkingTrace(rawThinking: string, options?: {
   }
 
   // headline / currentLabel 的规则设计
-  let headline = '推演完成';
-  let currentLabel = `${completedCount} 个节点已完成`;
+  let headline = 'Thinking complete';
+  let headlineKey = 'chat.thinkingComplete';
+  let currentLabel = `${completedCount} nodes complete`;
+  let currentLabelKey: string | undefined = 'chat.thinkingNodesCompleted';
 
   if (globalStatus === 'error') {
-    headline = '推演异常';
+    headline = 'Thinking error';
+    headlineKey = 'chat.thinkingError';
     // 找出第一条包含错误的 message
     let firstErrorMsg = '';
     for (const s of steps) {
@@ -131,18 +136,23 @@ export function buildAgentThinkingTrace(rawThinking: string, options?: {
         }
       }
     }
-    currentLabel = firstErrorMsg || 'Agent 流程出现异常';
+    currentLabel = firstErrorMsg || 'Agent flow failed';
+    currentLabelKey = firstErrorMsg ? undefined : 'chat.thinkingAgentFlowFailed';
   } else if (isStreaming) {
-    headline = '正在推演';
+    headline = 'Thinking';
+    headlineKey = 'chat.thinkingRunning';
     const runningStep = steps[steps.length - 1];
     const lastMsg = runningStep?.messages[runningStep.messages.length - 1] || runningStep?.label || '';
     currentLabel = lastMsg.length > 42 ? lastMsg.slice(0, 42) + '…' : lastMsg;
+    currentLabelKey = undefined;
   }
 
   return {
     rawText: safeRawText,
     headline,
+    headlineKey,
     currentLabel,
+    currentLabelKey,
     status: globalStatus,
     steps,
     meta: {

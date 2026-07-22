@@ -117,7 +117,7 @@ export interface MarketMacroEnhancement {
 }
 
 export interface MarketContextSourceHealth {
-  source: 'stooq' | 'fred' | 'alpha_vantage';
+  source: 'stooq' | 'yahoo' | 'fred' | 'alpha_vantage';
   status: 'ok' | 'partial' | 'failed' | 'not_configured';
   expectedCount?: number;
   successCount?: number;

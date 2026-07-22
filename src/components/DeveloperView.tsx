@@ -8,6 +8,7 @@ import { getLastSDUIIntakeDiagnostics } from '../lib/sdui-intake-policy';
 import { DEVELOPER_PIPELINE_AGENT_IDS, getSharedAgentDefinition } from '../lib/agent-definitions';
 import { useTranslation } from '../hooks/useTranslation';
 import { MaterialIcon } from './ui/MaterialIcon';
+import { useModalFocusTrap } from '../hooks/useModalFocusTrap';
 
 const AGENTS = DEVELOPER_PIPELINE_AGENT_IDS.map(id => getSharedAgentDefinition(id));
 
@@ -25,9 +26,11 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({
   onClearData
 }) => {
   const { t } = useTranslation();
+  const dialogRef = useModalFocusTrap<HTMLDivElement>({ active: isOpen, onEscape: onClose });
   const user = useWealthStore(s => s.user);
   const state = useWealthStore(s => s.data);
   const commitData = useWealthStore(s => s.commitData);
+  const refreshDashboardProjection = useWealthStore(s => s.refreshDashboardProjection);
   const fetchMarketContext = useWealthStore(s => s.fetchMarketContext);
   const marketContextStatus = useWealthStore(s => s.marketContextStatus);
   const marketContextError = useWealthStore(s => s.marketContextError);
@@ -49,12 +52,12 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({
       setEditProfileData({
         name: user?.name || user?.displayName || auth.currentUser?.displayName || t('developerView.defaultName'),
         email: user?.email || auth.currentUser?.email || t('developerView.defaultEmail'),
-        currency: user?.currency || 'USD',
-        riskProfile: user?.riskProfile || 'Moderate',
-        investmentHorizon: user?.investmentHorizon || 'Long Term',
-        dataSource: user?.dataSource || 'auto-detected',
-        createdAt: user?.createdAt || '2024-01-15T08:22:10Z',
-        updatedAt: user?.updatedAt || '2025-05-27T14:33:45Z',
+        currency: user?.currency || '',
+        riskProfile: user?.riskProfile || '',
+        investmentHorizon: user?.investmentHorizon || '',
+        dataSource: user?.dataSource || '',
+        createdAt: user?.createdAt || '',
+        updatedAt: user?.updatedAt || '',
         ...user
       });
       setIsEditingProfile(false);
@@ -84,15 +87,17 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({
         : [];
 
     return {
-      userProfile: `${userCount} fields`,
-      metrics: `${metricCount} metrics`,
-      distributions: `${distributionCount} items`,
-      insights: `${insightCount} items`,
-      goal: goalActive ? '1 active' : '0 active',
-      dynamicWidgets: `${widgetCount} widgets`,
-      marketContext: state?.marketContext ? `${marketContextInstruments.length} instruments` : 'not loaded'
+      userProfile: `${userCount} ${t('developerView.fields')}`,
+      metrics: `${metricCount} ${t('developerView.metrics')}`,
+      distributions: `${distributionCount} ${t('developerView.items')}`,
+      insights: `${insightCount} ${t('developerView.items')}`,
+      goal: `${goalActive} ${t('developerView.active')}`,
+      dynamicWidgets: `${widgetCount} ${t('developerView.widgets')}`,
+      marketContext: state?.marketContext
+        ? `${marketContextInstruments.length} ${t('developerView.instruments')}`
+        : t('developerView.notLoaded')
     };
-  }, [user, state]);
+  }, [state, t, user]);
 
   const sduiDiagnostics = useMemo(() => {
     if (!isOpen) return null;
@@ -145,14 +150,14 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({
   }, [selectedSection, user, state, counts, marketContextStatus, marketContextError]);
 
   const profileFields = [
-    { key: 'name', label: 'Name', type: 'text' },
-    { key: 'email', label: 'Email', type: 'email' },
-    { key: 'currency', label: 'Currency', type: 'text' },
-    { key: 'riskProfile', label: 'Risk Profile', type: 'text' },
-    { key: 'investmentHorizon', label: 'Investment Horizon', type: 'text' },
-    { key: 'dataSource', label: 'Data Source', type: 'text' },
-    { key: 'createdAt', label: 'Created At', type: 'text' },
-    { key: 'updatedAt', label: 'Updated At', type: 'text' },
+    { key: 'name', label: t('developerView.name'), type: 'text' },
+    { key: 'email', label: t('developerView.email'), type: 'email' },
+    { key: 'currency', label: t('developerView.currency'), type: 'text' },
+    { key: 'riskProfile', label: t('developerView.riskProfile'), type: 'text' },
+    { key: 'investmentHorizon', label: t('developerView.investmentHorizon'), type: 'text' },
+    { key: 'dataSource', label: t('developerView.dataSource'), type: 'text' },
+    { key: 'createdAt', label: t('developerView.createdAt'), type: 'text' },
+    { key: 'updatedAt', label: t('developerView.updatedAt'), type: 'text' },
   ];
 
   const stateRows = [
@@ -184,7 +189,8 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({
   };
 
   const handleCopyUid = () => {
-    const uid = auth.currentUser?.uid || 'user_9f3b7a2c';
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
     navigator.clipboard.writeText(uid);
     setCopiedUid(true);
     setTimeout(() => setCopiedUid(false), 2000);
@@ -195,6 +201,7 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({
       ...prev,
       userProfile: editProfileData
     }));
+    void refreshDashboardProjection('profile_update');
     setIsEditingProfile(false);
     flashSaved();
   };
@@ -241,11 +248,11 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({
   };
 
   const formatTime = (ts?: number) => {
-    if (!ts) return 'Never';
+    if (!ts) return t('developerView.never');
     try {
       return new Date(ts).toLocaleString();
     } catch {
-      return 'Invalid time';
+      return t('developerView.invalidTime');
     }
   };
 
@@ -259,12 +266,12 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({
 
         <div className="space-y-4 flex-1 pb-6">
           <div>
-            <label className="aw-form-label block mb-2">User ID</label>
+            <label className="aw-form-label block mb-2">{t('developerView.userId')}</label>
             <div className="aw-panel-muted flex items-center justify-between px-3 py-2">
               <span className="aw-caption aw-text-tertiary font-mono truncate">
-                {auth.currentUser?.uid ? `${auth.currentUser.uid.slice(0, 14)}...` : 'user_9f3b7a2c'}
+                {auth.currentUser?.uid ? `${auth.currentUser.uid.slice(0, 14)}...` : t('developerView.unavailable')}
               </span>
-              <button type="button" onClick={handleCopyUid} className="aw-icon-button" title="Copy User ID">
+              <button type="button" onClick={handleCopyUid} disabled={!auth.currentUser?.uid} className="aw-icon-button disabled:opacity-40" title={t('developerView.copyUserId')} aria-label={t('developerView.copyUserId')}>
                 <MaterialIcon name={copiedUid ? 'check' : 'content_copy'} size={20} className={copiedUid ? 'text-aw-success' : ''} />
               </button>
             </div>
@@ -375,15 +382,15 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({
 
           <div className="aw-panel-muted mb-4 grid grid-cols-2 gap-3 p-3 font-mono sm:grid-cols-3">
             {[
-              ['Status', marketContextStatus || 'idle'],
-              ['Freshness', marketContext?.freshness || 'N/A'],
-              ['Data Quality', marketContext?.dataQuality || 'N/A'],
-              ['Risk Mode', marketContext?.regime?.riskMode || 'unknown'],
-              ['Instruments', String(marketContextInstruments.length)],
-              ['Signals', String(marketContextSignals.length)],
-              ['Last Fetched', formatTime(state?.marketContextLastFetchedAt)],
-            ].map(([label, value]) => (
-              <div key={label} className={label === 'Last Fetched' ? 'col-span-2 sm:col-span-3' : ''}>
+              ['status', t('developerView.status'), marketContextStatus || t('developerView.idle')],
+              ['freshness', t('developerView.freshness'), marketContext?.freshness || 'N/A'],
+              ['dataQuality', t('developerView.dataQuality'), marketContext?.dataQuality || 'N/A'],
+              ['riskMode', t('developerView.riskMode'), marketContext?.regime?.riskMode || t('developerView.unknown')],
+              ['instruments', t('developerView.instruments'), String(marketContextInstruments.length)],
+              ['signals', t('developerView.signals'), String(marketContextSignals.length)],
+              ['lastFetched', t('developerView.lastFetched'), formatTime(state?.marketContextLastFetchedAt)],
+            ].map(([id, label, value]) => (
+              <div key={id} className={id === 'lastFetched' ? 'col-span-2 sm:col-span-3' : ''}>
                 <div className="aw-caption aw-text-tertiary uppercase">{label}</div>
                 <div className="aw-body aw-text-secondary mt-1 font-semibold">{value}</div>
               </div>
@@ -392,17 +399,17 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({
 
           {marketContextError && (
             <div className="aw-danger-panel mb-4 p-3 aw-caption text-aw-danger font-mono">
-              Error: {marketContextError}
+              {t('developerView.error')}: {marketContextError}
             </div>
           )}
 
           <div className="space-y-2 aw-caption aw-text-secondary font-mono">
             {marketContextSourceSummary.length > 0 && (
-              <div><span className="aw-text-tertiary font-semibold">Sources:</span> {marketContextSourceSummary.slice(0, 2).join(', ')}</div>
+              <div><span className="aw-text-tertiary font-semibold">{t('developerView.sources')}:</span> {marketContextSourceSummary.slice(0, 2).join(', ')}</div>
             )}
             {marketContextWarnings.length > 0 ? (
               <div>
-                <div className="aw-text-tertiary font-semibold mb-1">Warnings (Recent 2):</div>
+                <div className="aw-text-tertiary font-semibold mb-1">{t('developerView.recentWarnings')}:</div>
                 <ul className="list-disc pl-4 space-y-1">
                   {marketContextWarnings.slice(0, 2).map((warning: string, index: number) => <li key={index}>{warning}</li>)}
                 </ul>
@@ -530,14 +537,18 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({
         </div>
         <div className="mb-4">
           <h4 className="aw-label aw-text-primary font-medium">{activeAgent.name}</h4>
-          <p className="aw-caption aw-text-tertiary font-mono mt-1">Role: {activeAgent.role} | Type: {activeAgent.type}</p>
+          <p className="aw-caption aw-text-tertiary font-mono mt-1">{t('developerView.role')}: {activeAgent.role} | {t('developerView.type')}: {activeAgent.type}</p>
         </div>
 
         <div className="aw-dev-code flex-1 flex flex-col overflow-hidden">
-          <div className="aw-modal-header flex min-h-10 items-center justify-between gap-4 border-b px-4 shrink-0">
+          <div className="aw-modal-header flex min-h-10 items-center justify-between gap-4 px-4 shrink-0">
             <span className="aw-caption font-mono text-aw-accent-mist uppercase flex items-center gap-2">
               <MaterialIcon name="terminal" size={16} className="aw-text-tertiary" />
-              {activeAgent.type === 'rag' ? 'Memory Schema' : activeAgent.type === 'middleware' ? 'Runtime Logic' : 'System Prompt'}
+              {activeAgent.type === 'rag'
+                ? t('developerView.memorySchema')
+                : activeAgent.type === 'middleware'
+                  ? t('developerView.runtimeLogic')
+                  : t('developerView.systemPrompt')}
             </span>
             {activeAgent.type !== 'middleware' && (
               <div className="flex items-center gap-3">
@@ -565,7 +576,7 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({
                 value={editContent}
                 onChange={event => setEditContent(event.target.value)}
                 className="aw-form-input h-full resize-none rounded-none border-0 bg-transparent p-5 font-mono"
-                placeholder="Enter prompt or schema structure here..."
+                placeholder={t('developerView.promptPlaceholder')}
               />
             ) : (
               <div className="p-5 aw-caption aw-text-secondary font-mono leading-relaxed whitespace-pre-wrap select-text">
@@ -593,20 +604,25 @@ export const DeveloperView: React.FC<DeveloperViewProps> = ({
 
           <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none p-4 sm:p-6 md:p-8">
             <motion.div
+              ref={dialogRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="aw-developer-title"
+              tabIndex={-1}
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
               transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
               className="aw-modal-shell aw-dev-shell flex flex-col pointer-events-auto overflow-hidden select-none"
             >
-              <header className="aw-modal-header min-h-20 px-6 sm:px-8 border-b flex items-center justify-between shrink-0">
+              <header className="aw-modal-header min-h-16 px-4 sm:min-h-20 sm:px-8 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-6">
                   <div className="hidden sm:flex items-center gap-4 border-r border-aw-border-subtle pr-6">
                     <div className="aw-chart-state-icon h-10 w-10">
                       <MaterialIcon name="memory" size={24} className="text-aw-accent-mist animate-pulse" />
                     </div>
                     <div>
-                      <h2 className="aw-label aw-text-primary font-serif font-medium">{t('developerView.title')}</h2>
+                      <h2 id="aw-developer-title" className="aw-label aw-text-primary font-serif font-medium">{t('developerView.title')}</h2>
                       <p className="aw-caption aw-text-tertiary font-mono uppercase mt-1">{t('developerView.subtitle')}</p>
                     </div>
                   </div>

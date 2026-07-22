@@ -8,10 +8,10 @@ export const DEFAULT_DASHBOARD_SCHEMA: SDUIComponent[] = [
     type: "Grid",
     props: { preset: 'metrics', gap: 6, className: "mb-8" },
     children: [
-      { id: "m1", type: "MetricCard", props: { title: "总净资产 (Net Worth)", dataKey: "netWorth", isLongSubText: true } },
-      { id: "m2", type: "MetricCard", props: { title: "可用现金池 (Liquidity)", dataKey: "liquidity", isLongSubText: true } },
-      { id: "m3", type: "MetricCard", props: { title: "抗风险系数 (Safety Ratio)", dataKey: "safetyRatio", isLongSubText: true } },
-      { id: "m4", type: "MetricCard", props: { title: "月自由现金流 (FCF)", dataKey: "fcf", isLongSubText: true } }
+      { id: "m1", type: "MetricCard", props: { titleKey: "dashboard.metricNetWorthTitle", title: "Net Worth", dataKey: "netWorth", isLongSubText: true } },
+      { id: "m2", type: "MetricCard", props: { titleKey: "dashboard.metricLiquidityTitle", title: "Liquidity", dataKey: "liquidity", isLongSubText: true } },
+      { id: "m3", type: "MetricCard", props: { titleKey: "dashboard.metricSafetyRatioTitle", title: "Safety Ratio", dataKey: "safetyRatio", isLongSubText: true } },
+      { id: "m4", type: "MetricCard", props: { titleKey: "dashboard.metricFcfTitle", title: "Monthly Free Cash Flow", dataKey: "fcf", isLongSubText: true } }
     ]
   },
   {
@@ -19,7 +19,7 @@ export const DEFAULT_DASHBOARD_SCHEMA: SDUIComponent[] = [
     type: "Grid",
     props: { preset: "sections", gap: 6, className: "mb-8" },
     children: [
-      { id: "c2", type: "DynamicChart", props: { title: "多账户公开市场持仓", chartType: "publicHoldings", layoutSize: "lg", layoutSpan: "full", dashboardRole: "primary-section", delay: 0.2 } }
+      { id: "c2", type: "DynamicChart", props: { titleKey: "dashboard.multiAccountHoldings", title: "Multi-Account Public Holdings", chartType: "publicHoldings", layoutSize: "lg", layoutSpan: "full", dashboardRole: "primary-section", delay: 0.2 } }
     ]
   },
   {
@@ -27,10 +27,10 @@ export const DEFAULT_DASHBOARD_SCHEMA: SDUIComponent[] = [
     type: "Grid",
     props: { preset: 'charts', gap: 6, className: "mb-8" },
     children: [
-      { id: "c1", type: "DynamicChart", props: { title: "流动资金池", chartType: "liquidity", layoutSize: "md", delay: 0.3 } },
-      { id: "c4", type: "DynamicChart", props: { title: "非公开资产估值", chartType: "privateAssets", layoutSize: "md", delay: 0.4 } },
-      { id: "c5", type: "DynamicChart", props: { title: "开支结构分析", chartType: "expenses", layoutSize: "md", delay: 0.5 } },
-      { id: "c3", type: "DynamicChart", props: { title: "衍生品及期权", chartType: "options", layoutSize: "md", delay: 0.6 } }
+      { id: "c1", type: "DynamicChart", props: { titleKey: "dashboard.chartLiquidityTitle", title: "Liquidity Pool", chartType: "liquidity", layoutSize: "md", delay: 0.3 } },
+      { id: "c4", type: "DynamicChart", props: { titleKey: "dashboard.chartPrivateAssetsTitle", title: "Private Asset Valuation", chartType: "privateAssets", layoutSize: "md", delay: 0.4 } },
+      { id: "c5", type: "DynamicChart", props: { titleKey: "dashboard.chartExpensesTitle", title: "Expense Structure", chartType: "expenses", layoutSize: "md", delay: 0.5 } },
+      { id: "c3", type: "DynamicChart", props: { titleKey: "dashboard.chartOptionsTitle", title: "Derivatives and Options", chartType: "options", layoutSize: "md", delay: 0.6 } }
     ]
   }
 ];

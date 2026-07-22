@@ -1,6 +1,7 @@
 export interface MarketUniverseInstrument {
   symbol: string;
   stooqSymbol: string;
+  yahooSymbol?: string;
   label: string;
   category:
     | 'equity_index'
@@ -83,6 +84,7 @@ export const DEFAULT_MARKET_UNIVERSE: MarketUniverseInstrument[] = [
   {
     symbol: 'BTC',
     stooqSymbol: 'btcusd',
+    yahooSymbol: 'BTC-USD',
     label: 'Bitcoin USD',
     category: 'crypto'
   }

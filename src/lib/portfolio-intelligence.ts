@@ -6,6 +6,7 @@ import {
   PortfolioIntelligenceMap,
   PortfolioIntelligencePosition,
   PortfolioMissingPiece,
+  PortfolioStrategySummary,
   PortfolioSuggestedTilt,
 } from '../types/portfolio-intelligence';
 
@@ -232,6 +233,18 @@ const deriveSuggestedTilts = (axes: PortfolioExposureAxis[], missingPieces: Port
 };
 
 const deriveIntent = (positions: PortfolioIntelligencePosition[], axes: PortfolioExposureAxis[]) => {
+  if (positions.length === 0) {
+    return {
+      labelKey: 'portfolioIntelligence.intent.awaiting',
+      concentrationScore: 0,
+      diversificationScore: 0,
+      dominantAxis: 'growth' as PortfolioExposureAxisId,
+      topPositionWeight: 0,
+      topThreeWeight: 0,
+      confidence: 'low' as const,
+    };
+  }
+
   const sorted = [...positions].sort((a, b) => b.weight - a.weight);
   const topPositionWeight = sorted[0]?.weight || 0;
   const topThreeWeight = sorted.slice(0, 3).reduce((sum, position) => sum + position.weight, 0);
@@ -259,6 +272,76 @@ const deriveIntent = (positions: PortfolioIntelligencePosition[], axes: Portfoli
   };
 };
 
+const deriveExecutionBias = (
+  axes: PortfolioExposureAxis[],
+  missingPieces: PortfolioMissingPiece[],
+  valuedPositionCount: number,
+): PortfolioStrategySummary['executionBias'] => {
+  if (valuedPositionCount === 0) return 'await_data';
+  const growth = axes.find((axis) => axis.id === 'growth')?.value || 0;
+  const defensiveGap = missingPieces.some((piece) =>
+    (piece.axis === 'defense' || piece.axis === 'liquidity') && piece.severity === 'high',
+  );
+  const growthGap = missingPieces.some((piece) => piece.axis === 'growth');
+  if (growth > TARGET_EXPOSURE.growth + 8) return 'rebalance';
+  if (defensiveGap) return 'defensive_buffer';
+  if (growthGap) return 'growth_extension';
+  return missingPieces.length > 0 ? 'rebalance' : 'growth_extension';
+};
+
+const deriveStrategyConfidence = (
+  valuationCoverage: number,
+  intentConfidence: 'high' | 'medium' | 'low',
+): PortfolioStrategySummary['confidence'] => {
+  if (valuationCoverage <= 0.4 || intentConfidence === 'low') return 'low';
+  if (valuationCoverage < 0.8 || intentConfidence === 'medium') return 'medium';
+  return 'high';
+};
+
+const deriveStrategySummary = (input: {
+  axes: PortfolioExposureAxis[];
+  missingPieces: PortfolioMissingPiece[];
+  suggestedTilts: PortfolioSuggestedTilt[];
+  intentFingerprint: ReturnType<typeof deriveIntent>;
+  totalMarketValue: number;
+  valuationCoverage: number;
+  valuedPositionCount: number;
+}): PortfolioStrategySummary => ({
+  currentState: {
+    dominantAxis: input.intentFingerprint.dominantAxis,
+    concentrationScore: input.intentFingerprint.concentrationScore,
+    diversificationScore: input.intentFingerprint.diversificationScore,
+    totalMarketValue: Math.round(input.totalMarketValue * 100) / 100,
+    valuationCoverage: input.valuationCoverage,
+  },
+  missingPieceSummary: input.missingPieces.map((piece) => ({
+    id: piece.id,
+    axis: piece.axis,
+    severity: piece.severity,
+    currentValue: piece.currentValue,
+    targetValue: piece.targetValue,
+    gap: Math.round(Math.max(0, piece.targetValue - piece.currentValue) * 10) / 10,
+    labelKey: piece.labelKey,
+  })),
+  tiltPlan: input.suggestedTilts.map((tilt) => ({
+    id: tilt.id,
+    fromAxis: tilt.fromAxis,
+    toAxis: tilt.toAxis,
+    magnitude: tilt.magnitude,
+    priority: tilt.priority,
+    labelKey: tilt.labelKey,
+  })),
+  projectedAxes: input.axes.map((axis) => ({
+    axis: axis.id,
+    currentValue: axis.value,
+    projectedValue: axis.projectedValue,
+    delta: Math.round((axis.projectedValue - axis.value) * 10) / 10,
+    sourceSymbols: axis.sourceSymbols,
+  })),
+  executionBias: deriveExecutionBias(input.axes, input.missingPieces, input.valuedPositionCount),
+  confidence: deriveStrategyConfidence(input.valuationCoverage, input.intentFingerprint.confidence),
+});
+
 export function buildPortfolioIntelligenceMap(input: {
   accountPortfolios?: AccountPortfolio[];
   terminalState?: TerminalState;
@@ -267,11 +350,29 @@ export function buildPortfolioIntelligenceMap(input: {
   const axes = deriveAxes(positions);
   const missingPieces = deriveMissingPieces(axes, positions);
   const suggestedTilts = deriveSuggestedTilts(axes, missingPieces);
+  const intentFingerprint = deriveIntent(positions, axes);
   const totalMarketValue = positions.reduce((sum, position) => sum + position.marketValue, 0);
   const accountCount = input.accountPortfolios?.length || 0;
   const rawPositionCount = accountCount > 0
     ? flattenAccountPositions(input.accountPortfolios).length
     : flattenFallbackHoldings(input.terminalState).length;
+  const valuationCoverage = rawPositionCount > 0 ? Math.round((positions.length / rawPositionCount) * 100) / 100 : 0;
+  const dataQuality = {
+    accountCount,
+    positionCount: rawPositionCount,
+    valuedPositionCount: positions.length,
+    valuationCoverage,
+    heuristicClassification: true,
+  };
+  const strategySummary = deriveStrategySummary({
+    axes,
+    missingPieces,
+    suggestedTilts,
+    intentFingerprint,
+    totalMarketValue,
+    valuationCoverage,
+    valuedPositionCount: positions.length,
+  });
 
   return {
     id: `portfolio-intelligence-${input.terminalState?._liveFetchedAt || Date.now()}`,
@@ -280,19 +381,14 @@ export function buildPortfolioIntelligenceMap(input: {
     currency: positions[0]?.symbol?.endsWith('.HK') ? 'HKD' : positions[0] ? 'USD' : 'USD',
     axes,
     positions,
-    intentFingerprint: deriveIntent(positions, axes),
+    intentFingerprint,
     missingPieces,
     suggestedTilts,
+    strategySummary,
     sourceRefs: [
       accountCount > 0 ? 'longbridge.account_portfolios' : 'terminal.distributions.publicHoldings',
       input.terminalState?.marketContext ? 'market_context' : '',
     ].filter(Boolean),
-    dataQuality: {
-      accountCount,
-      positionCount: rawPositionCount,
-      valuedPositionCount: positions.length,
-      valuationCoverage: rawPositionCount > 0 ? Math.round((positions.length / rawPositionCount) * 100) / 100 : 0,
-      heuristicClassification: true,
-    },
+    dataQuality,
   };
 }

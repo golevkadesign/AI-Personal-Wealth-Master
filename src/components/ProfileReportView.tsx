@@ -1,10 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { useWealthStore } from '../hooks/useWealthStore';
 import { useTranslation } from '../hooks/useTranslation';
+import { useInteractionStore } from '../hooks/useInteractionStore';
 import { MaterialIcon } from './ui/MaterialIcon';
+import type { SovereignProfile } from '../types/workbench';
+import { MemoryInboxItemCard } from './MemoryInboxItemCard';
+import { useModalFocusTrap } from '../hooks/useModalFocusTrap';
+
+const unique = (items: Array<string | undefined | null>) =>
+  Array.from(new Set(items.filter((item): item is string => Boolean(item))));
 
 export const ProfileReportView = ({ isOpen, onClose }: any) => {
-  const { data, commitData } = useWealthStore();
+  const { data } = useWealthStore();
+  const activeWorkbenchSession = useInteractionStore((state) => state.activeWorkbenchSession);
+  const queueMemoryCandidate = useInteractionStore((state) => state.queueMemoryCandidate);
   const { t } = useTranslation();
   const [localProfile, setLocalProfile] = useState<any>({});
   const [localPersona, setLocalPersona] = useState<any>({ tags: [], description: '' });
@@ -48,7 +57,24 @@ export const ProfileReportView = ({ isOpen, onClose }: any) => {
     }
   };
 
+  const dialogRef = useModalFocusTrap<HTMLDivElement>({
+    active: isOpen,
+    onEscape: handleClose,
+  });
+
   const handleSave = () => {
+    const isDirty = initialSnapshot && (
+      JSON.stringify(localProfile) !== JSON.stringify(initialSnapshot.profile) ||
+      JSON.stringify(localPersona) !== JSON.stringify(initialSnapshot.persona) ||
+      localContext !== initialSnapshot.context ||
+      JSON.stringify(localGoal) !== JSON.stringify(initialSnapshot.goal)
+    );
+
+    if (!isDirty) {
+      onClose();
+      return;
+    }
+
     const rawIndex = localGoal.index;
     let validIndex = data?.goal?.index || 0;
 
@@ -63,30 +89,38 @@ export const ProfileReportView = ({ isOpen, onClose }: any) => {
 
     const normalizedGoal = {
       ...localGoal,
-      current: Number(localGoal.current) || 0,
-      target: Number(localGoal.target) || 0,
+      current: localGoal.current === '' || localGoal.current == null ? undefined : Number(localGoal.current),
+      target: localGoal.target === '' || localGoal.target == null ? undefined : Number(localGoal.target),
       index: validIndex
     };
-
-    commitData((prev: any) => ({
-      ...prev,
-      userPersona: {
-        ...(prev?.userPersona || {}),
-        ...localPersona
+    const previousProfile = data?.userProfile?.sovereignProfile;
+    const now = Date.now();
+    queueMemoryCandidate({
+      id: `memory-profile-center-draft-${now}`,
+      type: 'profile_fact',
+      title: 'workbench.memory.profileCenterDraftTitle',
+      body: 'workbench.memory.profileCenterDraftProjection',
+      confidence: 'high',
+      sourceRefs: unique([
+        ...(previousProfile?.sourceRefs || []),
+        'profile_center.manual_edit',
+      ]),
+      structuredPatch: {
+        version: previousProfile?.version || 1,
+        identity: {
+          ...localProfile,
+          longContext: localContext,
+          goal: normalizedGoal,
+        },
+        behavioralPatterns: {
+          tags: localPersona.tags || [],
+          description: localPersona.description,
+        },
+        sourceRefs: ['profile_center.manual_edit'],
       },
-      userProfile: {
-        ...(prev?.userProfile || {}),
-        ...localProfile
-      },
-      insights: {
-        ...(prev?.insights || {}),
-        global: localContext
-      },
-      goal: {
-        ...(prev?.goal || {}),
-        ...normalizedGoal
-      }
-    }));
+      status: 'pending',
+      createdAt: now,
+    });
     setEditingSection(null);
     onClose();
   };
@@ -96,13 +130,54 @@ export const ProfileReportView = ({ isOpen, onClose }: any) => {
   const strategies = data?.lifeStrategiesLong?.length > 0
     ? data.lifeStrategiesLong
     : (data?.lifeStrategiesShort || []);
-  const percent = localGoal.target > 0 ? Math.min(100, Math.round((localGoal.current / localGoal.target) * 100)) : 0;
+  const sovereignProfile: SovereignProfile | undefined = data?.userProfile?.sovereignProfile || localProfile?.sovereignProfile;
+  const memoryInbox = activeWorkbenchSession?.memoryInbox;
+  const memoryItems = memoryInbox?.items || [];
+  const pendingMemoryItems = memoryItems.filter((item) => item.status === 'pending');
+  const decidedMemoryItems = memoryItems.filter((item) => item.status !== 'pending');
+  const decisionLedger = Array.isArray(sovereignProfile?.decisionLedger)
+    ? sovereignProfile.decisionLedger
+    : Array.isArray(localProfile?.decisionLedger)
+      ? localProfile.decisionLedger
+      : [];
+  const profileProjection = data?.sovereignProfileProjection || activeWorkbenchSession?.dashboardProjection;
+  const projectionStatus = profileProjection?.status || activeWorkbenchSession?.dashboardProjection?.status || 'awaiting_context';
+  const hasGoalAmounts = Number.isFinite(Number(localGoal.current)) && Number.isFinite(Number(localGoal.target)) && Number(localGoal.target) > 0;
+  const percent = hasGoalAmounts ? Math.min(100, Math.round((Number(localGoal.current) / Number(localGoal.target)) * 100)) : null;
 
   const hasProfile = Object.keys(localProfile).some(k => k !== 'name' && localProfile[k]);
   const hasPersonaTags = localPersona?.tags?.length > 0;
   const hasContext = localContext && localContext.length > 5;
   const hasStrategies = strategies && strategies.length > 0;
   const hasSync = !!data?._liveFetchedAt;
+  const hasRiskPreferences = Boolean(sovereignProfile?.riskPreferences && Object.keys(sovereignProfile.riskPreferences).length > 0);
+  const profileVersion = sovereignProfile?.version || data?.userProfile?.sovereignProfileVersion || 1;
+  const profileVersionLabel = `${t('profile.profileVersion')} v${profileVersion}`;
+  const lastDecisionEvent = (profileProjection as any)?.lastDecisionEvent;
+
+  const translateMaybeKey = (value: unknown) => {
+    if (typeof value !== 'string') return '';
+    return value.includes('.') ? t(value) : value;
+  };
+
+  const compactValue = (value: unknown, limit = 120) => {
+    if (typeof value === 'string') {
+      const text = translateMaybeKey(value).replace(/\s+/g, ' ').trim();
+      return text.length > limit ? `${text.slice(0, limit)}...` : text;
+    }
+    if (value == null) return '';
+    const text = JSON.stringify(value);
+    return text.length > limit ? `${text.slice(0, limit)}...` : text;
+  };
+
+  const projectionStatusLabel = (status: string) => {
+    if (status === 'ready') return t('workbench.ready');
+    if (status === 'partial') return t('workbench.partial');
+    if (status === 'blocked') return t('workbench.blocked');
+    if (status === 'error') return t('workbench.error');
+    if (status === 'waiting_signals') return t('workbench.waitingSignals');
+    return t('workbench.awaitingContext');
+  };
 
   const editButtonClass = (active: boolean) =>
     `aw-icon-button cursor-pointer ${active ? 'aw-icon-button-active' : ''}`;
@@ -171,7 +246,7 @@ export const ProfileReportView = ({ isOpen, onClose }: any) => {
     { label: t('profile.identity'), active: hasProfile },
     { label: t('profile.wealthContext'), active: hasContext },
     { label: t('profile.investmentPreference'), active: hasPersonaTags },
-    { label: t('profile.riskAssessment'), active: false },
+    { label: t('profile.riskAssessment'), active: hasRiskPreferences },
     { label: t('profile.lifeStrategy'), active: hasStrategies },
     { label: t('profile.dataMount'), active: hasSync },
   ];
@@ -184,13 +259,20 @@ export const ProfileReportView = ({ isOpen, onClose }: any) => {
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-4 lg:p-8 custom-scroll">
-      <div className="aw-modal-backdrop absolute inset-0" />
+    <div className="fixed inset-0 z-[130] flex items-center justify-center overflow-y-auto p-4 lg:p-8 custom-scroll">
+      <div className="aw-modal-backdrop absolute inset-0" onClick={handleClose} aria-hidden="true" />
 
-      <div className="aw-modal-shell aw-profile-shell relative flex flex-col overflow-hidden font-sans animate-in fade-in zoom-in-95 duration-200">
-        <header className="aw-modal-header flex shrink-0 items-center justify-between gap-4 border-b px-6 py-5 sm:px-8">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="aw-profile-title"
+        tabIndex={-1}
+        className="aw-modal-shell aw-profile-shell relative flex flex-col overflow-hidden font-sans animate-in fade-in zoom-in-95 duration-200"
+      >
+        <header className="aw-modal-header flex shrink-0 items-center justify-between gap-4 px-6 py-5 sm:px-8">
           <div className="min-w-0">
-            <h2 className="aw-title aw-text-primary flex items-center gap-3 font-bold">
+            <h2 id="aw-profile-title" className="aw-title aw-text-primary flex items-center gap-3 font-bold">
               {t('profile.title')}
             </h2>
             <p className="aw-caption aw-text-tertiary mt-2 font-mono uppercase">
@@ -198,12 +280,12 @@ export const ProfileReportView = ({ isOpen, onClose }: any) => {
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-3">
-            <button type="button" onClick={handleClose} className="aw-button aw-button-ghost cursor-pointer">
+            <button type="button" onClick={handleClose} className="aw-button aw-button-ghost cursor-pointer" aria-label={t('profile.close')}>
               {t('profile.close')}
               <MaterialIcon name="close" size={20} />
             </button>
             <button type="button" onClick={handleSave} className="aw-button aw-button-primary cursor-pointer">
-              {t('profile.save')}
+              {t('profile.queueMemoryCandidate')}
             </button>
           </div>
         </header>
@@ -304,16 +386,16 @@ export const ProfileReportView = ({ isOpen, onClose }: any) => {
                         <label className="aw-form-label">{t('profile.current')}</label>
                         <TextInput
                           type="number"
-                          value={localGoal.current || 0}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLocalGoal({ ...localGoal, current: Number(e.target.value) })}
+                          value={localGoal.current ?? ''}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLocalGoal({ ...localGoal, current: e.target.value === '' ? '' : Number(e.target.value) })}
                         />
                       </div>
                       <div className="space-y-2">
                         <label className="aw-form-label">{t('profile.target')}</label>
                         <TextInput
                           type="number"
-                          value={localGoal.target || 0}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLocalGoal({ ...localGoal, target: Number(e.target.value) })}
+                          value={localGoal.target ?? ''}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLocalGoal({ ...localGoal, target: e.target.value === '' ? '' : Number(e.target.value) })}
                         />
                       </div>
                     </div>
@@ -321,22 +403,22 @@ export const ProfileReportView = ({ isOpen, onClose }: any) => {
                     <>
                       <div className="mb-5">
                         <div className="mb-2 flex items-end gap-2 font-mono">
-                          <span className="aw-metric aw-text-primary">{percent}</span>
-                          <span className="aw-body aw-text-primary mb-1">%</span>
+                          <span className="aw-metric aw-text-primary">{percent ?? '—'}</span>
+                          {percent !== null && <span className="aw-body aw-text-primary mb-1">%</span>}
                           <span className="aw-caption aw-text-tertiary ml-auto mb-1 uppercase">{t('profile.goalProgress')}</span>
                         </div>
                         <div className="aw-progress-track">
-                          <div className="aw-progress-fill" style={{ width: `${percent}%` }} />
+                          <div className="aw-progress-fill" style={{ width: `${percent ?? 0}%` }} />
                         </div>
                       </div>
                       <div className="mb-4 flex justify-between gap-4 font-mono">
                         <div className="flex flex-col">
                           <span className="aw-caption aw-text-tertiary mb-1 uppercase">{t('profile.current')}</span>
-                          <span className="aw-body aw-text-secondary">¥ {(localGoal.current || 0).toLocaleString()}</span>
+                          <span className="aw-body aw-text-secondary">{hasGoalAmounts ? `¥ ${Number(localGoal.current).toLocaleString()}` : '—'}</span>
                         </div>
                         <div className="flex flex-col text-right">
                           <span className="aw-caption aw-text-tertiary mb-1 uppercase">{t('profile.target')}</span>
-                          <span className="aw-body aw-text-primary">¥ {(localGoal.target || 0).toLocaleString()}</span>
+                          <span className="aw-body aw-text-primary">{hasGoalAmounts ? `¥ ${Number(localGoal.target).toLocaleString()}` : '—'}</span>
                         </div>
                       </div>
                     </>
@@ -369,11 +451,11 @@ export const ProfileReportView = ({ isOpen, onClose }: any) => {
               <SectionCard title={t('profile.userProfile')} enTitle={t('chat.userProfileEn')} fieldName="profile">
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <ProfileField label={t('profile.name')} field="name" value={localProfile.name} placeholder={t('profile.unsetName')} />
-                  <ProfileField label={t('profile.location')} field="location" value={localProfile.location} placeholder="e.g. Asia / Hong Kong" />
-                  <ProfileField label={t('profile.background')} field="background" value={localProfile.background} placeholder="e.g. Business Management" />
-                  <ProfileField label={t('profile.wealthStage')} field="wealthStage" value={localProfile.wealthStage} placeholder="e.g. High Net Worth" />
-                  <ProfileField label={t('profile.ageRange')} field="ageRange" value={localProfile.ageRange} placeholder="e.g. 40-50" />
-                  <ProfileField label={t('profile.notes')} field="notes" value={localProfile.notes} placeholder="e.g. long-term client" />
+                  <ProfileField label={t('profile.location')} field="location" value={localProfile.location} placeholder={t('profile.placeholders.location')} />
+                  <ProfileField label={t('profile.background')} field="background" value={localProfile.background} placeholder={t('profile.placeholders.background')} />
+                  <ProfileField label={t('profile.wealthStage')} field="wealthStage" value={localProfile.wealthStage} placeholder={t('profile.placeholders.wealthStage')} />
+                  <ProfileField label={t('profile.ageRange')} field="ageRange" value={localProfile.ageRange} placeholder={t('profile.placeholders.ageRange')} />
+                  <ProfileField label={t('profile.notes')} field="notes" value={localProfile.notes} placeholder={t('profile.placeholders.notes')} />
                 </div>
               </SectionCard>
 
@@ -411,20 +493,63 @@ export const ProfileReportView = ({ isOpen, onClose }: any) => {
               <SectionCard title={t('profile.riskTolerance')} enTitle={t('chat.riskToleranceEn')}>
                 <div className="flex items-center gap-6 p-2">
                   <div className="aw-chart-state-icon h-12 w-12 shrink-0">
-                    <MaterialIcon name="shield_lock" size={24} className="aw-text-tertiary" />
+                    <MaterialIcon name="shield_lock" size={24} className={hasRiskPreferences ? 'text-aw-accent-mist' : 'aw-text-tertiary'} />
                   </div>
                   <div className="flex-1">
                     <div className="aw-body aw-text-primary font-bold">
-                      {t('profile.riskPending')} <span className="aw-caption aw-text-tertiary ml-1 font-mono">( {t('profile.missingData')} )</span>
+                      {hasRiskPreferences ? t('profile.riskReady') : t('profile.riskPending')} <span className="aw-caption aw-text-tertiary ml-1 font-mono">( {hasRiskPreferences ? profileVersionLabel : t('profile.missingData')} )</span>
                     </div>
                     <div className="aw-caption aw-text-tertiary mt-1">
-                      {t('profile.riskPendingDesc')}
+                      {hasRiskPreferences ? compactValue(sovereignProfile?.riskPreferences, 180) : t('profile.riskPendingDesc')}
                     </div>
                   </div>
                 </div>
               </SectionCard>
 
-              <SectionCard title={t('profile.lifeStrategyNotes')} enTitle="Life Strategy Notes">
+              <SectionCard title={t('profile.memoryInbox')} enTitle={t('profile.memoryInboxEn')}>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="aw-panel-muted p-3">
+                      <div className="aw-caption aw-text-tertiary font-mono uppercase">{t('profile.pending')}</div>
+                      <div className="aw-title aw-text-primary mt-1 font-mono">{pendingMemoryItems.length}</div>
+                    </div>
+                    <div className="aw-panel-muted p-3">
+                      <div className="aw-caption aw-text-tertiary font-mono uppercase">{t('profile.confirmed')}</div>
+                      <div className="aw-title aw-text-primary mt-1 font-mono">{decidedMemoryItems.length}</div>
+                    </div>
+                    <div className="aw-panel-muted p-3">
+                      <div className="aw-caption aw-text-tertiary font-mono uppercase">{t('profile.profileVersion')}</div>
+                      <div className="aw-title aw-text-primary mt-1 font-mono">v{profileVersion}</div>
+                    </div>
+                  </div>
+
+                  {pendingMemoryItems.length > 0 ? (
+                    <div className="space-y-3">
+                      {pendingMemoryItems.map((item) => (
+                        <MemoryInboxItemCard key={item.id} item={item} />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="aw-panel-muted flex items-center gap-3 p-4">
+                      <MaterialIcon name="inbox" size={20} className="aw-text-tertiary" />
+                      <p className="aw-caption aw-text-tertiary">{t('profile.noPendingMemory')}</p>
+                    </div>
+                  )}
+
+                  {decidedMemoryItems.length > 0 && (
+                    <div className="space-y-3">
+                      <p className="aw-caption aw-text-tertiary font-mono uppercase">
+                        {t('profile.recentMemoryDecisions')}
+                      </p>
+                      {decidedMemoryItems.slice(-4).reverse().map((item) => (
+                        <MemoryInboxItemCard key={item.id} item={item} />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </SectionCard>
+
+              <SectionCard title={t('profile.lifeStrategyNotes')} enTitle={t('profile.lifeStrategyNotesEn')}>
                 <ul className="mt-2 space-y-4">
                   {strategies.length > 0 ? strategies.map((strategy: any, index: number) => (
                     <li key={index} className="aw-body aw-text-secondary flex items-start gap-4">
@@ -445,12 +570,58 @@ export const ProfileReportView = ({ isOpen, onClose }: any) => {
               <section className="aw-panel-muted flex flex-col items-center p-8">
                 <span className="aw-section-kicker mb-6 w-full">{t('profile.memoryQuality')}</span>
                 <div className="aw-memory-ring mb-6 mt-2">
-                  <span className="aw-caption aw-text-tertiary text-center leading-relaxed">{t('profile.noQualityScore')}</span>
+                  <span className="aw-caption aw-text-tertiary text-center leading-relaxed">
+                    {profileVersionLabel}
+                  </span>
                 </div>
                 <div className="w-full text-center">
-                  <div className="aw-body aw-text-primary mb-1 font-medium">{t('profile.longConversationPending')}</div>
+                  <div className="aw-body aw-text-primary mb-1 font-medium">{t('profile.memoryLoopStatus')}</div>
                   <div className="aw-caption aw-text-tertiary">
-                    {t('profile.qualityDesc')}
+                    {t('profile.memoryLoopDesc')}
+                  </div>
+                </div>
+              </section>
+
+              <section className="aw-panel-muted p-6">
+                <span className="aw-section-kicker mb-4 block">{t('profile.decisionLedger')}</span>
+                <div className="space-y-3">
+                  {decisionLedger.length > 0 ? decisionLedger.slice(-4).reverse().map((entry: any, index: number) => (
+                    <div key={entry.id || `${entry.candidateId || 'ledger'}-${index}`} className="aw-panel-muted p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="aw-caption aw-text-primary font-mono uppercase">{entry.decision || entry.type || t('profile.ledgerEntry')}</span>
+                        <span className="aw-caption aw-text-tertiary font-mono">{entry.createdAt ? new Date(entry.createdAt).toISOString().slice(0, 10) : `#${decisionLedger.length - index}`}</span>
+                      </div>
+                      <p className="aw-caption aw-text-secondary mt-2 leading-relaxed">
+                        {compactValue(entry.title || entry.candidateId || entry.body || entry.id, 120)}
+                      </p>
+                    </div>
+                  )) : (
+                    <div className="aw-panel-muted flex items-center gap-3 p-4">
+                      <MaterialIcon name="history" size={20} className="aw-text-tertiary" />
+                      <p className="aw-caption aw-text-tertiary">{t('profile.noDecisionLedger')}</p>
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              <section className="aw-panel-muted p-6">
+                <span className="aw-section-kicker mb-4 block">{t('profile.dashboardProjection')}</span>
+                <div className="flex items-center gap-3">
+                  <div className="aw-chart-state-icon h-9 w-9 shrink-0">
+                    <MaterialIcon name="auto_graph" size={20} className={projectionStatus === 'ready' ? 'text-aw-accent-mist' : 'aw-text-tertiary'} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="aw-caption aw-text-primary font-mono break-words">
+                      {projectionStatusLabel(projectionStatus)}
+                    </div>
+                    <div className="aw-caption aw-text-tertiary mt-1">
+                      {t('profile.projectionDesc')}
+                    </div>
+                    {lastDecisionEvent && (
+                      <div className="aw-caption aw-text-secondary mt-2 font-mono">
+                        {t('profile.projectionVersionChange')}: v{lastDecisionEvent.profileVersionBefore} → v{lastDecisionEvent.profileVersionAfter}
+                      </div>
+                    )}
                   </div>
                 </div>
               </section>

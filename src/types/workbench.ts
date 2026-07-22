@@ -1,5 +1,6 @@
 import { MarketContext } from './market-context';
 import { PortfolioIntelligenceMap } from './portfolio-intelligence';
+import { AgentAnalysisSnapshot, PositionAnalysisResult } from './portfolio';
 import { AccountPortfolio, DistributionItem, TerminalState } from './terminal';
 
 export type WorkbenchEntryType =
@@ -13,13 +14,40 @@ export type WorkbenchEntryType =
   | 'portfolio_intelligence';
 
 export type WorkbenchIntentBias =
+  | 'global'
   | 'general'
   | 'equity'
   | 'allocation'
   | 'life'
+  | 'risk'
   | 'memory'
   | 'projection'
   | 'simulation';
+
+export type WorkbenchSubjectType =
+  | 'symbol'
+  | 'portfolio'
+  | 'goal'
+  | 'metric'
+  | 'profile'
+  | 'custom';
+
+export interface WorkbenchSubjectSpec {
+  type: WorkbenchSubjectType;
+  id?: string;
+  label?: string;
+  payload?: Record<string, unknown>;
+}
+
+export type WorkbenchDefaultWidgetPreset =
+  | 'manual-chat'
+  | 'dashboard-brief'
+  | 'widget-context'
+  | 'holding-analysis'
+  | 'portfolio-review'
+  | 'portfolio-intelligence'
+  | 'life-strategy'
+  | 'profile-memory';
 
 export type WorkbenchActionPermission =
   | 'chat'
@@ -47,7 +75,14 @@ export type WorkbenchWidgetType =
   | 'intent_fingerprint'
   | 'missing_pieces'
   | 'suggested_tilt'
-  | 'projected_exposure';
+  | 'projected_exposure'
+  | 'holding_quote_snapshot'
+  | 'holding_value_summary'
+  | 'holding_sync_status'
+  | 'holding_trend_chart'
+  | 'holding_quant_indicators'
+  | 'holding_strategy_deductions'
+  | 'holding_analysis_snapshot_diff';
 
 export type WorkbenchWidgetStatus =
   | 'ready'
@@ -56,6 +91,44 @@ export type WorkbenchWidgetStatus =
   | 'partial'
   | 'blocked'
   | 'error';
+
+export type WorkbenchEventPhase =
+  | 'session_opened'
+  | 'facts_hydrated'
+  | 'workbench_run_started'
+  | 'chat_submitted'
+  | 'chat_result_received'
+  | 'rails_started'
+  | 'rails_completed'
+  | 'memory_candidate_queued'
+  | 'memory_projection_hydrated'
+  | 'dashboard_projection_committed'
+  | 'fallback_started'
+  | 'memory_decision'
+  | 'run_completed'
+  | 'run_failed';
+
+export type WorkbenchEventStatus =
+  | 'pending'
+  | 'running'
+  | 'ready'
+  | 'fallback'
+  | 'error'
+  | 'skipped';
+
+export interface WorkbenchEvent {
+  id: string;
+  sessionId: string;
+  phase: WorkbenchEventPhase;
+  status: WorkbenchEventStatus;
+  titleKey: string;
+  messageKey?: string;
+  detail?: string;
+  sourceRefs?: string[];
+  requestId?: number;
+  createdAt: number;
+  completedAt?: number;
+}
 
 export interface WorkbenchWidgetManifest {
   id: string;
@@ -72,13 +145,21 @@ export interface WorkbenchSessionSpec {
   id: string;
   entryType: WorkbenchEntryType;
   titleKey: string;
+  /**
+   * Legacy display label retained for existing UI surfaces. New orchestration
+   * should prefer subjectSpec so entry context can keep type/id/payload.
+   */
   subject?: string;
+  subjectSpec?: WorkbenchSubjectSpec;
   intentBias?: WorkbenchIntentBias;
+  initialPrompt?: string;
+  defaultWidgetPreset?: WorkbenchDefaultWidgetPreset | string;
   facts?: Partial<SharedFactBundle>;
   railRun?: WorkbenchRailRun;
   memoryInbox?: MemoryInboxSnapshot;
   dashboardProjection?: DashboardProjection;
   initialWidgets?: WorkbenchWidgetManifest[];
+  events?: WorkbenchEvent[];
   allowedActions?: WorkbenchActionPermission[];
   legacy?: {
     surface?: 'drawer' | 'copilot' | 'position_drawer' | 'portfolio_review_drawer';
@@ -95,7 +176,9 @@ export interface SharedFactBundle {
   terminalState?: TerminalState;
   sovereignProfile?: SovereignProfile;
   selectedHolding?: DistributionItem | null;
+  selectedHoldingAnalysis?: HoldingWorkbenchAnalysis | null;
   publicHoldingAccounts?: AccountPortfolio[];
+  portfolioIntelligenceMap?: PortfolioIntelligenceMap;
   marketContext?: MarketContext;
   userPrompt?: string;
   sourceRefs: string[];
@@ -107,6 +190,21 @@ export interface SharedFactBundle {
   missingFacts?: string[];
   confidence?: 'high' | 'medium' | 'low' | 'unknown';
   summary?: SharedFactSummary;
+}
+
+export type HoldingAnalysisStatus =
+  | 'idle'
+  | 'loading'
+  | 'success'
+  | 'partial'
+  | 'error';
+
+export interface HoldingWorkbenchAnalysis extends Partial<PositionAnalysisResult> {
+  analysisStatus: HoldingAnalysisStatus;
+  sourceRefs: string[];
+  snapshot?: AgentAnalysisSnapshot | null;
+  previousSnapshot?: AgentAnalysisSnapshot | null;
+  diffFromLastSnapshot?: Record<string, unknown> | null;
 }
 
 export interface SharedFactSummary {
@@ -192,15 +290,32 @@ export interface MemoryCandidate {
   confidence: 'high' | 'medium' | 'low';
   sourceRefs: string[];
   structuredPatch?: Partial<SovereignProfile>;
-  status: 'pending' | 'accepted' | 'rejected' | 'merged';
+  status: MemoryCandidateStatus;
   createdAt: number;
 }
+
+export type MemoryCandidateStatus =
+  | 'pending'
+  | 'accepted'
+  | 'rejected'
+  | 'merged'
+  | 'temporary'
+  | 'revoked';
 
 export type MemoryInboxDecisionType =
   | 'accept'
   | 'reject'
   | 'merge'
-  | 'edit_and_accept';
+  | 'edit_and_accept'
+  | 'mark_temporary'
+  | 'revoke';
+
+export interface MemoryInboxDecisionInput {
+  decision: MemoryInboxDecisionType;
+  editedPatch?: Partial<SovereignProfile>;
+  editedTitle?: string;
+  editedBody?: string;
+}
 
 export interface MemoryInboxItem {
   id: string;
@@ -222,6 +337,8 @@ export interface MemoryInboxSnapshot {
   acceptedCount: number;
   rejectedCount: number;
   mergedCount: number;
+  temporaryCount?: number;
+  revokedCount?: number;
   items: MemoryInboxItem[];
   sourceRefs: string[];
 }
@@ -271,9 +388,106 @@ export interface DashboardProjection {
     sessionId?: string;
     railRunId?: string;
     candidateIds: string[];
-    generatedFrom: Array<'facts' | 'rails' | 'profile' | 'memory'>;
+    generatedFrom: Array<'facts' | 'rails' | 'profile' | 'memory' | 'chat'>;
     sourceRefs: string[];
   };
+}
+
+export type WorkbenchAgentRunMode =
+  | 'rail_orchestration'
+  | 'chat_bridged'
+  | 'local_fallback';
+
+export interface WorkbenchAgentRunResult {
+  protocolVersion: 'workbench-agent-result.v1';
+  sessionId: string;
+  entryType: WorkbenchEntryType;
+  titleKey: string;
+  subject?: string;
+  subjectSpec?: WorkbenchSubjectSpec;
+  intentBias?: WorkbenchIntentBias;
+  status: WorkbenchWidgetStatus;
+  runMode: WorkbenchAgentRunMode;
+  generatedAt: number;
+  railRun?: WorkbenchRailRun;
+  cioBrief?: CIOBrief;
+  widgetManifest: WorkbenchWidgetManifest[];
+  memoryCandidates: MemoryCandidate[];
+  memoryInbox?: MemoryInboxSnapshot;
+  dashboardProjection?: DashboardProjection;
+  sourceRefs: string[];
+  trace: {
+    generatedFrom: Array<'facts' | 'rails' | 'profile' | 'memory' | 'chat'>;
+    hasChatResult: boolean;
+    bridgeMode?: 'none' | 'legacy_chat_result';
+    railCount: number;
+    widgetCount: number;
+    memoryCandidateCount: number;
+    missingFacts: string[];
+  };
+}
+
+export interface WorkbenchAuditSessionRecord {
+  id: string;
+  entryType: WorkbenchEntryType;
+  titleKey: string;
+  subject?: string;
+  subjectSpec?: WorkbenchSubjectSpec;
+  intentBias?: WorkbenchIntentBias;
+  defaultWidgetPreset?: string;
+  status: WorkbenchWidgetStatus;
+  createdAt: number;
+  updatedAt: number;
+  railSummary?: WorkbenchRailRun['summary'];
+  memoryInboxSummary?: {
+    pendingCount: number;
+    acceptedCount: number;
+    rejectedCount: number;
+    mergedCount: number;
+    temporaryCount: number;
+    revokedCount: number;
+  };
+  dashboardProjectionId?: string;
+  widgetCount: number;
+  eventCount: number;
+  latestEventPhase?: WorkbenchEventPhase;
+  latestEventStatus?: WorkbenchEventStatus;
+  sourceRefs: string[];
+}
+
+export interface WorkbenchAuditDecisionRecord {
+  id: string;
+  sessionId: string;
+  sourceEntryType: WorkbenchEntryType;
+  itemId: string;
+  candidateId: string;
+  decision: MemoryInboxDecisionType;
+  status: MemoryCandidateStatus;
+  title: string;
+  willAffectProfile: boolean;
+  willRefreshDashboard: boolean;
+  sourceRefs: string[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface WorkbenchAuditSnapshot {
+  version: 1;
+  updatedAt: number;
+  latestSessionId?: string;
+  latestDecisionId?: string;
+  sessions: WorkbenchAuditSessionRecord[];
+  decisions: WorkbenchAuditDecisionRecord[];
+  profileEvents: SovereignProfilePatchEvent[];
+  stats: {
+    sessionCount: number;
+    decisionCount: number;
+    profileEventCount: number;
+    pendingMemoryCount: number;
+    acceptedMemoryCount: number;
+    rejectedMemoryCount: number;
+  };
+  sourceRefs: string[];
 }
 
 export interface WorkbenchActionItem {

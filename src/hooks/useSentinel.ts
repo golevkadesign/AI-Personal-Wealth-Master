@@ -8,6 +8,14 @@ export function useSentinel() {
   const hasScanned = useRef(false);
   const latestData = useRef(data);
   const isDataReady = !!(data && Object.keys(data.metrics || {}).length > 0);
+
+  const hasSentinelCredential = () => {
+    const settings = getSettings();
+    if (settings.provider === 'openai') {
+      return Boolean(settings.openaiKey);
+    }
+    return Boolean(settings.geminiKey || localStorage.getItem('custom_gemini_api_key'));
+  };
   
   // 💥 修复 1：使用 ref 永远保持最新状态引用，而不触发 re-render 监听
   useEffect(() => {
@@ -31,7 +39,7 @@ export function useSentinel() {
             });
 
             if (isDuplicate) {
-               console.warn("Sentinel: 拦截到重复推送的警报卡片，已抛弃。");
+               console.warn('Sentinel: duplicate alert widget suppressed.');
                return prev; 
             }
 
@@ -57,6 +65,7 @@ export function useSentinel() {
 
     const runSentinel = async () => {
       try {
+        if (!hasSentinelCredential()) return;
         await fetch('/api/sentinel/scan', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

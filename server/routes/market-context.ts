@@ -20,12 +20,19 @@ router.get('/', async (req, res) => {
       fredApiKey,
       alphaVantageApiKey
     });
+    const qualityStatus = data.qualitySummary?.status;
+    const instrumentCoverage = data.qualitySummary?.instrumentCoverageRatio || 0;
+    const hasUsableInstrumentContext = data.instruments.length > 0 && instrumentCoverage > 0;
+    const isUsable =
+      qualityStatus !== 'failed' &&
+      (qualityStatus !== 'stale' || hasUsableInstrumentContext);
 
-    res.json({
-      success: true,
+    res.status(isUsable ? 200 : 503).json({
+      success: isUsable,
       data,
       generatedAt: data.generatedAt,
-      warnings: data.warnings || []
+      warnings: data.warnings || [],
+      error: isUsable ? undefined : data.qualitySummary?.summary || 'Market context is unavailable'
     });
   } catch (error: any) {
     console.error('[market-context-route] Failed to handle market-context request:', error);

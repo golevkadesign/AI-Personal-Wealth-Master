@@ -1,17 +1,18 @@
 import React from 'react';
 import { ChartWidget } from './ChartWidget';
-import { ReactECharts } from './ReactECharts';
 import { getCurrencySymbol, getHoldingMarketValue } from './chart-configs';
 import { useWealthStore } from '../hooks/useWealthStore';
 import { AccountPortfolio } from '../types/terminal';
 import { MaterialIcon } from './ui/MaterialIcon';
-import { getAwChartPalette, readCssToken } from '../lib/design-tokens';
+import { getAwChartPalette } from '../lib/design-tokens';
 import { useInteractionStore } from '../hooks/useInteractionStore';
 import {
+  createHoldingWorkbenchSession,
   createPortfolioIntelligenceWorkbenchSession,
   createPortfolioReviewWorkbenchSession,
 } from '../lib/workbench-session';
 import { PortfolioIntelligenceMapView } from './PortfolioIntelligenceMapView';
+import { Arbitra2DChart } from './charts/Arbitra2DChart';
 
 interface PublicHoldingAccountsViewProps {
   title: string;
@@ -66,7 +67,6 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
         accountPortfolios,
         terminalState: useWealthStore.getState().data,
       }));
-      window.dispatchEvent(new CustomEvent('open-portfolio-review', { detail: { sessionId: session.id } }));
     } else {
       setCtaError(t('dashboard.reviewUnavailable'));
     }
@@ -96,6 +96,22 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
     }
     return account.accountName || account.accountId || t('dashboard.accountFallback');
   }, [t]);
+
+  const handleOpenHoldingWorkbench = React.useCallback((holding: any, account?: AccountPortfolio) => {
+    if (!holding) return;
+    const nextHolding = account
+      ? {
+          ...holding,
+          accountId: account.accountId,
+          accountName: formatAccountName(account),
+        }
+      : holding;
+    setSelectedHolding?.(nextHolding);
+    openWorkbench(createHoldingWorkbenchSession(nextHolding, useWealthStore.getState().data));
+  }, [formatAccountName, openWorkbench, setSelectedHolding]);
+
+  const dashboardProjection = globalData?.dashboardProjection;
+  const projectedPortfolioMap = dashboardProjection?.portfolioIntelligenceMap || globalData?.portfolioIntelligenceMap;
 
   // Header status badge and subtitle logic
   let statusText = t('nav.synced');
@@ -187,8 +203,10 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
       )}
 
       <PortfolioIntelligenceMapView
+        map={projectedPortfolioMap}
         accountPortfolios={accountPortfolios}
         terminalState={globalData}
+        dashboardProjection={dashboardProjection}
         showAction
         onOpenWorkbench={handleOpenPortfolioIntelligence}
       />
@@ -212,51 +230,19 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
 
           const validPieData = sortedArr
             .filter(v => getHoldingMarketValue(v) > 0)
-            .map(v => ({ name: v.name || v.symbol, value: getHoldingMarketValue(v) }));
+            .map((v, index) => ({
+              name: v.name || v.symbol,
+              value: getHoldingMarketValue(v),
+              color: colors[index % colors.length],
+              currency: v.currency,
+              meta: v,
+            }));
 
-          const pieOption = {
-            backgroundColor: 'transparent',
-            tooltip: {
-              trigger: 'item',
-              backgroundColor: readCssToken('--aw-surface-1', 'rgb(18 20 19 / 0.95)'),
-              borderColor: readCssToken('--aw-border-strong', 'rgb(238 243 234 / 0.28)'),
-              borderWidth: 1,
-              textStyle: { color: readCssToken('--aw-text-primary', 'rgb(238 243 234)'), fontFamily: 'Inter', fontSize: 11 },
-              formatter: (p: any) => {
-                const item = sortedArr[p.dataIndex];
-                const sym = getCurrencySymbol(item?.currency);
-                return `${p.name}: ${sym}${(p.value || 0).toLocaleString()} (${p.percent}%)`;
-              }
-            },
-            color: colors,
-            series: [{
-              type: 'pie',
-              radius: ['55%', '78%'],
-              center: ['50%', '50%'],
-              avoidLabelOverlap: false,
-              itemStyle: { borderRadius: 4, borderColor: readCssToken('--aw-surface-0', 'rgb(18 20 19)'), borderWidth: 2 },
-              label: { show: false },
-              emphasis: { 
-                scale: true,
-                scaleSize: 6,
-                label: { show: false } 
-              },
-              data: validPieData.length > 0 ? validPieData : [{ name: t('charts.noData'), value: 0 }]
-            }]
-          };
-
-          const chartEvents = {
-            click: (params: any) => {
-              if (params.name && setSelectedHolding) {
-                const hit = sortedArr.find(h => h.name === params.name || h.symbol === params.name);
-                if (hit) {
-                  // Preserve account identity for downstream Workbench facts.
-                  setSelectedHolding({
-                    ...hit,
-                    accountId: account.accountId,
-                    accountName: formatAccountName(account)
-                  });
-                }
+          const handleDonutDataClick = (params: any) => {
+            if (params.name) {
+              const hit = sortedArr.find(h => h.name === params.name || h.symbol === params.name);
+              if (hit) {
+                handleOpenHoldingWorkbench(hit, account);
               }
             }
           };
@@ -344,7 +330,13 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
 	                  {/* Left: Donut Chart */}
 	                  <div className="w-full flex items-center justify-center min-w-0 relative min-h-[136px]">
 	                    <div className="w-[132px] h-[132px] sm:w-[140px] sm:h-[140px] relative shrink-0">
-                      <ReactECharts option={pieOption} onEvents={chartEvents} className="w-full h-full" />
+                      <Arbitra2DChart
+                        variant="donut"
+                        data={validPieData}
+                        compact
+                        onDataClick={handleDonutDataClick}
+                        className="w-full h-full"
+                      />
                       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                         <span className="aw-caption font-mono aw-text-tertiary uppercase leading-none mb-1">{t('dashboard.total')}</span>
                         <span className="aw-body font-bold aw-text-primary font-mono leading-none tracking-normal">
@@ -375,11 +367,7 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
                         return (
                           <div
                             key={`${item.symbol || idx}-${account.accountId}`}
-                            onClick={() => setSelectedHolding && setSelectedHolding({
-                              ...item,
-                              accountId: account.accountId,
-                              accountName: formatAccountName(account)
-                            })}
+                            onClick={() => handleOpenHoldingWorkbench(item, account)}
 	                            className={`aw-holding-row grid grid-cols-[minmax(0,1.4fr)_minmax(100px,0.85fr)_minmax(56px,0.45fr)] gap-2 items-center px-3 py-2 cursor-pointer transition-all border ${
                               isSelected 
                                 ? 'bg-aw-surface-3 border-aw-border-strong aw-text-primary'

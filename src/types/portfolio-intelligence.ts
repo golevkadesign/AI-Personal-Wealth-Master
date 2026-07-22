@@ -49,6 +49,42 @@ export interface PortfolioIntentFingerprint {
   confidence: 'high' | 'medium' | 'low';
 }
 
+export interface PortfolioStrategySummary {
+  currentState: {
+    dominantAxis: PortfolioExposureAxisId;
+    concentrationScore: number;
+    diversificationScore: number;
+    totalMarketValue: number;
+    valuationCoverage: number;
+  };
+  missingPieceSummary: Array<{
+    id: string;
+    axis: PortfolioExposureAxisId;
+    severity: PortfolioMissingPiece['severity'];
+    currentValue: number;
+    targetValue: number;
+    gap: number;
+    labelKey: string;
+  }>;
+  tiltPlan: Array<{
+    id: string;
+    fromAxis?: PortfolioExposureAxisId;
+    toAxis: PortfolioExposureAxisId;
+    magnitude: number;
+    priority: PortfolioSuggestedTilt['priority'];
+    labelKey: string;
+  }>;
+  projectedAxes: Array<{
+    axis: PortfolioExposureAxisId;
+    currentValue: number;
+    projectedValue: number;
+    delta: number;
+    sourceSymbols: string[];
+  }>;
+  executionBias: 'await_data' | 'rebalance' | 'defensive_buffer' | 'growth_extension';
+  confidence: 'high' | 'medium' | 'low';
+}
+
 export interface PortfolioIntelligenceMap {
   id: string;
   generatedAt: number;
@@ -59,6 +95,7 @@ export interface PortfolioIntelligenceMap {
   intentFingerprint: PortfolioIntentFingerprint;
   missingPieces: PortfolioMissingPiece[];
   suggestedTilts: PortfolioSuggestedTilt[];
+  strategySummary: PortfolioStrategySummary;
   sourceRefs: string[];
   dataQuality: {
     accountCount: number;

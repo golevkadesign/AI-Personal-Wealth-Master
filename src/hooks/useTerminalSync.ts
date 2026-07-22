@@ -10,8 +10,21 @@ import { TerminalState, LIVE_VALUATION_VERSION } from "../types/terminal";
 import { sanitizeTerminalState } from "../lib/sanitizer";
 import { useWealthStore, EMPTY_STATE } from "./useWealthStore";
 import { normalizeDashboardSchema } from "../lib/dashboard-schema-migration";
+import { getPublicSettings } from "../lib/settings";
 
 export { EMPTY_STATE };
+
+function shouldDropLegacyPublicHoldings(state: Partial<TerminalState>) {
+  const version = Number(state?._liveValuationVersion || 0);
+  return version > 0 && version < LIVE_VALUATION_VERSION;
+}
+
+function getFinanceRefreshIntervalMs() {
+  const interval = getPublicSettings().financeRefreshInterval || "15 minutes";
+  if (interval === "1 hour") return 60 * 60 * 1000;
+  if (interval === "Real-time (Websocket)") return 30 * 1000;
+  return 15 * 60 * 1000;
+}
 
 export function useTerminalSync() {
   const {
@@ -80,18 +93,7 @@ export function useTerminalSync() {
                     localState = { ...EMPTY_STATE, ...fsData.appData };
                   }
                   if (localState?.distributions?.publicHoldings) {
-                    const hasNegative =
-                      localState.distributions.publicHoldings.some(
-                        (p: any) =>
-                          Number(p.marketValue) < 0 || Number(p.value) < 0,
-                      );
-                    const version = Number(
-                      localState._liveValuationVersion || 0,
-                    );
-                    if (
-                      hasNegative ||
-                      (version > 0 && version < LIVE_VALUATION_VERSION)
-                    ) {
+                    if (shouldDropLegacyPublicHoldings(localState)) {
                       localState.distributions.publicHoldings = [];
                     }
                   }
@@ -131,16 +133,7 @@ export function useTerminalSync() {
             if (localDataStr) {
               let localState = JSON.parse(localDataStr);
               if (localState?.distributions?.publicHoldings) {
-                const hasNegative =
-                  localState.distributions.publicHoldings.some(
-                    (p: any) =>
-                      Number(p.marketValue) < 0 || Number(p.value) < 0,
-                  );
-                const version = Number(localState._liveValuationVersion || 0);
-                if (
-                  hasNegative ||
-                  (version > 0 && version < LIVE_VALUATION_VERSION)
-                ) {
+                if (shouldDropLegacyPublicHoldings(localState)) {
                   localState.distributions.publicHoldings = [];
                 }
               }
@@ -159,16 +152,7 @@ export function useTerminalSync() {
                   localState = { ...EMPTY_STATE, ...fsData.appData };
                 }
                 if (localState?.distributions?.publicHoldings) {
-                  const hasNegative =
-                    localState.distributions.publicHoldings.some(
-                      (p: any) =>
-                        Number(p.marketValue) < 0 || Number(p.value) < 0,
-                    );
-                  const version = Number(localState._liveValuationVersion || 0);
-                  if (
-                    hasNegative ||
-                    (version > 0 && version < LIVE_VALUATION_VERSION)
-                  ) {
+                  if (shouldDropLegacyPublicHoldings(localState)) {
                     localState.distributions.publicHoldings = [];
                   }
                 }
@@ -220,15 +204,17 @@ export function useTerminalSync() {
     let intervalId: any;
 
     if (user && !loadingAuth) {
+      const refreshIntervalMs = getFinanceRefreshIntervalMs();
       if (process.env.NODE_ENV !== "production")
         console.log(
           "[useTerminalSync] Automount fetchLongbridgeAccountPortfolios Triggered",
+          { refreshIntervalMs },
         );
       // Execute the initial fetch async to offload the hook immediately
       setTimeout(() => fetchLongbridgeAccountPortfolios(), 0);
       intervalId = setInterval(
         () => fetchLongbridgeAccountPortfolios(),
-        60 * 1000,
+        refreshIntervalMs,
       );
     }
 

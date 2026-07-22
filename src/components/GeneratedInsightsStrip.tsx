@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { ErrorBoundary } from './ui/ErrorBoundary';
 import { MaterialIcon } from './ui/MaterialIcon';
 import { SDUIRenderer } from '../lib/sdui-registry';
+import { useTranslation } from '../hooks/useTranslation';
 
 interface GeneratedInsightsStripProps {
   widgets: any[];
@@ -15,6 +16,7 @@ export const GeneratedInsightsStrip: React.FC<GeneratedInsightsStripProps> = ({
   globalData,
   onClear,
 }) => {
+  const { t } = useTranslation();
   const displayWidgets = React.useMemo(() => {
     if (!widgets || widgets.length === 0) return [];
 
@@ -40,17 +42,17 @@ export const GeneratedInsightsStrip: React.FC<GeneratedInsightsStripProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
         <div>
           <div className="flex items-center gap-1.5 aw-section-kicker">
-            <MaterialIcon name="auto_awesome" size={16} /> Top Insights / AI 生成洞察
+            <MaterialIcon name="auto_awesome" size={16} /> {t('dashboard.generatedInsightsTitle')}
           </div>
           <div className="aw-caption mt-0.5">
-            本轮仅保留最高优先级的临时建议，可随时清除。
+            {t('dashboard.generatedInsightsDesc')}
           </div>
         </div>
         <button
           onClick={onClear}
           className="aw-button aw-button-ghost shrink-0 w-fit"
         >
-          <MaterialIcon name="delete" size={16} /> 清除洞察
+          <MaterialIcon name="delete" size={16} /> {t('dashboard.clearInsights')}
         </button>
       </div>
 

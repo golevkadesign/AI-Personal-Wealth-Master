@@ -15,6 +15,9 @@ import { MaterialIcon } from '@/src/components/ui/MaterialIcon';
 import { buildAssistantResponseViewModel } from '../../lib/chat-response-parser';
 import { AssistantResponseBlock } from '../../lib/chat-response-types';
 import { useTranslation } from '../../hooks/useTranslation';
+import { getWorkbenchResponseWidgets } from '../../lib/workbench-widget-registry';
+import type { WorkbenchSessionSpec } from '../../types/workbench';
+import { WorkbenchWidgetRenderer } from '../WorkbenchWidgetRenderer';
 
 export interface AssistantResponseRendererProps {
   content: string;
@@ -23,6 +26,7 @@ export interface AssistantResponseRendererProps {
     timeTaken?: number;
     hasMemoryUpdate?: boolean;
     liveSources?: string[];
+    workbenchSession?: WorkbenchSessionSpec;
   };
   isStreaming?: boolean;
   isInteractionDisabled?: boolean;
@@ -113,6 +117,37 @@ export const AssistantResponseRenderer: React.FC<AssistantResponseRendererProps>
     return (
       <div className="markdown-body text-left">
         <Markdown components={finalMarkdownComponents}>{text}</Markdown>
+      </div>
+    );
+  };
+
+  const responseWidgets = useMemo(() => {
+    if (isStreaming || !metadata?.workbenchSession) return [];
+    return getWorkbenchResponseWidgets(metadata.workbenchSession);
+  }, [isStreaming, metadata?.workbenchSession]);
+
+  const renderResponseWidgets = () => {
+    if (!metadata?.workbenchSession || responseWidgets.length === 0) return null;
+    return (
+      <div
+        className="mt-4 space-y-2"
+        data-aw-response-widgets="true"
+        data-aw-response-widget-count={responseWidgets.length}
+        data-aw-response-widget-types={responseWidgets.map((widget) => widget.type).join(',')}
+      >
+        <div className="aw-caption aw-text-tertiary font-mono uppercase flex items-center gap-1.5">
+          <MaterialIcon name="widgets" size={16} className="text-aw-accent-mist" />
+          <span>{t('workbench.phaseReply')}</span>
+        </div>
+        <div className="grid grid-cols-1 gap-2">
+          {responseWidgets.map((widget) => (
+            <WorkbenchWidgetRenderer
+              key={`${widget.railId || 'response'}:${widget.id}`}
+              session={metadata.workbenchSession!}
+              widget={widget}
+            />
+          ))}
+        </div>
       </div>
     );
   };
@@ -485,6 +520,7 @@ export const AssistantResponseRenderer: React.FC<AssistantResponseRendererProps>
     return (
       <div className="w-full text-left font-sans select-text space-y-1 group/compact relative">
         {renderMarkdown(content)}
+        {renderResponseWidgets()}
         
         {!isStreaming && content.length > 0 && (
           <div className="flex justify-end pt-1 opacity-0 group-hover/compact:opacity-100 transition-opacity duration-150">
@@ -560,6 +596,7 @@ export const AssistantResponseRenderer: React.FC<AssistantResponseRendererProps>
       {/* Main Struct blocks mapper (Primary Blocks) */}
       <div className="space-y-4">
         {primaryBlocks.map((block, idx) => renderBlock(block, idx))}
+        {renderResponseWidgets()}
 
         {/* Collapsible Secondary Blocks */}
         {secondaryBlocks.length > 0 && (

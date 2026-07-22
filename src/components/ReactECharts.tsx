@@ -1,5 +1,4 @@
 import React, { useEffect, useRef } from 'react';
-import * as echarts from 'echarts';
 import { AW_CHART_TOKENS } from '../lib/design-tokens';
 
 interface ReactEChartsProps {
@@ -11,38 +10,44 @@ interface ReactEChartsProps {
 
 export const ReactECharts: React.FC<ReactEChartsProps> = ({ option, style, className, onEvents }) => {
   const chartRef = useRef<HTMLDivElement>(null);
+  const eventsRef = useRef(onEvents);
+  eventsRef.current = onEvents;
 
   useEffect(() => {
     if (!chartRef.current) return;
-
-    let chartInstance = echarts.getInstanceByDom(chartRef.current);
-    if (!chartInstance) {
-      chartInstance = echarts.init(chartRef.current, 'dark', { renderer: 'canvas' });
-    }
-
-    chartInstance.setOption({
-      backgroundColor: 'transparent',
-      textStyle: { fontFamily: 'Inter, sans-serif' },
-      ...option,
-      tooltip: { 
-        backgroundColor: AW_CHART_TOKENS.surface,
-        borderColor: AW_CHART_TOKENS.border,
-        textStyle: { color: AW_CHART_TOKENS.text },
-        ...(option.tooltip || {})
-      }
-    }, true);
-
-    if (onEvents) {
-      Object.keys(onEvents).forEach((eventName) => {
-        chartInstance?.off(eventName); // 防重复绑定
-        chartInstance?.on(eventName, onEvents[eventName] as any);
-      });
-    }
+    const target = chartRef.current;
+    let disposed = false;
+    let chartInstance: import('echarts/core').ECharts | undefined;
 
     const handleResize = () => chartInstance?.resize();
     window.addEventListener('resize', handleResize);
 
+    void import('./charts/echarts-runtime').then(({ echarts }) => {
+      if (disposed || !target.isConnected) return;
+      chartInstance = echarts.getInstanceByDom(target) || echarts.init(target, 'dark', { renderer: 'canvas' });
+      chartInstance.setOption({
+        backgroundColor: 'transparent',
+        textStyle: { fontFamily: 'Inter, sans-serif' },
+        ...option,
+        tooltip: {
+          backgroundColor: AW_CHART_TOKENS.surface,
+          borderColor: AW_CHART_TOKENS.border,
+          textStyle: { color: AW_CHART_TOKENS.text },
+          ...(option.tooltip || {}),
+        },
+      }, true);
+
+      if (eventsRef.current) {
+        Object.entries(eventsRef.current).forEach(([eventName, handler]) => {
+          chartInstance?.off(eventName);
+          chartInstance?.on(eventName, handler as any);
+        });
+      }
+      chartInstance.resize();
+    });
+
     return () => {
+      disposed = true;
       window.removeEventListener('resize', handleResize);
       chartInstance?.dispose();
     };

@@ -8,7 +8,7 @@ const chartTooltip = {
   backgroundColor: chartTokens.surface,
   borderColor: chartTokens.border,
   borderWidth: 1,
-  textStyle: { color: chartTokens.text, fontFamily: 'Inter' },
+  textStyle: { color: chartTokens.text, fontFamily: 'Inter', fontSize: 12 },
 };
 
 export function getCurrencySymbol(currency?: string) {
@@ -87,7 +87,7 @@ export function getDonutOption(data: any, t: (key: string) => string) {
     legend: {
       orient: 'vertical',
       left: 'left',
-      textStyle: { color: chartTokens.textMuted, fontFamily: 'JetBrains Mono', fontSize: 11 },
+      textStyle: { color: chartTokens.textMuted, fontFamily: 'JetBrains Mono', fontSize: 12, lineHeight: 18 },
       top: 'middle',
       icon: 'circle'
     },
@@ -114,7 +114,7 @@ export function getExpenseOption(data: any, t: (key: string) => string) {
     legend: {
       orient: 'vertical',
       left: 'left',
-      textStyle: { color: chartTokens.textMuted, fontFamily: 'JetBrains Mono', fontSize: 11 },
+      textStyle: { color: chartTokens.textMuted, fontFamily: 'JetBrains Mono', fontSize: 12, lineHeight: 18 },
       top: 'middle',
       icon: 'circle'
     },
@@ -155,7 +155,7 @@ export function getWaterfallOption(data: any, t: (key: string) => string) {
       type: 'category',
       splitLine: { show: false },
       data: names.length > 1 ? names : [t('charts.noData')],
-      axisLabel: { color: chartTokens.textMuted, fontFamily: 'Inter', interval: 0, formatter: (val: string) => val.length > 4 ? val.slice(0, 4) + '...' : val }
+      axisLabel: { color: chartTokens.textMuted, fontFamily: 'Inter', fontSize: 12, interval: 0, formatter: (val: string) => val.length > 4 ? val.slice(0, 4) + '...' : val }
     },
     yAxis: {
       type: 'value',
@@ -173,7 +173,7 @@ export function getWaterfallOption(data: any, t: (key: string) => string) {
           formatter: (p: any) => p.value >= 10000 ? (p.value / 10000).toFixed(1) + 'w' : (p.value?.toLocaleString() || '0'),
           color: chartTokens.text,
           fontFamily: 'JetBrains Mono',
-          fontSize: 10
+          fontSize: 12
         },
         itemStyle: {
           color: (p: any) => p.dataIndex === names.length - 1 ? chartTokens.text : chartTokens.accent,
@@ -226,7 +226,7 @@ export function getHoldingsOption(data: any, t: (key: string) => string) {
       }
     ],
     xAxis: [{ type: 'value', splitLine: { lineStyle: { color: chartTokens.borderSubtle, type: 'dashed' } }, axisLabel: { show: false } }],
-    yAxis: [{ type: 'category', data: symbols.length ? symbols : [t('charts.noData')], axisLabel: { color: chartTokens.textMuted, fontFamily: 'Inter', interval: 0, width: 80, overflow: 'truncate' } }],
+    yAxis: [{ type: 'category', data: symbols.length ? symbols : [t('charts.noData')], axisLabel: { color: chartTokens.textMuted, fontFamily: 'Inter', fontSize: 12, interval: 0, width: 96, overflow: 'truncate' } }],
     series: [{
       type: 'bar',
       label: {
@@ -238,7 +238,7 @@ export function getHoldingsOption(data: any, t: (key: string) => string) {
         },
         color: chartTokens.accent,
         fontFamily: 'JetBrains Mono',
-        fontSize: 10
+        fontSize: 12
       },
       barWidth: '55%',
       data: values.length ? values : [0],
@@ -279,7 +279,7 @@ export function getOptionsOption(data: any, t: (key: string) => string) {
         handleSize: '100%',
       }
     ],
-    xAxis: [{ type: 'category', data: symbols.length ? symbols : [t('charts.noData')], axisLabel: { color: chartTokens.textMuted, fontFamily: 'Inter', interval: 0, rotate: symbols.length > 4 ? 30 : 0 } }],
+    xAxis: [{ type: 'category', data: symbols.length ? symbols : [t('charts.noData')], axisLabel: { color: chartTokens.textMuted, fontFamily: 'Inter', fontSize: 12, interval: 0, rotate: symbols.length > 4 ? 30 : 0 } }],
     yAxis: [{ type: 'value', splitLine: { lineStyle: { color: chartTokens.borderSubtle, type: 'dashed' } }, axisLabel: { show: false } }],
     series: [{
       type: 'bar',
@@ -289,7 +289,7 @@ export function getOptionsOption(data: any, t: (key: string) => string) {
         formatter: (p: any) => p.value >= 10000 ? (p.value / 10000).toFixed(1) + 'w' : (p.value?.toLocaleString() || '0'),
         color: chartTokens.textMuted,
         fontFamily: 'JetBrains Mono',
-        fontSize: 10
+        fontSize: 12
       },
       barWidth: '40%',
       data: values.length ? values : [0],

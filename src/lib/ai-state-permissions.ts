@@ -20,17 +20,21 @@ export function filterAiWritableStatePatch(
   }
 
   const allowTrustedFactWrite = options?.allowTrustedFactWrite ?? false;
+  const allowMemoryWrite = options?.allowMemoryWrite ?? false;
 
   // Top-level writable fields by AI by default (all non-fact modules)
   const allowedTopLevel = [
     'insights',
-    'userPersona',
-    'goal',
-    'lifeStrategiesShort',
-    'lifeStrategiesLong',
     'dynamicWidgets',
-    'agentMemorySnapshots'
   ];
+
+  if (allowMemoryWrite) {
+    allowedTopLevel.push('userPersona');
+    allowedTopLevel.push('goal');
+    allowedTopLevel.push('lifeStrategiesShort');
+    allowedTopLevel.push('lifeStrategiesLong');
+    allowedTopLevel.push('agentMemorySnapshots');
+  }
 
   if (allowTrustedFactWrite) {
     allowedTopLevel.push('metrics');

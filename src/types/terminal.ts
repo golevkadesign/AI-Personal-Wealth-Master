@@ -92,6 +92,25 @@ export interface Snapshot {
   distributions: any;
 }
 
+export interface WorkbenchAuditState {
+  version: 1;
+  updatedAt: number;
+  latestSessionId?: string;
+  latestDecisionId?: string;
+  sessions: Array<Record<string, any>>;
+  decisions: Array<Record<string, any>>;
+  profileEvents: Array<Record<string, any>>;
+  stats: {
+    sessionCount: number;
+    decisionCount: number;
+    profileEventCount: number;
+    pendingMemoryCount: number;
+    acceptedMemoryCount: number;
+    rejectedMemoryCount: number;
+  };
+  sourceRefs: string[];
+}
+
 export interface AccountPosition {
   symbol: string;
   name: string;
@@ -170,5 +189,6 @@ export interface TerminalState {
   publicHoldingAccountsLastSyncAt?: number;
   marketContext?: MarketContext;
   marketContextLastFetchedAt?: number;
+  workbenchAudit?: WorkbenchAuditState;
   [key: string]: any;
 }

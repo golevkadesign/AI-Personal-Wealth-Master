@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { getSettings } from '../lib/settings';
+import { useTranslation } from './useTranslation';
 
 export type PlanStatus = 'idle' | 'thinking' | 'done';
 
@@ -10,6 +11,7 @@ export interface PlanState {
 }
 
 export function useStrategyStream() {
+  const { t } = useTranslation();
   const [nodePlans, setNodePlans] = useState<Record<string, PlanState>>({});
   const controllersRef = useRef<Map<string, AbortController>>(new Map());
 
@@ -35,7 +37,7 @@ export function useStrategyStream() {
 
     setNodePlans(prev => ({
       ...prev,
-      [planKey]: { status: 'thinking', result: '', thinking: '启动 AI 战略脑...' }
+      [planKey]: { status: 'thinking', result: '', thinking: t('dashboard.strategyThinkingStart') }
     }));
 
     const prompt = `你是一个顶尖的人生战略推演系统（配有高级推演核心）。请对以下【${item.timeNode}】阶段的计划进行极度硬核的落地推演。
@@ -99,7 +101,7 @@ export function useStrategyStream() {
         const now = Date.now();
         if (hasUpdates && now - lastUpdateTime > 60) {
             let thinkMatch = accumulatedText.match(/<think>([\s\S]*?)(?:<\/think>|$)/);
-            let currentThinkLine = '建立深度推演图谱...';
+            let currentThinkLine = t('dashboard.strategyBuildingMap');
             
             if (thinkMatch) {
                 const thinkContent = thinkMatch[1].trim();
@@ -127,7 +129,7 @@ export function useStrategyStream() {
       const finalResText = accumulatedText.replace(/<think>[\s\S]*?(?:<\/think>|$)/, '').trim();
       setNodePlans(prev => ({
         ...prev,
-        [planKey]: { status: 'done', result: finalResText, thinking: '推演执行完毕' }
+        [planKey]: { status: 'done', result: finalResText, thinking: t('dashboard.strategyComplete') }
       }));
 
     } catch (e: any) {
@@ -137,11 +139,11 @@ export function useStrategyStream() {
       }
       let errMsg = e.message;
       if (errMsg.includes('503') || errMsg.includes('high demand') || errMsg.includes('UNAVAILABLE')) {
-         errMsg = "API 当前负载较高 (503 Service Unavailable)。需求激增通常是暂时的，请稍后再试。";
+         errMsg = t('chat.errors.overloaded');
       } else if (errMsg.includes('API key not valid') || errMsg.includes('API_KEY_INVALID')) {
-         errMsg = "获取到的 API Key 无效。请点击此环境的 Settings（设置） -> Secrets 面板，检查并清除或更新您自定义的 API_KEY。";
+         errMsg = t('chat.errors.invalidApiKey');
       } else if (errMsg.includes('exceeded your current quota') || errMsg.includes('rate limits') || errMsg.includes('Quota exceeded') || errMsg.includes('429') || errMsg.includes('RESOURCE_EXHAUSTED') || errMsg.includes('monthly spending cap')) {
-         errMsg = "API 额度已耗尽 (Resource Exhausted - Quota Exceeded)。您配置的 API Key 免费额度/速率或可用资金余额已达上限，请稍微重试或检查计费层级。";
+         errMsg = t('chat.errors.quota');
       } else if (errMsg.includes('{')) {
           try {
               const parsed = JSON.parse(errMsg.substring(errMsg.indexOf('{')));
@@ -150,12 +152,12 @@ export function useStrategyStream() {
       }
       setNodePlans(prev => ({
         ...prev,
-        [planKey]: { status: 'done', result: `⚠️ 推演中断: ${errMsg}`, thinking: 'Neural Link Disconnected' }
+        [planKey]: { status: 'done', result: `⚠️ ${t('dashboard.strategyErrorPrefix')}: ${errMsg}`, thinking: t('dashboard.strategyDisconnected') }
       }));
     } finally {
         controllersRef.current.delete(planKey);
     }
-  }, []);
+  }, [t]);
 
   const clearNodePlans = useCallback(() => {
     controllersRef.current.forEach(c => c.abort());

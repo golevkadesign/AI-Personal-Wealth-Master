@@ -1,0 +1,10 @@
+.git
+.gitignore
+.DS_Store
+.env
+.env.*
+node_modules
+dist
+coverage
+Wealth Mater V2/
+AI-Personal-Wealth-Master-pre-PRD2-backup-*/

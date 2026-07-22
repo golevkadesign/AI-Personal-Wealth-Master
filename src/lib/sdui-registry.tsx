@@ -1,8 +1,7 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Card } from '../components/Card';
-import { ReactECharts } from '../components/ReactECharts';
 import { MaterialIcon } from '@/src/components/ui/MaterialIcon';
-import { getSDUIPieOption, getDonutOption, getExpenseOption, getWaterfallOption, getHoldingsOption, getOptionsOption, getCurrencySymbol } from '../components/chart-configs';
+import { getDonutOption, getExpenseOption, getWaterfallOption, getHoldingsOption, getOptionsOption, getCurrencySymbol } from '../components/chart-configs';
 import { ChartWidget } from '../components/ChartWidget';
 import { SDUIComponent } from '../types/terminal';
 import { useInteractionStore } from '../hooks/useInteractionStore';
@@ -12,6 +11,7 @@ import { PublicHoldingsView } from '../components/PublicHoldingsView';
 import { PublicHoldingAccountsView } from '../components/PublicHoldingAccountsView';
 import { getMetricVisibility, getChartVisibility } from './dashboard-visibility';
 import { DASHBOARD_LAYOUT } from './dashboard-layout';
+import { Arbitra2DChart } from '../components/charts/Arbitra2DChart';
 
 const bgMap: Record<string, string> = {
   'surface-base': 'bg-aw-surface-1',
@@ -82,7 +82,9 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
       </div>
     );
   },
-  MetricCard: ({ title, dataKey, isLongSubText, globalData }) => {
+  MetricCard: ({ title, titleKey, dataKey, isLongSubText, globalData }) => {
+    const { t } = useTranslation();
+    const displayTitle = titleKey ? t(titleKey) : title;
     const visibility = getMetricVisibility(globalData, dataKey);
     if (!visibility.visible) {
       return null;
@@ -97,10 +99,11 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
     const sym = getCurrencySymbol(currency);
     const valueStr = valueNum !== undefined ? `${sym}${Number(valueNum).toLocaleString()}` : 'N/A';
     const subValue = metrics[`${dataKey}Summary`] || '';
-    return <Card title={title} value={valueStr} subValue={subValue} isLongSubText={isLongSubText} />;
+    return <Card title={displayTitle} value={valueStr} subValue={subValue} isLongSubText={isLongSubText} metricKey={dataKey} />;
   },
-  DynamicChart: ({ title, chartType, chartHeight, layoutSize, delay, globalData, layoutSpan }) => {
+  DynamicChart: ({ title, titleKey, chartType, chartHeight, layoutSize, delay, globalData, layoutSpan }) => {
     const { t } = useTranslation();
+    const displayTitle = titleKey ? t(titleKey) : title;
     const dispatchEvent = useSDUIEventStore.getState().dispatch;
     const { selectedHolding, setSelectedHolding } = globalData || {};
 
@@ -128,7 +131,7 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
       if (publicHoldingAccounts.length > 0) {
         renderContent = (
           <PublicHoldingAccountsView
-            title={title}
+            title={displayTitle}
             chartType={chartType}
             accountPortfolios={publicHoldingAccounts}
             syncStatus={globalData?.publicHoldingAccountsSyncStatus || 'idle'}
@@ -145,7 +148,7 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
       } else {
         renderContent = (
           <PublicHoldingsView
-            title={title}
+            title={displayTitle}
             chartType={chartType}
             distData={distData}
             globalData={globalData}
@@ -174,7 +177,7 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
 
       renderContent = (
         <ChartWidget
-          title={title}
+          title={displayTitle}
           type={chartType}
           option={option}
           chartHeight={resolvedHeight}
@@ -292,7 +295,6 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
   },
   EChartsPie: ({ data }) => {
     const { t } = useTranslation();
-    const option = useMemo(() => getSDUIPieOption(data, t), [data, t]);
 
     if (!data || data.length === 0) {
       return (
@@ -305,7 +307,16 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
     return (
       <div className="aw-panel p-6 h-[350px] flex flex-col">
          <div className="flex-1 min-h-0">
-            <ReactECharts option={option} />
+            <Arbitra2DChart
+              variant="donut"
+              data={data.map((item: any, index: number) => ({
+                name: item?.name || t('charts.unknown'),
+                value: Number(item?.value) || 0,
+                meta: item,
+                color: item?.color,
+              }))}
+              compact
+            />
          </div>
       </div>
     );

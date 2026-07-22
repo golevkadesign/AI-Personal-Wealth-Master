@@ -50,6 +50,13 @@ const WIDGET_TITLE_KEY: Record<WorkbenchWidgetType, string> = {
   missing_pieces: 'workbench.missingPieces',
   suggested_tilt: 'workbench.suggestedTilt',
   projected_exposure: 'workbench.projectedExposure',
+  holding_quote_snapshot: 'workbench.holdingQuoteSnapshot',
+  holding_value_summary: 'workbench.holdingValueSummary',
+  holding_sync_status: 'workbench.holdingSyncStatus',
+  holding_trend_chart: 'workbench.holdingTrendChart',
+  holding_quant_indicators: 'workbench.holdingQuantIndicators',
+  holding_strategy_deductions: 'workbench.holdingStrategyDeductions',
+  holding_analysis_snapshot_diff: 'workbench.holdingAnalysisSnapshotDiff',
 };
 
 const mapFactConfidence = (confidence?: SharedFactBundle['confidence']): AgentRailResult['confidence'] => {
@@ -60,14 +67,54 @@ const mapFactConfidence = (confidence?: SharedFactBundle['confidence']): AgentRa
 
 const getRailMissingFacts = (definition: WorkbenchRailDefinition, facts?: Partial<SharedFactBundle>) => {
   const sessionMissing = new Set(facts?.missingFacts || []);
-  return definition.requiredFacts.filter((fact) => sessionMissing.has(fact));
+  return definition.requiredFacts.filter((fact) => sessionMissing.has(fact) || !isFactReady(fact, facts));
+};
+
+const getPortfolioIntelligenceMap = (facts?: Partial<SharedFactBundle>) => {
+  if (facts?.portfolioIntelligenceMap) return facts.portfolioIntelligenceMap;
+  if (!hasPortfolioFacts(facts)) return undefined;
+  return buildPortfolioIntelligenceMap({
+    accountPortfolios: facts?.publicHoldingAccounts,
+    terminalState: facts?.terminalState,
+  });
+};
+
+const hasStrategicBrief = (facts?: Partial<SharedFactBundle>) => {
+  const insight = facts?.terminalState?.insights?.global;
+  const defaultGlobalInsight = '\u7b49\u5f85\u6570\u636e\u6ce8\u5165...';
+  return typeof insight === 'string' && insight.trim().length > 0 && insight.trim() !== defaultGlobalInsight;
+};
+
+const FACT_READINESS_CHECKS: Record<string, (facts?: Partial<SharedFactBundle>) => boolean> = {
+  terminal_state: (facts) => Boolean(facts?.summary?.hasTerminalState || facts?.terminalState),
+  public_holdings: (facts) => hasPortfolioFacts(facts),
+  public_holding_accounts: (facts) => Boolean(facts?.publicHoldingAccounts?.some((account) => account.positions?.length)),
+  market_context: (facts) => Boolean(facts?.summary?.hasMarketContext || facts?.marketContext),
+  strategic_brief: (facts) => hasStrategicBrief(facts),
+  sovereign_profile: (facts) => Boolean(facts?.summary?.hasSovereignProfile || facts?.sovereignProfile),
+  selected_holding_identity: (facts) => Boolean(facts?.selectedHolding?.symbol || facts?.selectedHolding?.name),
+  holding_quant_analysis: (facts) => Boolean(facts?.selectedHoldingAnalysis),
+  industry_map: (facts) => Boolean(getPortfolioIntelligenceMap(facts)?.positions.length),
+  projected_exposure: (facts) => {
+    const portfolioMap = getPortfolioIntelligenceMap(facts);
+    return Boolean(portfolioMap && portfolioMap.dataQuality.valuedPositionCount > 0);
+  },
+  rail_outputs: () => true,
+  user_prompt: (facts) => Boolean(facts?.summary?.hasUserPrompt || facts?.userPrompt),
+  shared_facts: (facts) => Boolean(facts?.sourceRefs?.length),
+};
+
+const isFactReady = (fact: string, facts?: Partial<SharedFactBundle>) => {
+  const check = FACT_READINESS_CHECKS[fact];
+  if (check) return check(facts);
+  return !facts?.missingFacts?.includes(fact);
 };
 
 const getRailStatus = (
   definition: WorkbenchRailDefinition,
   facts?: Partial<SharedFactBundle>,
 ): WorkbenchWidgetStatus => {
-  if (!facts?.summary?.hasTerminalState) return 'blocked';
+  if (!isFactReady('terminal_state', facts)) return 'blocked';
   const missingFacts = getRailMissingFacts(definition, facts);
   if (missingFacts.length === 0) return 'ready';
   if (missingFacts.length < definition.requiredFacts.length) return 'partial';
@@ -218,6 +265,61 @@ const createRailActions = (
   ];
 };
 
+const MISSING_FACT_RISK_KEY: Record<string, string> = {
+  public_holdings: 'workbench.railRisks.missingPublicHoldings',
+  public_holding_accounts: 'workbench.railRisks.missingPublicHoldings',
+  market_context: 'workbench.railRisks.missingMarketContext',
+  strategic_brief: 'workbench.railRisks.missingStrategicBrief',
+  sovereign_profile: 'workbench.railRisks.missingSovereignProfile',
+  holding_quant_analysis: 'workbench.railRisks.missingHoldingQuantAnalysis',
+};
+
+const createRailRiskKeys = (
+  definition: WorkbenchRailDefinition,
+  facts?: Partial<SharedFactBundle>,
+  missingFacts: string[] = [],
+) => {
+  const riskKeys = missingFacts.map((fact) => MISSING_FACT_RISK_KEY[fact] || `missing:${fact}`);
+  const portfolioMap = getPortfolioIntelligenceMap(facts);
+  const valuationCoverage = portfolioMap?.dataQuality.valuationCoverage || 0;
+  const hasValuedPositions = Boolean(portfolioMap && portfolioMap.dataQuality.valuedPositionCount > 0);
+  const highSeverityPieces = portfolioMap?.missingPieces.filter((piece) => piece.severity === 'high') || [];
+
+  if (hasValuedPositions && valuationCoverage < 0.8) {
+    riskKeys.push('workbench.railRisks.lowValuationCoverage');
+  }
+
+  if (definition.railId === 'equity') {
+    if ((portfolioMap?.intentFingerprint.concentrationScore || 0) >= 60) {
+      riskKeys.push('workbench.railRisks.highConcentration');
+    }
+    if (facts?.selectedHoldingAnalysis?.deterministicAdvice?.risks?.length) {
+      riskKeys.push('workbench.railRisks.holdingQuantRisk');
+    }
+  }
+
+  if (definition.railId === 'allocation') {
+    if (highSeverityPieces.length > 0) {
+      riskKeys.push('workbench.railRisks.missingAllocationPieces');
+    }
+    const growthAxis = portfolioMap?.axes.find((axis) => axis.id === 'growth');
+    if ((growthAxis?.value || 0) >= 58) {
+      riskKeys.push('workbench.railRisks.growthOverweight');
+    }
+  }
+
+  if (definition.railId === 'life') {
+    if (hasValuedPositions && !facts?.sovereignProfile) {
+      riskKeys.push('workbench.railRisks.lifeConstraintUnknown');
+    }
+    if ((portfolioMap?.intentFingerprint.concentrationScore || 0) >= 60 && facts?.sovereignProfile) {
+      riskKeys.push('workbench.railRisks.lifeHighBetaNeedsConstraint');
+    }
+  }
+
+  return Array.from(new Set(riskKeys));
+};
+
 async function runSingleRail(
   definition: WorkbenchRailDefinition,
   sessionSpec: WorkbenchSessionSpec,
@@ -228,6 +330,8 @@ async function runSingleRail(
   const summaryKey = getSummaryKey(definition.railId, status);
   const memoryCandidates = createMemoryCandidates(definition, sessionSpec, status);
   const actions = createRailActions(definition, status, missingFacts);
+  const risks = createRailRiskKeys(definition, facts, missingFacts);
+  const portfolioMap = getPortfolioIntelligenceMap(facts);
 
   return {
     railId: definition.railId,
@@ -238,7 +342,7 @@ async function runSingleRail(
     confidence: status === 'ready' ? mapFactConfidence(facts?.confidence) : 'low',
     evidenceRefs: facts?.sourceRefs || [],
     missingFacts,
-    risks: missingFacts.length > 0 ? missingFacts.map((fact) => `missing:${fact}`) : [],
+    risks,
     actions,
     widgetManifest: definition.widgetTypes.map((type, index) => ({
       id: `${definition.railId}-${type}`,
@@ -252,6 +356,9 @@ async function runSingleRail(
         railId: definition.railId,
         requiredFacts: definition.requiredFacts,
         missingFacts,
+        portfolioMapId: portfolioMap?.id,
+        portfolioDataQuality: portfolioMap?.dataQuality,
+        portfolioStrategySummary: portfolioMap?.strategySummary,
       },
     })),
     memoryCandidates,

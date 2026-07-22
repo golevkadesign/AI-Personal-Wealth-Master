@@ -108,6 +108,12 @@ export const AgentThinkingTrace: React.FC<AgentThinkingTraceProps> = ({
     globalStatus === 'error' ? 'text-aw-danger' :
     globalStatus === 'running' ? 'text-aw-warning' :
     'text-aw-success';
+  const translatedHeadline = trace.headlineKey ? t(trace.headlineKey) : trace.headline;
+  const translatedCurrentLabel = trace.currentLabelKey === 'chat.thinkingNodesCompleted'
+    ? `${trace.meta.completedCount} ${t('chat.thinkingNodesCompleted')}`
+    : trace.currentLabelKey
+    ? t(trace.currentLabelKey)
+    : trace.currentLabel;
 
   return (
     <div className={`aw-structured-card w-full overflow-hidden text-left font-sans select-none transition-colors ${className}`}>
@@ -132,11 +138,11 @@ export const AgentThinkingTrace: React.FC<AgentThinkingTraceProps> = ({
           {/* 标题 & 当前状态 */}
           <div className="flex items-center gap-2 min-w-0">
             <span className={`font-sans font-medium shrink-0 ${globalTone}`}>
-              {globalStatus === 'running' ? t('chat.thinkingProgress') : trace.headline}
+              {globalStatus === 'running' ? t('chat.thinkingProgress') : translatedHeadline}
             </span>
             <span className="aw-text-tertiary font-sans select-none shrink-0">•</span>
-            <span className="aw-text-secondary truncate max-w-[200px] sm:max-w-[340px] font-sans font-normal" title={trace.currentLabel}>
-              {trace.currentLabel}
+            <span className="aw-text-secondary truncate max-w-[200px] sm:max-w-[340px] font-sans font-normal" title={translatedCurrentLabel}>
+              {translatedCurrentLabel}
             </span>
           </div>
         </div>

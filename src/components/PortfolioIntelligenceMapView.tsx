@@ -2,6 +2,7 @@ import React from 'react';
 import { buildPortfolioIntelligenceMap } from '../lib/portfolio-intelligence';
 import { AccountPortfolio, TerminalState } from '../types/terminal';
 import { PortfolioExposureAxisId, PortfolioIntelligenceMap } from '../types/portfolio-intelligence';
+import { DashboardProjection } from '../types/workbench';
 import { useTranslation } from '../hooks/useTranslation';
 import { MaterialIcon } from './ui/MaterialIcon';
 import { PortfolioIntelligenceCanvasScene } from './PortfolioIntelligenceCanvasScene';
@@ -10,10 +11,20 @@ interface PortfolioIntelligenceMapViewProps {
   map?: PortfolioIntelligenceMap;
   accountPortfolios?: AccountPortfolio[];
   terminalState?: TerminalState;
+  dashboardProjection?: DashboardProjection;
   variant?: 'dashboard' | 'workbench';
   showAction?: boolean;
   onOpenWorkbench?: () => void;
 }
+
+const STATUS_LABEL_KEYS: Record<string, string> = {
+  awaiting_context: 'workbench.awaitingContext',
+  waiting_signals: 'workbench.waitingSignals',
+  ready: 'workbench.ready',
+  partial: 'workbench.partial',
+  blocked: 'workbench.blocked',
+  error: 'workbench.error',
+};
 
 const AXIS_POSITION: Record<PortfolioExposureAxisId, { x: number; y: number }> = {
   growth: { x: 72, y: 24 },
@@ -35,7 +46,7 @@ const priorityIcon = {
 };
 
 const formatCurrency = (value: number) => {
-  if (!Number.isFinite(value) || value <= 0) return '$0';
+  if (!Number.isFinite(value) || value <= 0) return '—';
   return `$${value.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
 };
 
@@ -54,33 +65,43 @@ function AxisMetric({ axis }: { axis: PortfolioIntelligenceMap['axes'][number] }
   );
 }
 
-function ExposureScene({ intelligenceMap }: { intelligenceMap: PortfolioIntelligenceMap }) {
+function ExposureScene({ intelligenceMap, hasData }: { intelligenceMap: PortfolioIntelligenceMap; hasData: boolean }) {
   const { t } = useTranslation();
 
   return (
     <div
-      className="aw-pim-scene"
+      className={`aw-pim-scene ${!hasData ? 'aw-pim-scene-empty' : ''}`}
       data-arbitra-portfolio-intelligence-scene="true"
       aria-label={t('portfolioIntelligence.sceneLabel')}
     >
-      <PortfolioIntelligenceCanvasScene intelligenceMap={intelligenceMap} />
-      {intelligenceMap.axes.map((axis) => {
-        const pos = AXIS_POSITION[axis.id];
-        return (
-          <React.Fragment key={axis.id}>
-            <span
-              className="aw-pim-axis-label"
-              style={{ left: `${pos.x}%`, top: `${pos.y}%`, color: axis.color }}
-            >
-              {t(axis.labelKey)}
-            </span>
-          </React.Fragment>
-        );
-      })}
-      <div className="aw-pim-core">
-        <span className="aw-caption aw-text-tertiary font-mono uppercase">{t('portfolioIntelligence.total')}</span>
-        <strong>{formatCurrency(intelligenceMap.totalMarketValue)}</strong>
-      </div>
+      {hasData ? (
+        <>
+          <PortfolioIntelligenceCanvasScene intelligenceMap={intelligenceMap} />
+          {intelligenceMap.axes.map((axis) => {
+            const pos = AXIS_POSITION[axis.id];
+            return (
+              <React.Fragment key={axis.id}>
+                <span
+                  className="aw-pim-axis-label"
+                  style={{ left: `${pos.x}%`, top: `${pos.y}%`, color: axis.color }}
+                >
+                  {t(axis.labelKey)}
+                </span>
+              </React.Fragment>
+            );
+          })}
+          <div className="aw-pim-core">
+            <span className="aw-caption aw-text-tertiary font-mono uppercase">{t('portfolioIntelligence.total')}</span>
+            <strong>{formatCurrency(intelligenceMap.totalMarketValue)}</strong>
+          </div>
+        </>
+      ) : (
+        <div className="aw-pim-empty-state" role="status">
+          <MaterialIcon name="account_balance_wallet" size={24} />
+          <strong>{t('workbench.awaitingContext')}</strong>
+          <span>{t('portfolioIntelligence.missing.awaiting')}</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -89,6 +110,7 @@ export function PortfolioIntelligenceMapView({
   map,
   accountPortfolios,
   terminalState,
+  dashboardProjection,
   variant = 'dashboard',
   showAction = false,
   onOpenWorkbench,
@@ -99,7 +121,17 @@ export function PortfolioIntelligenceMapView({
     [accountPortfolios, map, terminalState],
   );
   const compact = variant === 'workbench';
-  const missingPieces = intelligenceMap.missingPieces.length > 0
+  const hasValuedPositions = intelligenceMap.dataQuality.valuedPositionCount > 0;
+  const missingPieces = !hasValuedPositions
+    ? [{
+      id: 'awaiting',
+      axis: intelligenceMap.intentFingerprint.dominantAxis,
+      labelKey: 'portfolioIntelligence.missing.awaiting',
+      severity: 'low' as const,
+      currentValue: 0,
+      targetValue: 0,
+    }]
+    : intelligenceMap.missingPieces.length > 0
     ? intelligenceMap.missingPieces
     : [{
       id: 'none',
@@ -109,9 +141,57 @@ export function PortfolioIntelligenceMapView({
       currentValue: 0,
       targetValue: 0,
     }];
-  const sourceStatus = intelligenceMap.dataQuality.valuedPositionCount > 0 ? t('workbench.ready') : t('workbench.awaitingContext');
-  const dataFreshnessStatus = intelligenceMap.dataQuality.valuedPositionCount > 0 ? t('workbench.ready') : t('workbench.waitingSignals');
-  const confidenceStatus = t(`workbench.confidenceLevels.${intelligenceMap.intentFingerprint.confidence}`);
+  const sourceStatus = hasValuedPositions ? t('workbench.ready') : t('workbench.awaitingContext');
+  const dataFreshnessStatus = hasValuedPositions ? t('workbench.ready') : t('workbench.waitingSignals');
+  const confidenceStatus = hasValuedPositions
+    ? t(`workbench.confidenceLevels.${intelligenceMap.intentFingerprint.confidence}`)
+    : t('workbench.awaitingContext');
+  const projectionStatus = dashboardProjection?.status;
+  const projectionStatusLabel = projectionStatus
+    ? t(STATUS_LABEL_KEYS[String(projectionStatus)] || String(projectionStatus))
+    : '';
+  const projectionSourceCount = dashboardProjection?.sourceRefs?.length || dashboardProjection?.trace?.sourceRefs?.length || 0;
+
+  if (!hasValuedPositions) {
+    return (
+      <section className={`aw-pim-card aw-pim-card-empty ${compact ? 'aw-pim-card-compact' : ''}`}>
+        <header className="aw-pim-header">
+          <div className="min-w-0">
+            <p className="aw-section-kicker">{t('portfolioIntelligence.kicker')}</p>
+            <h3 className="aw-label aw-text-primary font-semibold tracking-normal">{t('portfolioIntelligence.title')}</h3>
+          </div>
+          <span className="aw-status-pill font-mono">
+            <MaterialIcon name="schedule" size={16} />
+            {t('workbench.awaitingContext')}
+          </span>
+        </header>
+
+        <div className="aw-pim-empty-layout" role="status" aria-label={t('portfolioIntelligence.sceneLabel')}>
+          <div className="aw-pim-empty-icon" aria-hidden="true">
+            <MaterialIcon name="account_balance_wallet" size={24} />
+          </div>
+          <div className="min-w-0">
+            <strong className="aw-body aw-text-primary">{t('portfolioIntelligence.emptyTitle')}</strong>
+            <p className="aw-body aw-text-secondary mt-1">{t('portfolioIntelligence.emptyDescription')}</p>
+          </div>
+          <div className="aw-pim-empty-statuses" aria-label={t('portfolioIntelligence.dataReadiness')}>
+            <span><MaterialIcon name="database" size={16} />{t('portfolioIntelligence.sourceTrace')}: {t('workbench.awaitingContext')}</span>
+            <span><MaterialIcon name="schedule" size={16} />{t('portfolioIntelligence.dataFreshness')}: {t('workbench.waitingSignals')}</span>
+            <span><MaterialIcon name="verified_user" size={16} />{t('portfolioIntelligence.confidence')}: —</span>
+          </div>
+        </div>
+
+        {showAction && (
+          <footer className="aw-pim-empty-footer">
+            <button type="button" className="aw-button aw-button-primary !min-h-8 !px-3 font-mono" onClick={onOpenWorkbench}>
+              <MaterialIcon name="forum" size={16} />
+              <span>{t('portfolioIntelligence.completeContext')}</span>
+            </button>
+          </footer>
+        )}
+      </section>
+    );
+  }
 
   return (
     <section className={`aw-pim-card ${compact ? 'aw-pim-card-compact' : ''}`}>
@@ -133,7 +213,7 @@ export function PortfolioIntelligenceMapView({
       </header>
 
       <div className={compact ? 'aw-pim-layout-compact' : 'aw-pim-layout'}>
-        <ExposureScene intelligenceMap={intelligenceMap} />
+        <ExposureScene intelligenceMap={intelligenceMap} hasData={hasValuedPositions} />
 
         <div className="aw-pim-panel">
           <div className="flex items-center gap-2 mb-3">
@@ -166,7 +246,7 @@ export function PortfolioIntelligenceMapView({
           <div className="space-y-2">
             {missingPieces.map((piece) => (
               <div key={piece.id} className={`aw-pim-chip ${severityClass[piece.severity]}`}>
-                <MaterialIcon name={piece.id === 'none' ? 'check_circle' : 'add_circle'} size={16} />
+                <MaterialIcon name={piece.id === 'none' ? 'check_circle' : piece.id === 'awaiting' ? 'schedule' : 'add_circle'} size={16} />
                 <span>{t(piece.labelKey)}</span>
               </div>
             ))}
@@ -176,7 +256,13 @@ export function PortfolioIntelligenceMapView({
             <span className="aw-body aw-text-primary font-semibold">{t('portfolioIntelligence.tiltTitle')}</span>
           </div>
           <div className="space-y-2">
-            {intelligenceMap.suggestedTilts.length > 0 ? intelligenceMap.suggestedTilts.slice(0, 3).map((tilt) => (
+            {!hasValuedPositions ? (
+              <div className="aw-pim-tilt-row">
+                <MaterialIcon name="schedule" size={16} className="aw-text-tertiary" />
+                <span>{t('portfolioIntelligence.tilts.awaiting')}</span>
+                <strong>--</strong>
+              </div>
+            ) : intelligenceMap.suggestedTilts.length > 0 ? intelligenceMap.suggestedTilts.slice(0, 3).map((tilt) => (
               <div key={tilt.id} className="aw-pim-tilt-row">
                 <MaterialIcon name={priorityIcon[tilt.priority]} size={16} className={tilt.priority === 'high' ? 'text-aw-danger' : 'text-aw-success'} />
                 <span className="truncate">{t(tilt.labelKey)}</span>
@@ -216,6 +302,18 @@ export function PortfolioIntelligenceMapView({
               <em>{confidenceStatus}</em>
             </span>
           </div>
+          {projectionStatusLabel && (
+            <div className="aw-pim-evidence-chip aw-pim-evidence-chip-source">
+              <MaterialIcon name="auto_graph" size={20} />
+              <span>
+                <strong>{t('portfolioIntelligence.projectionTrace')}</strong>
+                <em>
+                  {projectionStatusLabel}
+                  {projectionSourceCount > 0 ? ` · ${projectionSourceCount} ${t('portfolioIntelligence.sourcesShort')}` : ''}
+                </em>
+              </span>
+            </div>
+          )}
         </div>
         {showAction && (
           <button type="button" className="aw-button aw-button-primary !min-h-8 !px-3 font-mono" onClick={onOpenWorkbench}>

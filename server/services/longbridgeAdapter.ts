@@ -1,4 +1,5 @@
 import * as crypto from 'crypto';
+import { loadLongbridgeSdk } from './longbridgeNative';
 
 // server/services/longbridgeAdapter.ts
 export interface LongbridgeAccount {
@@ -477,8 +478,7 @@ async function fetchProfitAnalysisUsingAccount(account: LongbridgeAccount): Prom
     }
 
     try {
-        const lbModule: any = await import('longbridge');
-        const lb = { ...(lbModule?.default || {}), ...lbModule };
+        const lb = await loadLongbridgeSdk();
         const Config = lb.Config;
         const PortfolioContext = lb.PortfolioContext;
 
@@ -968,3 +968,5 @@ export const fetchLongbridgeAccountPortfolios = async (
         }
     };
 };
+
+export { determineValuation as _testDetermineValuation };

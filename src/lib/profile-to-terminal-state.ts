@@ -1,4 +1,5 @@
 import { TerminalState, DistributionItem, Goal, UserPersona } from '../types/terminal';
+import { translateI18n, type AppLanguage } from '../i18n/translations';
 
 /**
  * Helper function to retrieve numeric asset valuations supporting string,
@@ -31,8 +32,9 @@ export function getAssetValue(input: any): number | undefined {
  * Pure function to map clear, factual properties in updatedProfile directly into
  * core Terminal State metrics, distributions, active goals, and persona indicators.
  */
-export function deriveTerminalStatePatchFromProfile(profile: any): Partial<TerminalState> {
+export function deriveTerminalStatePatchFromProfile(profile: any, language: AppLanguage = 'zh-CN'): Partial<TerminalState> {
   if (!profile) return {};
+  const t = (key: string, values?: Record<string, string | number>) => translateI18n(language, key, values);
 
   const patch: Partial<TerminalState> = {};
 
@@ -41,7 +43,7 @@ export function deriveTerminalStatePatchFromProfile(profile: any): Partial<Termi
   
   if (profile.financial && profile.financial.netWorth !== undefined) {
     metricsPatch.netWorth = Number(profile.financial.netWorth);
-    metricsPatch.netWorthSummary = "净资产总计。基于用户画像及实盘资产，进行底层事实统一。";
+    metricsPatch.netWorthSummary = t('profileToTerminal.netWorthSummary');
   }
 
   // Calculate liquidity sum
@@ -69,7 +71,7 @@ export function deriveTerminalStatePatchFromProfile(profile: any): Partial<Termi
   const liquidityVal = domesticCash + domesticFunds + offshoreCash;
   if (hasLiquidityValues) {
     metricsPatch.liquidity = liquidityVal;
-    metricsPatch.liquiditySummary = "高流动性周转资金总计（包含境内现金、货基及海外手头外汇资金）。";
+    metricsPatch.liquiditySummary = t('profileToTerminal.liquiditySummary');
   }
 
   // Calculate Monthly Burn Rate and Cashflow Velocity for FCF & Safety Ratio
@@ -85,16 +87,16 @@ export function deriveTerminalStatePatchFromProfile(profile: any): Partial<Termi
 
   if (fcfVal !== undefined) {
     metricsPatch.fcf = fcfVal;
-    metricsPatch.fcfSummary = "月度自由现金流净流入。";
+    metricsPatch.fcfSummary = t('profileToTerminal.fcfSummary');
   }
 
   // Calculate safety ratio
   if (hasLiquidityValues && typeof monthlyBurnRate === 'number' && monthlyBurnRate > 0) {
     metricsPatch.safetyRatio = Number((liquidityVal / monthlyBurnRate).toFixed(2));
-    metricsPatch.safetyRatioSummary = "流动性资产对月度日常消耗开支的覆盖月数。";
+    metricsPatch.safetyRatioSummary = t('profileToTerminal.safetyRatioSummary');
   } else if (profile.financialFlow?.savingsRate !== undefined) {
     // optional fallback or neutral indicator if safetyRatio lacks burn rate
-    metricsPatch.safetyRatioSummary = "流动性备付保障系数。目前缺乏月度总支出指标无法计算精确倍数。";
+    metricsPatch.safetyRatioSummary = t('profileToTerminal.safetyRatioFallback');
   }
 
   if (Object.keys(metricsPatch).length > 0) {
@@ -110,7 +112,7 @@ export function deriveTerminalStatePatchFromProfile(profile: any): Partial<Termi
     if (profile.financial?.assets?.domesticCash !== undefined) {
       liquidityItems.push({
         id: "liq_domestic_cash",
-        name: "境内现金",
+        name: t('profileToTerminal.domesticCash'),
         value: Number(profile.financial.assets.domesticCash),
         category: "liquidity",
         type: "cash"
@@ -119,7 +121,7 @@ export function deriveTerminalStatePatchFromProfile(profile: any): Partial<Termi
     if (profile.financial?.assets?.domesticFunds !== undefined) {
       liquidityItems.push({
         id: "liq_domestic_funds",
-        name: "境内固收/货基",
+        name: t('profileToTerminal.domesticFunds'),
         value: Number(profile.financial.assets.domesticFunds),
         category: "liquidity",
         type: "fund"
@@ -128,7 +130,7 @@ export function deriveTerminalStatePatchFromProfile(profile: any): Partial<Termi
     if (profile.financial?.assets?.offshoreCash !== undefined) {
       liquidityItems.push({
         id: "liq_offshore_cash",
-        name: "境外/外汇现金",
+        name: t('profileToTerminal.offshoreCash'),
         value: Number(profile.financial.assets.offshoreCash),
         category: "liquidity",
         type: "cash"
@@ -143,7 +145,7 @@ export function deriveTerminalStatePatchFromProfile(profile: any): Partial<Termi
   if (realEstate !== undefined) {
     const val = getAssetValue(realEstate);
     if (val !== undefined) {
-      let reName = "住宅及商业房产";
+      let reName = t('profileToTerminal.realEstate');
       if (typeof realEstate === 'object' && realEstate !== null) {
         const loc = realEstate.location;
         const comm = realEstate.community;
@@ -170,7 +172,7 @@ export function deriveTerminalStatePatchFromProfile(profile: any): Partial<Termi
       if (byteVal !== undefined) {
         privateAssetItems.push({
           id: "priv_byte_options",
-          name: "字节跳动限制性期权",
+          name: t('profileToTerminal.byteOptions'),
           value: byteVal,
           category: "private",
           type: "options"
@@ -178,9 +180,9 @@ export function deriveTerminalStatePatchFromProfile(profile: any): Partial<Termi
       } else if (equity.byteOptions && typeof equity.byteOptions === 'object' && equity.byteOptions.shares !== undefined) {
         privateAssetItems.push({
           id: "priv_byte_options",
-          name: "字节跳动限制性期权",
+          name: t('profileToTerminal.byteOptions'),
           raw: equity.byteOptions,
-          notes: `持股数量: ${equity.byteOptions.shares} 股`,
+          notes: t('profileToTerminal.shareCount', { shares: equity.byteOptions.shares }),
           category: "private",
           type: "options"
         });
@@ -191,7 +193,7 @@ export function deriveTerminalStatePatchFromProfile(profile: any): Partial<Termi
       if (antVal !== undefined) {
         privateAssetItems.push({
           id: "priv_ant_sers",
-          name: "蚂蚁集团 SERs 股份",
+          name: t('profileToTerminal.antSers'),
           value: antVal,
           category: "private",
           type: "options"
@@ -199,9 +201,9 @@ export function deriveTerminalStatePatchFromProfile(profile: any): Partial<Termi
       } else if (equity.antSERs && typeof equity.antSERs === 'object' && equity.antSERs.shares !== undefined) {
         privateAssetItems.push({
           id: "priv_ant_sers",
-          name: "蚂蚁集团 SERs 股份",
+          name: t('profileToTerminal.antSers'),
           raw: equity.antSERs,
-          notes: `持股数量: ${equity.antSERs.shares} 股`,
+          notes: t('profileToTerminal.shareCount', { shares: equity.antSERs.shares }),
           category: "private",
           type: "options"
         });
@@ -212,7 +214,7 @@ export function deriveTerminalStatePatchFromProfile(profile: any): Partial<Termi
       if (antIntlVal !== undefined) {
         privateAssetItems.push({
           id: "priv_ant_intl_options",
-          name: "蚂蚁国际授予期权",
+          name: t('profileToTerminal.antIntlOptions'),
           value: antIntlVal,
           category: "private",
           type: "options"
@@ -220,9 +222,9 @@ export function deriveTerminalStatePatchFromProfile(profile: any): Partial<Termi
       } else if (equity.antIntlOptions && typeof equity.antIntlOptions === 'object' && equity.antIntlOptions.shares !== undefined) {
         privateAssetItems.push({
           id: "priv_ant_intl_options",
-          name: "蚂蚁国际授予期权",
+          name: t('profileToTerminal.antIntlOptions'),
           raw: equity.antIntlOptions,
-          notes: `持股数量: ${equity.antIntlOptions.shares} 股`,
+          notes: t('profileToTerminal.shareCount', { shares: equity.antIntlOptions.shares }),
           category: "private",
           type: "options"
         });
@@ -233,7 +235,7 @@ export function deriveTerminalStatePatchFromProfile(profile: any): Partial<Termi
     if (directVal !== undefined) {
       privateAssetItems.push({
         id: "priv_equity_direct",
-        name: "未上市股份/期权授权",
+        name: t('profileToTerminal.privateEquity'),
         value: directVal,
         category: "private",
         type: "options"
@@ -253,7 +255,7 @@ export function deriveTerminalStatePatchFromProfile(profile: any): Partial<Termi
       const pVal = getAssetValue(item);
       fixedAssetItems.push({
         id: `fixed_passion_asset_${idx}`,
-        name: item.type || item.name || `另类/兴趣资产 #${idx + 1}`,
+        name: item.type || item.name || t('profileToTerminal.passionAsset', { index: idx + 1 }),
         value: pVal !== undefined ? pVal : 0,
         category: "fixed",
         type: "passion",
@@ -316,7 +318,7 @@ export function deriveTerminalStatePatchFromProfile(profile: any): Partial<Termi
     if (role) tags.push(role);
     if (ind) tags.push(ind);
     if (role && ind) {
-      descParts.push(`身处${ind}行业的${role}`);
+      descParts.push(t('profileToTerminal.personaCareer', { industry: ind, role }));
     } else if (role || ind) {
       descParts.push(`${role || ind}`);
     }
@@ -327,11 +329,11 @@ export function deriveTerminalStatePatchFromProfile(profile: any): Partial<Termi
     const mood = profile.preferences.emotionState;
     if (style) {
       tags.push(style);
-      descParts.push(`偏好${style}投资策略`);
+      descParts.push(t('profileToTerminal.personaPreference', { style }));
     }
     if (mood) {
       tags.push(mood);
-      descParts.push(`当前情绪倾向呈${mood}`);
+      descParts.push(t('profileToTerminal.personaMood', { mood }));
     }
   }
 
@@ -346,7 +348,7 @@ export function deriveTerminalStatePatchFromProfile(profile: any): Partial<Termi
   if (tags.length > 0 || descParts.length > 0) {
     patch.userPersona = {
       tags: Array.from(new Set(tags)).filter(Boolean),
-      description: descParts.length > 0 ? descParts.join('，') + '。' : "暂无定制化风险行为特征描述。"
+      description: descParts.length > 0 ? descParts.join(language === 'zh-CN' ? '，' : ', ') + (language === 'zh-CN' ? '。' : '.') : t('profileToTerminal.personaFallback')
     } as UserPersona;
   }
 

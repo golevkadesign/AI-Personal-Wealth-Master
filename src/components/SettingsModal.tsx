@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { getSettings, saveSettings as persistSettings, AppSettings, LongbridgeAccount } from '../lib/settings';
 import { useTranslation } from '../hooks/useTranslation';
 import { MaterialIcon } from './ui/MaterialIcon';
+import { useModalFocusTrap } from '../hooks/useModalFocusTrap';
 
 function buildModelOptions(currentValue: string | undefined, defaults: string[], available: string[]): string[] {
   const result: string[] = [];
@@ -34,6 +35,7 @@ type SettingsTab = 'ai' | 'finance' | 'wallet' | 'security';
 
 export const SettingsModal = ({ isOpen, onClose, onClearData }: { isOpen: boolean, onClose: () => void, onClearData?: () => void }) => {
   const { t } = useTranslation();
+  const dialogRef = useModalFocusTrap<HTMLDivElement>({ active: isOpen, onEscape: onClose });
   const [settings, setSettings] = useState<AppSettings>(getSettings());
   const [availableGeminiModels, setAvailableGeminiModels] = useState<string[]>([
     'gemini-2.5-pro',
@@ -202,6 +204,8 @@ export const SettingsModal = ({ isOpen, onClose, onClearData }: { isOpen: boolea
       <button
         type="button"
         onClick={() => setActiveTab(id)}
+        role="tab"
+        aria-selected={isActive}
         className={`aw-settings-tab cursor-pointer ${isActive ? 'aw-settings-tab-active' : ''}`}
       >
         <MaterialIcon name={icon} size={20} />
@@ -237,7 +241,7 @@ export const SettingsModal = ({ isOpen, onClose, onClearData }: { isOpen: boolea
     <h3 className="aw-section-kicker mb-4">{children}</h3>
   );
 
-  const StatusLine = ({ minutes = '1 minute ago' }: { minutes?: string }) => (
+  const StatusLine = ({ updatedLabel = t('settings.updatedOneMinute') }: { updatedLabel?: string }) => (
     <div className="flex items-center justify-between gap-6 border-t border-aw-border-subtle pt-4 font-mono">
       <div className="flex flex-col gap-1">
         <span className="aw-caption aw-text-tertiary uppercase">{t('settings.connectionStatus')}</span>
@@ -250,7 +254,7 @@ export const SettingsModal = ({ isOpen, onClose, onClearData }: { isOpen: boolea
         <span className="aw-caption aw-text-tertiary uppercase">{t('settings.lastUpdated')}</span>
         <span className="aw-caption aw-text-secondary flex items-center justify-end gap-1">
           <MaterialIcon name="refresh" size={16} className="text-aw-accent-mist" />
-          {minutes}
+          {updatedLabel}
         </span>
       </div>
     </div>
@@ -258,10 +262,17 @@ export const SettingsModal = ({ isOpen, onClose, onClearData }: { isOpen: boolea
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="aw-modal-backdrop absolute inset-0" />
-      <div className="aw-modal-shell aw-settings-shell relative flex flex-col overflow-hidden font-sans animate-in fade-in zoom-in-95 duration-200">
-        <header className="aw-modal-header flex shrink-0 items-center justify-between gap-4 border-b px-6 py-5">
-          <h2 className="aw-label aw-text-primary flex items-center gap-3 font-bold">
+      <div className="aw-modal-backdrop absolute inset-0" onClick={onClose} aria-hidden="true" />
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="aw-settings-title"
+        tabIndex={-1}
+        className="aw-modal-shell aw-settings-shell relative flex flex-col overflow-hidden font-sans animate-in fade-in zoom-in-95 duration-200"
+      >
+        <header className="aw-modal-header flex shrink-0 items-center justify-between gap-4 px-4 py-4 sm:px-6 sm:py-5">
+          <h2 id="aw-settings-title" className="aw-label aw-text-primary flex items-center gap-3 font-bold">
             <MaterialIcon name="settings" size={20} className="text-aw-accent-mist" />
             {t('settings.title')}
           </h2>
@@ -270,15 +281,15 @@ export const SettingsModal = ({ isOpen, onClose, onClearData }: { isOpen: boolea
           </button>
         </header>
 
-        <div className="flex min-h-0 flex-1 overflow-hidden">
-          <aside className="w-56 shrink-0 space-y-2 border-r border-aw-border-subtle bg-aw-surface-3 p-4">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden sm:flex-row">
+          <aside role="tablist" aria-label={t('settings.title')} className="flex w-full shrink-0 gap-1 overflow-x-auto border-b border-aw-border-subtle bg-transparent p-2 sm:block sm:w-56 sm:space-y-2 sm:border-b-0 sm:border-r sm:p-4">
             <NavItem id="ai" icon="memory" label={t('settings.aiModel')} />
             <NavItem id="finance" icon="monitoring" label={t('settings.financeData')} />
             <NavItem id="wallet" icon="account_balance_wallet" label={t('settings.walletAccount')} />
             <NavItem id="security" icon="shield_lock" label={t('settings.security')} />
           </aside>
 
-          <main className="flex-1 space-y-8 overflow-y-auto p-8 custom-scroll">
+          <main role="tabpanel" className="flex-1 space-y-8 overflow-y-auto p-4 sm:p-6 lg:p-8 custom-scroll">
             {activeTab === 'ai' && (
               <div className="space-y-6 animate-in fade-in duration-300">
                 <SectionTitle>{t('settings.apiModelSettings')}</SectionTitle>
@@ -385,8 +396,8 @@ export const SettingsModal = ({ isOpen, onClose, onClearData }: { isOpen: boolea
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                   <Field label={t('settings.dataSource')}>
                     <Select>
-                      <option>LongBridge (Live)</option>
-                      <option>Demo Market Data</option>
+                      <option>{t('settings.longbridgeLive')}</option>
+                      <option>{t('settings.demoMarketData')}</option>
                     </Select>
                   </Field>
                   <Field label={t('settings.refreshInterval')}>
@@ -394,9 +405,9 @@ export const SettingsModal = ({ isOpen, onClose, onClearData }: { isOpen: boolea
                       value={settings.financeRefreshInterval || '15 minutes'}
                       onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSettings({ ...settings, financeRefreshInterval: e.target.value })}
                     >
-                      <option value="15 minutes">15 minutes</option>
-                      <option value="1 hour">1 hour</option>
-                      <option value="Real-time (Websocket)">Real-time (Websocket)</option>
+                      <option value="15 minutes">{t('settings.refresh15Minutes')}</option>
+                      <option value="1 hour">{t('settings.refresh1Hour')}</option>
+                      <option value="Real-time (Websocket)">{t('settings.refreshRealtime')}</option>
                     </Select>
                   </Field>
                 </div>
@@ -433,15 +444,15 @@ export const SettingsModal = ({ isOpen, onClose, onClearData }: { isOpen: boolea
                         className="mb-3 bg-transparent font-bold"
                       />
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <Field label="App Key">
-                          <Input value={account.appKey} onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateAccount(account.id, { appKey: e.target.value })} placeholder="Key" className="font-mono" />
+                        <Field label={t('settings.appKey')}>
+                          <Input value={account.appKey} onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateAccount(account.id, { appKey: e.target.value })} placeholder={t('settings.keyPlaceholder')} className="font-mono" />
                         </Field>
-                        <Field label="App Secret">
-                          <Input type="password" value={account.appSecret} onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateAccount(account.id, { appSecret: e.target.value })} placeholder="Secret" className="font-mono" />
+                        <Field label={t('settings.appSecret')}>
+                          <Input type="password" value={account.appSecret} onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateAccount(account.id, { appSecret: e.target.value })} placeholder={t('settings.secretPlaceholder')} className="font-mono" />
                         </Field>
                         <div className="sm:col-span-2">
-                          <Field label="Access Token">
-                            <Input type="password" value={account.accessToken} onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateAccount(account.id, { accessToken: e.target.value })} placeholder="Token" className="font-mono" />
+                          <Field label={t('settings.accessToken')}>
+                            <Input type="password" value={account.accessToken} onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateAccount(account.id, { accessToken: e.target.value })} placeholder={t('settings.tokenPlaceholder')} className="font-mono" />
                           </Field>
                         </div>
                       </div>
@@ -478,7 +489,7 @@ export const SettingsModal = ({ isOpen, onClose, onClearData }: { isOpen: boolea
                   </div>
                 </div>
 
-                <StatusLine minutes="2 minutes ago" />
+                <StatusLine updatedLabel={t('settings.updatedTwoMinutes')} />
               </div>
             )}
 
@@ -489,15 +500,15 @@ export const SettingsModal = ({ isOpen, onClose, onClearData }: { isOpen: boolea
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                   <Field label={t('settings.activeWallet')}>
                     <Select>
-                      <option>Arbitra Wallet</option>
-                      <option>Local Account</option>
+                      <option>{t('settings.arbitraWallet')}</option>
+                      <option>{t('settings.localAccount')}</option>
                     </Select>
                   </Field>
                   <Field label={t('settings.network')}>
                     <Select>
                       <option>Ethereum Mainnet</option>
                       <option>Arbitrum One</option>
-                      <option>Off-chain Sync</option>
+                      <option>{t('settings.offchainSync')}</option>
                     </Select>
                   </Field>
                 </div>
@@ -508,13 +519,13 @@ export const SettingsModal = ({ isOpen, onClose, onClearData }: { isOpen: boolea
                       <MaterialIcon name="account_balance_wallet" size={20} className="text-aw-accent-mist" />
                     </div>
                     <div>
-                      <div className="aw-body aw-text-primary font-medium">0x... (Not Configured)</div>
-                      <div className="aw-caption aw-text-tertiary mt-1 font-mono">Placeholder Address</div>
+                      <div className="aw-body aw-text-primary font-medium">0x... ({t('settings.notConfigured')})</div>
+                      <div className="aw-caption aw-text-tertiary mt-1 font-mono">{t('settings.placeholderAddress')}</div>
                     </div>
                   </div>
                 </div>
 
-                <StatusLine minutes="Just now" />
+                <StatusLine updatedLabel={t('settings.updatedNow')} />
               </div>
             )}
 

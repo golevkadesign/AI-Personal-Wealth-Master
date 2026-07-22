@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback, type SetStateAction } from 'react';
 import { getDoc, doc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { getSettings } from '../lib/settings';
@@ -11,7 +11,14 @@ import { filterAiWritableStatePatch } from '../lib/ai-state-permissions';
 import { parseSseBuffer } from '../lib/sse-parser';
 import { deriveTerminalStatePatchFromProfile } from '../lib/profile-to-terminal-state';
 import { getApiEndpoint } from '../lib/api-endpoints';
+import {
+  AiAgentProfileWriteMode,
+  resolveAiAgentProfileWritePolicy,
+} from '../lib/ai-profile-write-policy';
+import { runWorkbenchChatResult } from '../lib/workbench-client';
 import { LIVE_VALUATION_VERSION } from '../types/terminal';
+import type { WorkbenchSessionSpec } from '../types/workbench';
+import { useTranslation } from './useTranslation';
 
 function normalizeMarketContextForStore(marketContext: any) {
   if (!marketContext || typeof marketContext !== 'object') return marketContext;
@@ -35,6 +42,81 @@ const AGENT_CONTEXT_STRING_LIMIT = 3000;
 const AGENT_CONTEXT_ARRAY_LIMIT = 60;
 const AGENT_CONTEXT_DEPTH_LIMIT = 7;
 const AGENT_REQUEST_TIMEOUT_MS = 290000;
+
+type AiChatHistoryItem = {
+  user: string;
+  ai: string;
+  attachments: Attachment[];
+  thinking?: string;
+  isThinkingExpanded?: boolean;
+  hasMemoryUpdate?: boolean;
+  _liveSources?: string[];
+  timeTaken?: number;
+  debugData?: any;
+  aiSuggestedState?: any;
+  suggestedStateApplied?: boolean;
+};
+
+type UseAiAgentOptions = {
+  setIsSynthesizing?: (value: boolean) => void;
+  historyScope?: string;
+  persistHistory?: boolean;
+  contextAugment?: any | (() => any);
+  profileWriteMode?: AiAgentProfileWriteMode;
+  workbenchNativeSession?: WorkbenchSessionSpec | null;
+};
+
+type AiAgentRuntimeState = {
+  inputMsg: string;
+  syncProfile: boolean;
+  isLoading: boolean;
+  attachments: Attachment[];
+  chatHistory: AiChatHistoryItem[];
+  abortController: AbortController | null;
+};
+
+const aiAgentRuntimeByScope = new Map<string, AiAgentRuntimeState>();
+
+function getRuntimeScopeKey(userId: string | undefined, historyScope: string) {
+  return `${userId || 'anonymous'}:${historyScope || 'default'}`;
+}
+
+function getAiAgentRuntime(scopeKey: string): AiAgentRuntimeState {
+  const existing = aiAgentRuntimeByScope.get(scopeKey);
+  if (existing) return existing;
+
+  const runtime: AiAgentRuntimeState = {
+    inputMsg: '',
+    syncProfile: true,
+    isLoading: false,
+    attachments: [],
+    chatHistory: [],
+    abortController: null,
+  };
+  aiAgentRuntimeByScope.set(scopeKey, runtime);
+  return runtime;
+}
+
+function resolveStateAction<T>(action: SetStateAction<T>, previous: T): T {
+  return typeof action === 'function'
+    ? (action as (value: T) => T)(previous)
+    : action;
+}
+
+function getChatStorageKey(userId: string, historyScope?: string) {
+  if (!historyScope || historyScope === 'default') return `ai_terminal_chat_${userId}`;
+  return `ai_terminal_chat_${userId}_${encodeURIComponent(historyScope)}`;
+}
+
+function normalizeStoredChatHistory(value: unknown): AiChatHistoryItem[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((item: any) => ({
+    ...item,
+    attachments: item.attachments
+      ? item.attachments
+      : (item.img ? [{ mimeType: 'image/jpeg', data: item.img.split(',')[1], name: 'legacy_img.jpg' }] : []),
+  }));
+}
 
 function compactAgentText(value: unknown, limit = AGENT_TEXT_LIMIT): string {
   if (typeof value !== 'string') return '';
@@ -97,9 +179,9 @@ function compactAgentContext(value: any, depth = 0, seen = new WeakSet<object>()
   return next;
 }
 
-function formatAgentErrorMessage(error: any, didTimeout: boolean): string {
+function formatAgentErrorMessage(error: any, didTimeout: boolean, t: (key: string) => string): string {
   if (didTimeout) {
-    return '本轮分析请求超过 115 秒仍未完成，已自动停止以避免界面卡死。请缩短问题或稍后重试。';
+    return t('chat.errors.timeout');
   }
 
   const raw = error?.message || String(error || 'Unknown error');
@@ -108,22 +190,22 @@ function formatAgentErrorMessage(error: any, didTimeout: boolean): string {
   const isHtmlError = raw.includes('<!DOCTYPE html') || raw.includes('<html');
 
   if (status === '502' || raw.includes('502')) {
-    return '后端分析服务临时不可用 (502)。这通常是 Cloud Run 或上游模型临时拥挤，不会再把 HTML 错误页写入对话；请稍后重试。';
+    return t('chat.errors.backend502');
   }
   if (status === '504' || raw.includes('504')) {
-    return '后端分析服务响应超时 (504)。请缩短上下文或稍后重试。';
+    return t('chat.errors.backend504');
   }
   if (isHtmlError) {
-    return `后端返回了异常 HTML 页面${status ? ` (${status})` : ''}，本轮已安全停止。`;
+    return `${t('chat.errors.htmlPrefix')}${status ? ` (${status})` : ''}${t('chat.errors.htmlSuffix')}`;
   }
   if (raw.includes('503') || raw.includes('high demand') || raw.includes('UNAVAILABLE')) {
-    return 'API 当前负载较高 (503 Service Unavailable)。需求激增通常是暂时的，请您稍后重试。';
+    return t('chat.errors.overloaded');
   }
   if (raw.includes('API key not valid') || raw.includes('API_KEY_INVALID')) {
-    return '获取到的 API Key 无效。请点击环境的 Settings -> Secrets 面板，检查并清除或同步更新您自定义的 API_KEY。';
+    return t('chat.errors.invalidApiKey');
   }
   if (raw.includes('exceeded your current quota') || raw.includes('rate limits') || raw.includes('Quota exceeded') || raw.includes('429') || raw.includes('RESOURCE_EXHAUSTED') || raw.includes('monthly spending cap')) {
-    return 'API 额度已耗尽 (Resource Exhausted - Quota Exceeded)。您配置的 API Key 免费额度/速率或可用资金余额已达上限，请检查计费层级或更换 Key 后重试。';
+    return t('chat.errors.quota');
   }
   if (raw.includes('{')) {
     try {
@@ -134,35 +216,123 @@ function formatAgentErrorMessage(error: any, didTimeout: boolean): string {
   return raw;
 }
 
-export function useAiAgent({ setIsSynthesizing }: any) {
+export function useAiAgent({
+  setIsSynthesizing,
+  historyScope = 'default',
+  persistHistory = true,
+  contextAugment,
+  profileWriteMode = 'direct',
+  workbenchNativeSession = null,
+}: UseAiAgentOptions) {
   const { user, data, commitData } = useWealthStore();
-  const [inputMsg, setInputMsg] = useState('');
-  const [syncProfile, setSyncProfile] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
-  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const { t, language } = useTranslation();
+  const runtimeScopeKey = getRuntimeScopeKey(user?.uid, historyScope);
+  const runtime = getAiAgentRuntime(runtimeScopeKey);
+  const [inputMsgState, setInputMsgState] = useState(runtime.inputMsg);
+  const [syncProfileState, setSyncProfileState] = useState(runtime.syncProfile);
+  const [isLoadingState, setIsLoadingState] = useState(runtime.isLoading);
+  const [attachmentsState, setAttachmentsState] = useState<Attachment[]>(runtime.attachments);
+  const [chatHistoryState, setChatHistoryState] = useState<AiChatHistoryItem[]>(runtime.chatHistory);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const isMountedRef = useRef(false);
   const isChatLoaded = useRef(false);
+  const isDefaultHistoryScope = !historyScope || historyScope === 'default';
+  const historyStorageKey = user?.uid ? getChatStorageKey(user.uid, historyScope) : null;
 
-  const [chatHistory, setChatHistory] = useState<{ user: string, ai: string, attachments: Attachment[], thinking?: string, isThinkingExpanded?: boolean, hasMemoryUpdate?: boolean, _liveSources?: string[], timeTaken?: number, debugData?: any, aiSuggestedState?: any, suggestedStateApplied?: boolean }[]>([]);
+  const inputMsg = inputMsgState;
+  const syncProfile = syncProfileState;
+  const profileWritePolicy = resolveAiAgentProfileWritePolicy({
+    syncProfile,
+    profileWriteMode,
+  });
+  const isLoading = isLoadingState;
+  const attachments = attachmentsState;
+  const chatHistory = chatHistoryState;
 
   useEffect(() => {
-    const handleClearChat = () => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  const setInputMsg = useCallback((action: SetStateAction<string>) => {
+    const targetRuntime = getAiAgentRuntime(runtimeScopeKey);
+    const next = resolveStateAction(action, targetRuntime.inputMsg);
+    targetRuntime.inputMsg = next;
+    if (isMountedRef.current) setInputMsgState(next);
+  }, [runtimeScopeKey]);
+
+  const setSyncProfile = useCallback((action: SetStateAction<boolean>) => {
+    const targetRuntime = getAiAgentRuntime(runtimeScopeKey);
+    const next = resolveStateAction(action, targetRuntime.syncProfile);
+    targetRuntime.syncProfile = next;
+    if (isMountedRef.current) setSyncProfileState(next);
+  }, [runtimeScopeKey]);
+
+  const setIsLoading = useCallback((action: SetStateAction<boolean>) => {
+    const targetRuntime = getAiAgentRuntime(runtimeScopeKey);
+    const next = resolveStateAction(action, targetRuntime.isLoading);
+    targetRuntime.isLoading = next;
+    if (isMountedRef.current) setIsLoadingState(next);
+  }, [runtimeScopeKey]);
+
+  const setAttachments = useCallback((action: SetStateAction<Attachment[]>) => {
+    const targetRuntime = getAiAgentRuntime(runtimeScopeKey);
+    const next = resolveStateAction(action, targetRuntime.attachments);
+    targetRuntime.attachments = next;
+    if (isMountedRef.current) setAttachmentsState(next);
+  }, [runtimeScopeKey]);
+
+  const setChatHistory = useCallback((action: SetStateAction<AiChatHistoryItem[]>) => {
+    const targetRuntime = getAiAgentRuntime(runtimeScopeKey);
+    const next = resolveStateAction(action, targetRuntime.chatHistory);
+    targetRuntime.chatHistory = next;
+    if (isMountedRef.current) setChatHistoryState(next);
+  }, [runtimeScopeKey]);
+
+  useEffect(() => {
+    const nextRuntime = getAiAgentRuntime(runtimeScopeKey);
+    abortControllerRef.current = nextRuntime.abortController;
+    setInputMsgState(nextRuntime.inputMsg);
+    setSyncProfileState(nextRuntime.syncProfile);
+    setIsLoadingState(nextRuntime.isLoading);
+    setAttachmentsState(nextRuntime.attachments);
+    setChatHistoryState(nextRuntime.chatHistory);
+  }, [runtimeScopeKey]);
+
+  useEffect(() => {
+    const handleClearChat = (event: Event) => {
+        const targetScope = (event as CustomEvent<{ historyScope?: string }>).detail?.historyScope;
+        if (targetScope && targetScope !== historyScope) return;
         setChatHistory([]);
     };
     window.addEventListener('clear-chat-history', handleClearChat);
     return () => window.removeEventListener('clear-chat-history', handleClearChat);
-  }, []);
+  }, [historyScope, setChatHistory]);
 
   useEffect(() => {
+     isChatLoaded.current = false;
      if (user?.uid) {
+        if (!persistHistory) {
+           setChatHistory(getAiAgentRuntime(runtimeScopeKey).chatHistory);
+           isChatLoaded.current = true;
+           return;
+        }
+
         const loadHistory = async () => {
            try {
-              const snap = await getDoc(doc(db, "userProfiles", user.uid));
-              if (snap.exists() && snap.data().chatHistory) {
-                  setChatHistory(snap.data().chatHistory);
-                  localStorage.setItem(`ai_terminal_chat_${user.uid}`, JSON.stringify(snap.data().chatHistory));
+              if (isDefaultHistoryScope) {
+                const snap = await getDoc(doc(db, "userProfiles", user.uid));
+                if (snap.exists() && snap.data().chatHistory) {
+                  const normalized = normalizeStoredChatHistory(snap.data().chatHistory);
+                  setChatHistory(normalized);
+                  if (historyStorageKey) {
+                    localStorage.setItem(historyStorageKey, JSON.stringify(normalized));
+                  }
                   isChatLoaded.current = true;
                   return;
+                }
               }
            } catch(e: any) { 
               if (e.message && e.message.includes('offline')) {
@@ -177,14 +347,16 @@ export function useAiAgent({ setIsSynthesizing }: any) {
            }
 
            // Fallback to localStorage if not found in Firestore
-           const stored = localStorage.getItem(`ai_terminal_chat_${user.uid}`);
+           const stored = historyStorageKey ? localStorage.getItem(historyStorageKey) : null;
            let targetStored = stored;
            
-           if (!stored) {
+           if (!stored && isDefaultHistoryScope) {
               const oldStored = localStorage.getItem('ai_terminal_chat');
               if (oldStored) {
                   targetStored = oldStored;
-                  localStorage.setItem(`ai_terminal_chat_${user.uid}`, oldStored);
+                  if (historyStorageKey) {
+                    localStorage.setItem(historyStorageKey, oldStored);
+                  }
                   localStorage.removeItem('ai_terminal_chat');
               }
            }
@@ -192,10 +364,7 @@ export function useAiAgent({ setIsSynthesizing }: any) {
            if (targetStored) {
               try {
                 const parsed = JSON.parse(targetStored);
-                setChatHistory(parsed.map((item: any) => ({
-                  ...item,
-                  attachments: item.attachments ? item.attachments : (item.img ? [{ mimeType: 'image/jpeg', data: item.img.split(',')[1], name: 'legacy_img.jpg' }] : [])
-                })));
+                setChatHistory(normalizeStoredChatHistory(parsed));
               } catch { setChatHistory([]); }
            } else {
               setChatHistory([]);
@@ -207,11 +376,12 @@ export function useAiAgent({ setIsSynthesizing }: any) {
         isChatLoaded.current = false;
         setChatHistory([]);
      }
-  }, [user?.uid]);
+  }, [historyScope, historyStorageKey, isDefaultHistoryScope, persistHistory, runtimeScopeKey, setChatHistory, user?.uid]);
 
   useEffect(() => {
-    if (user?.uid && isChatLoaded.current) {
-       localStorage.setItem(`ai_terminal_chat_${user.uid}`, JSON.stringify(chatHistory));
+    if (user?.uid && isChatLoaded.current && persistHistory && historyStorageKey) {
+       localStorage.setItem(historyStorageKey, JSON.stringify(chatHistory));
+       if (!isDefaultHistoryScope) return;
        const timeoutId = setTimeout(() => {
            // Prevent Firestore 1MB document size limit by stripping very large attachments and truncating thinking logs
            (async () => {
@@ -261,12 +431,15 @@ export function useAiAgent({ setIsSynthesizing }: any) {
        }, 2000);
        return () => clearTimeout(timeoutId);
     }
-  }, [chatHistory, user?.uid]);
+  }, [chatHistory, historyStorageKey, isDefaultHistoryScope, persistHistory, user?.uid]);
   
   const handleStop = () => {
-      if (abortControllerRef.current) {
-          abortControllerRef.current.abort();
+      const runtimeController = getAiAgentRuntime(runtimeScopeKey).abortController;
+      const controller = abortControllerRef.current || runtimeController;
+      if (controller) {
+          controller.abort();
           abortControllerRef.current = null;
+          getAiAgentRuntime(runtimeScopeKey).abortController = null;
       }
       setIsLoading(false);
   };
@@ -310,7 +483,7 @@ export function useAiAgent({ setIsSynthesizing }: any) {
         }));
     }
 
-    if (!actualMsg.trim() && attsToSend.length === 0) return;
+    if (!actualMsg.trim() && attsToSend.length === 0) return null;
 
     const userMsg = actualMsg;
     
@@ -319,8 +492,10 @@ export function useAiAgent({ setIsSynthesizing }: any) {
     setAttachments([]);
     setIsLoading(true);
 
-    abortControllerRef.current = new AbortController();
-    const signal = abortControllerRef.current.signal;
+    const requestAbortController = new AbortController();
+    abortControllerRef.current = requestAbortController;
+    getAiAgentRuntime(runtimeScopeKey).abortController = requestAbortController;
+    const signal = requestAbortController.signal;
     let didTimeout = false;
     const requestTimeoutId = window.setTimeout(() => {
       didTimeout = true;
@@ -329,9 +504,63 @@ export function useAiAgent({ setIsSynthesizing }: any) {
 
     try {
       const cleanedContextData = compactAgentContext(data);
+      const resolvedContextAugment = typeof contextAugment === 'function'
+        ? contextAugment()
+        : contextAugment;
+      if (resolvedContextAugment) {
+        cleanedContextData.workbenchContext = compactAgentContext(resolvedContextAugment);
+      }
       const publicHoldingAccounts = cleanedContextData?.publicHoldingAccounts || cleanedContextData?.distributions?.publicHoldingAccounts;
       if (publicHoldingAccounts && publicHoldingAccounts.length > 0) {
         cleanedContextData.livePortfolioAccounts = publicHoldingAccounts;
+      }
+
+      if (workbenchNativeSession) {
+        const nativeSession: WorkbenchSessionSpec = {
+          ...workbenchNativeSession,
+          facts: {
+            ...(workbenchNativeSession.facts || {}),
+            terminalState: data,
+            sourceRefs: Array.from(new Set([
+              ...(workbenchNativeSession.facts?.sourceRefs || []),
+              'workbench.native_chat',
+            ])),
+          },
+        };
+        const thinkingProgress = t('workbench.nativeChat.thinking');
+        setChatHistory(prev => {
+          const newHist = [...prev];
+          if (newHist.length === 0) return newHist;
+          newHist[newHist.length - 1].thinking = thinkingProgress;
+          newHist[newHist.length - 1].isThinkingExpanded = false;
+          return newHist;
+        });
+
+        const nativeResponse = await runWorkbenchChatResult(nativeSession, userMsg, undefined, {
+          longbridgeAccounts: getSettings().longbridgeAccounts || [],
+          language,
+        });
+        if (signal.aborted) throw new Error('AbortError');
+
+        const bffData = {
+          ...(nativeResponse.chatResult || {}),
+          aiResponse: nativeResponse.assistantMessage,
+          workbenchNative: true,
+          workbenchSession: nativeResponse.session,
+          workbenchAgentResult: nativeResponse.agentResult,
+        };
+
+        setChatHistory(prev => {
+          const newHist = [...prev];
+          if (newHist.length === 0) return newHist;
+          newHist[newHist.length - 1].thinking = `${thinkingProgress}\n${t('workbench.nativeChat.completed')}`;
+          newHist[newHist.length - 1].ai = nativeResponse.assistantMessage || t('workbench.nativeChat.emptyAssistant');
+          newHist[newHist.length - 1].debugData = bffData;
+          newHist[newHist.length - 1].hasMemoryUpdate = Boolean(nativeResponse.memoryInbox?.pendingCount);
+          return newHist;
+        });
+
+        return bffData;
       }
 
       const contextRes = await fetch(getApiEndpoint('/api/chat', { streaming: true }), {
@@ -345,7 +574,7 @@ export function useAiAgent({ setIsSynthesizing }: any) {
            userId: user?.uid,
            customApiKey: localStorage.getItem('custom_gemini_api_key') || undefined,
            attachments: attsToSend,
-           skipMemoryUpdate: !syncProfile
+           skipMemoryUpdate: !profileWritePolicy.requestMemoryUpdate
         }),
         signal
       });
@@ -445,7 +674,7 @@ export function useAiAgent({ setIsSynthesizing }: any) {
                       if (jsonMatch !== -1) {
                          const textBefore = streamedAi.substring(0, jsonMatch).trim();
                          // 核心修复 1：如果大模型跳过文本直接吐 JSON，不要展示空白，给用户明确的加载感知
-                         displayText = textBefore || "> ⚙️ 正在编译底层终端状态树 (JSON Payload)... 稍候...";
+                         displayText = textBefore || t('chat.jsonPayloadLoading');
                       }
                       
                       setChatHistory(prev => {
@@ -454,7 +683,7 @@ export function useAiAgent({ setIsSynthesizing }: any) {
                          return newHist;
                       });
                    } else if (parsed.type === 'error') {
-                      serverError = parsed.error || parsed.message || "Unknown Backend Server Error (无明确错误信息)";
+                      serverError = parsed.error || parsed.message || t('chat.errors.unknownBackend');
                    }
                 // } catch(e: any) {
                    // console.error("SSE JSON Parse Error for line:", e);
@@ -467,10 +696,10 @@ export function useAiAgent({ setIsSynthesizing }: any) {
 
       if (signal.aborted) throw new Error('AbortError');
       if (serverError) throw new Error(serverError);
-      if (!bffData) throw new Error("未能从服务器获取核心分析数据。(Timeout or Stream Empty)");
+      if (!bffData) throw new Error(t('chat.errors.emptyServerData'));
 
       // 1.5 Handle permanent RAG profile updates
-      if (bffData.updatedProfile && Object.keys(bffData.updatedProfile).length > 0 && syncProfile) {
+      if (bffData.updatedProfile && Object.keys(bffData.updatedProfile).length > 0 && profileWritePolicy.directProfileWrite) {
           try {
               if (user?.uid) {
                   try {
@@ -484,7 +713,7 @@ export function useAiAgent({ setIsSynthesizing }: any) {
                   }
               }
               
-              const profilePatch = deriveTerminalStatePatchFromProfile(bffData.updatedProfile);
+              const profilePatch = deriveTerminalStatePatchFromProfile(bffData.updatedProfile, language);
               commitData((prev: any) => ({
                  ...prev,
                  ...profilePatch,
@@ -545,7 +774,7 @@ export function useAiAgent({ setIsSynthesizing }: any) {
            return newHist;
          });
          setIsLoading(false);
-         return;
+         return bffData;
       }
       
       // 3. 全量 JSON 解析 (核心修复 2：极度鲁棒的正则引擎与优雅降级)
@@ -596,7 +825,7 @@ export function useAiAgent({ setIsSynthesizing }: any) {
       setChatHistory(prev => {
         const newHist = [...prev];
         const displayAi = txt.substring(0, txt.indexOf('```json') !== -1 ? txt.indexOf('```json') : txt.length).trim();
-        newHist[newHist.length - 1].ai = displayAi || (sduiPayload ? "> ⚙️ 高级视图数据已同步至终端..." : txt);
+        newHist[newHist.length - 1].ai = displayAi || (sduiPayload ? t('chat.advancedViewSynced') : txt);
         newHist[newHist.length - 1].debugData = bffData;
         if (suggestedStatePatch) {
            newHist[newHist.length - 1].aiSuggestedState = suggestedStatePatch;
@@ -607,7 +836,7 @@ export function useAiAgent({ setIsSynthesizing }: any) {
       if (sduiPayload?.updateGlobalState) {
          // Filter out any unauthorized properties utilizing the source-aware permission gating whitelist
          const filteredUpdate = filterAiWritableStatePatch(sduiPayload.updateGlobalState, {
-            allowMemoryWrite: syncProfile,
+            allowMemoryWrite: profileWritePolicy.stateMemoryWrite,
             allowTrustedFactWrite: false, // updateGlobalState by the AI is defaulted to untrusted/suggestions
             livePortfolio: bffData?.externalData?.livePortfolio,
             livePortfolioAccounts: bffData?.externalData?.livePortfolioAccounts
@@ -644,6 +873,8 @@ export function useAiAgent({ setIsSynthesizing }: any) {
      }));
       }
 
+      return bffData;
+
     } catch (error: any) {
       if (error.message === 'AbortError' || error.name === 'AbortError') {
           if (didTimeout) {
@@ -651,22 +882,23 @@ export function useAiAgent({ setIsSynthesizing }: any) {
               const newHist = [...prev];
               if (newHist.length === 0) return newHist;
               const currentAiText = newHist[newHist.length - 1].ai || '';
-              newHist[newHist.length - 1].ai = currentAiText + (currentAiText ? '\n\n' : '') + `⚠️ **通信中断**: ${formatAgentErrorMessage(error, didTimeout)}`;
+              newHist[newHist.length - 1].ai = currentAiText + (currentAiText ? '\n\n' : '') + `⚠️ **${t('chat.errors.communicationInterrupted')}**: ${formatAgentErrorMessage(error, didTimeout, t)}`;
               return newHist;
             });
-            return;
+            return null;
           }
           console.log('AI Generation Stopped.');
-          return;
+          return null;
       }
       setChatHistory(prev => {
         const newHist = [...prev];
         if (newHist.length === 0) return newHist;
-        const errMsg = formatAgentErrorMessage(error, didTimeout);
+        const errMsg = formatAgentErrorMessage(error, didTimeout, t);
         const currentAiText = newHist[newHist.length - 1].ai || '';
-        newHist[newHist.length - 1].ai = currentAiText + (currentAiText ? '\n\n' : '') + `⚠️ **通信中断**: ${errMsg}`;
+        newHist[newHist.length - 1].ai = currentAiText + (currentAiText ? '\n\n' : '') + `⚠️ **${t('chat.errors.communicationInterrupted')}**: ${errMsg}`;
         return newHist;
       });
+      return null;
     } finally {
       window.clearTimeout(requestTimeoutId);
       const endTime = Date.now();
@@ -681,6 +913,7 @@ export function useAiAgent({ setIsSynthesizing }: any) {
       setIsLoading(false);
       setIsSynthesizing?.(false);
       abortControllerRef.current = null;
+      getAiAgentRuntime(runtimeScopeKey).abortController = null;
     }
   };
 
