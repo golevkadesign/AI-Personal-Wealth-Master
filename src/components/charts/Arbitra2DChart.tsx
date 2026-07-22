@@ -24,13 +24,13 @@ interface Arbitra2DChartProps {
   onDataClick?: (params: any) => void;
 }
 
-const FALLBACK_PALETTE = ['#A8C9A3', '#AEBEAA', '#9FB6D9', '#D8C27A'];
+const FALLBACK_PALETTE: string[] = [...AW_CHART_TOKENS.palette];
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
 
-function cleanColor(input: string | undefined, fallback = '#A8C9A3') {
+function cleanColor(input: string | undefined, fallback: string = AW_CHART_TOKENS.success) {
   const value = (input || '').trim();
   if (!value) return fallback;
   if (/^#[0-9a-f]{8}$/i.test(value)) return value.slice(0, 7);
@@ -153,7 +153,7 @@ function enhanceExternalOption(option: any, palette: string[]) {
         label: item.label || { show: false },
         labelLine: item.labelLine || { show: false },
         itemStyle: {
-          borderColor: readCssToken('--aw-card-bg', '#0B0D0C'),
+          borderColor: readCssToken('--aw-card-bg', AW_CHART_TOKENS.surface),
           borderWidth: 2,
           ...(item.itemStyle || {}),
         },
@@ -225,7 +225,7 @@ function buildDonutOption(data: ArbitraChartDatum[], compact: boolean, palette: 
         label: { show: false },
         labelLine: { show: false },
         itemStyle: {
-          borderColor: readCssToken('--aw-card-bg', '#0B0D0C'),
+          borderColor: readCssToken('--aw-card-bg', AW_CHART_TOKENS.surface),
           borderWidth: compact ? 2 : 3,
         },
         data: data.map((item) => ({

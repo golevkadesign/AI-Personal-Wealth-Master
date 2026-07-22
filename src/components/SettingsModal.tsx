@@ -242,7 +242,7 @@ export const SettingsModal = ({ isOpen, onClose, onClearData }: { isOpen: boolea
   );
 
   const StatusLine = ({ updatedLabel = t('settings.updatedOneMinute') }: { updatedLabel?: string }) => (
-    <div className="flex items-center justify-between gap-6 border-t border-aw-border-subtle pt-4 font-mono">
+    <div className="aw-settings-status-line flex items-center justify-between gap-6 font-mono">
       <div className="flex flex-col gap-1">
         <span className="aw-caption aw-text-tertiary uppercase">{t('settings.connectionStatus')}</span>
         <span className="aw-caption flex items-center gap-2 text-aw-success">
@@ -250,7 +250,7 @@ export const SettingsModal = ({ isOpen, onClose, onClearData }: { isOpen: boolea
           {t('settings.connected')}
         </span>
       </div>
-      <div className="flex flex-col gap-1 border-l border-aw-border-subtle pl-6 text-right">
+      <div className="flex flex-col gap-1 text-right">
         <span className="aw-caption aw-text-tertiary uppercase">{t('settings.lastUpdated')}</span>
         <span className="aw-caption aw-text-secondary flex items-center justify-end gap-1">
           <MaterialIcon name="refresh" size={16} className="text-aw-accent-mist" />
@@ -281,20 +281,20 @@ export const SettingsModal = ({ isOpen, onClose, onClearData }: { isOpen: boolea
           </button>
         </header>
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden sm:flex-row">
-          <aside role="tablist" aria-label={t('settings.title')} className="flex w-full shrink-0 gap-1 overflow-x-auto border-b border-aw-border-subtle bg-transparent p-2 sm:block sm:w-56 sm:space-y-2 sm:border-b-0 sm:border-r sm:p-4">
+        <div className="aw-settings-layout flex min-h-0 flex-1 flex-col overflow-hidden sm:flex-row">
+          <aside role="tablist" aria-label={t('settings.title')} className="aw-settings-nav flex w-full shrink-0 gap-1 overflow-x-auto bg-transparent p-2 sm:block sm:w-56 sm:space-y-2 sm:p-4">
             <NavItem id="ai" icon="memory" label={t('settings.aiModel')} />
             <NavItem id="finance" icon="monitoring" label={t('settings.financeData')} />
             <NavItem id="wallet" icon="account_balance_wallet" label={t('settings.walletAccount')} />
             <NavItem id="security" icon="shield_lock" label={t('settings.security')} />
           </aside>
 
-          <main role="tabpanel" className="flex-1 space-y-8 overflow-y-auto p-4 sm:p-6 lg:p-8 custom-scroll">
+          <main role="tabpanel" className="aw-settings-content flex-1 space-y-8 overflow-y-auto p-4 sm:p-6 lg:p-8 custom-scroll">
             {activeTab === 'ai' && (
               <div className="space-y-6 animate-in fade-in duration-300">
                 <SectionTitle>{t('settings.apiModelSettings')}</SectionTitle>
 
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <div className="aw-settings-provider-row">
                   <Field label={t('settings.aiProvider')}>
                     <Select
                       value={settings.provider}
@@ -305,18 +305,18 @@ export const SettingsModal = ({ isOpen, onClose, onClearData }: { isOpen: boolea
                     </Select>
                   </Field>
 
-                  <div className="flex items-end justify-start md:justify-end">
-                    <button
-                      type="button"
-                      onClick={settings.provider === 'gemini' ? fetchGeminiModels : fetchOpenAIModels}
-                      disabled={isLoadingModels}
-                      className="aw-button aw-button-ghost cursor-pointer disabled:cursor-wait disabled:opacity-60"
-                    >
-                      <MaterialIcon name="refresh" size={16} className={isLoadingModels ? 'animate-spin' : ''} />
-                      {t('settings.refresh')}
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={settings.provider === 'gemini' ? fetchGeminiModels : fetchOpenAIModels}
+                    disabled={isLoadingModels}
+                    className="aw-button aw-button-ghost aw-settings-refresh cursor-pointer disabled:cursor-wait disabled:opacity-60"
+                  >
+                    <MaterialIcon name="refresh" size={16} className={isLoadingModels ? 'animate-spin' : ''} />
+                    {t('settings.refresh')}
+                  </button>
+                </div>
 
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                   <Field label={t('settings.modelFast')}>
                     {settings.provider === 'gemini' ? (
                       <Select
@@ -562,7 +562,7 @@ export const SettingsModal = ({ isOpen, onClose, onClearData }: { isOpen: boolea
           </main>
         </div>
 
-        <footer className="aw-modal-footer flex shrink-0 items-center justify-between gap-4 border-t px-6 py-4">
+        <footer className="aw-modal-footer flex shrink-0 items-center justify-between gap-4 px-6 py-4">
           <div className="flex-1">
             {showSavedToast && (
               <span className="aw-body flex items-center gap-2 text-aw-success animate-in fade-in">

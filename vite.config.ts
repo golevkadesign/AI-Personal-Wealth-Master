@@ -26,5 +26,22 @@ export default defineConfig(({mode}) => {
         }
       }
     },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (!id.includes('node_modules')) return undefined;
+            if (id.includes('/firebase/storage') || id.includes('/@firebase/storage/')) return 'firebase-storage-runtime';
+            if (id.includes('/firebase/') || id.includes('/@firebase/')) return 'firebase-runtime';
+            if (id.includes('/motion/')) return 'motion-runtime';
+            if (id.includes('/react-markdown/') || id.includes('/remark-') || id.includes('/unified/')) return 'markdown-runtime';
+            if (id.includes('/react/') || id.includes('/react-dom/') || id.includes('/scheduler/')) return 'react-runtime';
+            if (id.includes('/echarts/') || id.includes('/zrender/')) return 'chart-runtime';
+            if (id.includes('/axios/') || id.includes('/lodash-es/')) return 'data-runtime';
+            return undefined;
+          },
+        },
+      },
+    },
   };
 });

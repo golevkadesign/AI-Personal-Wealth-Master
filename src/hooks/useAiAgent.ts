@@ -385,7 +385,7 @@ export function useAiAgent({
        const timeoutId = setTimeout(() => {
            // Prevent Firestore 1MB document size limit by stripping very large attachments and truncating thinking logs
            (async () => {
-             const { storage } = await import('../lib/firebase');
+             const { storage } = await import('../lib/firebase-storage');
              const { ref, uploadString, getDownloadURL } = await import('firebase/storage');
              
              const chatToSync = await Promise.all(chatHistory.map(async c => {
@@ -468,7 +468,7 @@ export function useAiAgent({
         attsToSend = await Promise.all(attsToSend.map(async (att) => {
             if (att.data && att.data.length > 50000 && !att.url) {
                 try {
-                    const { storage } = await import('../lib/firebase');
+                    const { storage } = await import('../lib/firebase-storage');
                     const { ref, uploadString, getDownloadURL } = await import('firebase/storage');
                     const storageRef = ref(storage, `chat_attachments/${user.uid}/${Date.now()}_${Math.random().toString(36).substring(7)}`);
                     await uploadString(storageRef, att.data, 'base64', { contentType: att.mimeType });

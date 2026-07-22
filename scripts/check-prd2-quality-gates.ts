@@ -108,7 +108,10 @@ function verifyProductContracts() {
   const developer = read('src/components/DeveloperView.tsx');
   const workbenchRoute = read('server/routes/workbench.ts');
   const chartRuntime = read('src/components/ReactECharts.tsx');
+  const chartConfigs = read('src/components/chart-configs.ts');
+  const workbenchWidgets = read('src/components/WorkbenchWidgetRenderer.tsx');
   const styles = read('src/index.css');
+  const viteConfig = read('vite.config.ts');
 
   assert(index.includes('<title>ARBITRA | Wealth Operating System</title>'), 'document title must use the product brand');
   assert(app.includes('React.lazy'), 'secondary product surfaces must be code split');
@@ -120,6 +123,11 @@ function verifyProductContracts() {
   assert(chartRuntime.includes("import('./charts/echarts-runtime')"), 'chart engine must load on demand');
   assert(styles.includes('.aw-chart-min-empty') && styles.includes('min-height: 176px'), 'empty charts must use compact semantic height');
   assert(styles.includes('--aw-card-bg: #111412'), 'card background must map to the canonical token');
+  assert(styles.includes('.aw-workbench-widget-rail-header'), 'mobile Workbench must expose the widget region');
+  assert(styles.includes('grid-template-columns: repeat(2, minmax(0, 1fr))'), 'mobile settings tabs must remain fully visible');
+  assert(viteConfig.includes("return 'firebase-runtime'") && viteConfig.includes("return 'firebase-storage-runtime'") && viteConfig.includes("return 'motion-runtime'"), 'large frontend runtimes must be split from the app entry');
+  assert(!/#[0-9a-f]{3,8}|rgba?\(/i.test(chartConfigs), 'chart configs must consume design tokens instead of hard-coded colors');
+  assert(!/#[0-9a-f]{3,8}|rgba?\(/i.test(workbenchWidgets), 'Workbench widgets must consume design tokens instead of hard-coded colors');
 
   return { i18nKeyCount: zhKeys.length };
 }
@@ -138,6 +146,8 @@ async function main() {
       'accessible-secondary-modals',
       'compact-empty-state-contract',
       'lazy-ui-and-chart-runtime',
+      'mobile-workbench-and-settings-density',
+      'frontend-runtime-chunking',
     ],
     scenarios,
     ...contracts,

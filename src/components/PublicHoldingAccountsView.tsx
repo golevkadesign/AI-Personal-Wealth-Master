@@ -287,7 +287,7 @@ export const PublicHoldingAccountsView: React.FC<PublicHoldingAccountsViewProps>
               delay={delay}
               chartHeight="auto"
               size="auto"
-              className="aw-account-card h-auto overflow-hidden"
+              className={`aw-account-card ${positions.length === 0 ? 'aw-account-card-empty' : ''} h-auto overflow-hidden`}
               badge={cardBadge}
               status="success"
               onReload={undefined}

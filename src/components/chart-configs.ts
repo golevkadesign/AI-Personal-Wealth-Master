@@ -221,7 +221,7 @@ export function getHoldingsOption(data: any, t: (key: string) => string) {
         right: 0,
         borderColor: 'transparent',
         backgroundColor: chartTokens.surfaceMuted,
-        fillerColor: 'rgb(221 232 216 / 0.25)',
+        fillerColor: chartTokens.areaSuccess,
         handleSize: '100%',
       }
     ],
@@ -275,7 +275,7 @@ export function getOptionsOption(data: any, t: (key: string) => string) {
         bottom: 0,
         borderColor: 'transparent',
         backgroundColor: chartTokens.surfaceMuted,
-        fillerColor: 'rgb(221 232 216 / 0.25)',
+        fillerColor: chartTokens.areaSuccess,
         handleSize: '100%',
       }
     ],

@@ -57,7 +57,7 @@ export function PortfolioIntelligenceCanvasScene({
         splitArea: {
           show: true,
           areaStyle: {
-            color: ['rgb(238 243 234 / 0.018)', 'rgb(238 243 234 / 0.006)'],
+            color: [AW_CHART_TOKENS.areaNeutral, AW_CHART_TOKENS.areaNeutralDim],
           },
         },
       },
@@ -76,7 +76,7 @@ export function PortfolioIntelligenceCanvasScene({
                 width: 1.8,
               },
               areaStyle: {
-                color: 'rgb(168 201 163 / 0.14)',
+                color: AW_CHART_TOKENS.areaSuccess,
               },
               itemStyle: {
                 color: AW_CHART_TOKENS.success,
@@ -91,7 +91,7 @@ export function PortfolioIntelligenceCanvasScene({
                 type: 'dashed',
               },
               areaStyle: {
-                color: 'rgb(159 182 217 / 0.08)',
+                color: AW_CHART_TOKENS.areaInfo,
               },
               itemStyle: {
                 color: AW_CHART_TOKENS.info,

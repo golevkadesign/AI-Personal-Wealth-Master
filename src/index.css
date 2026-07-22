@@ -4,14 +4,14 @@
 
 @theme {
   /* Arbitra Reference Style DS — quiet black instruments with misted sage accents */
-  --color-aw-bg: #101311;
-  --color-aw-surface-1: #121413;
+  --color-aw-bg: #0E100F;
+  --color-aw-surface-1: #111412;
   --color-aw-surface-2: rgba(238, 243, 234, 0.035);
   --color-aw-surface-3: rgba(238, 243, 234, 0.06);
   --color-aw-text-primary: #EEF3EA;
-  --color-aw-text-secondary: rgba(221, 232, 216, 0.72);
-  --color-aw-text-tertiary: rgba(174, 190, 170, 0.62);
-  --color-aw-text-inverse: #121413;
+  --color-aw-text-secondary: rgba(230, 237, 226, 0.82);
+  --color-aw-text-tertiary: rgba(205, 217, 201, 0.68);
+  --color-aw-text-inverse: #111412;
   --color-aw-accent-mist: #DDE8D8;
   --color-aw-accent-sage: #AEBEAA;
   --color-aw-accent-line: #A8C9A3;
@@ -98,9 +98,9 @@
   --aw-card-header-blur: 18px;
 
   --aw-text-primary: #EEF3EA;
-  --aw-text-secondary: rgb(230 237 226 / 0.78);
-  --aw-text-tertiary: rgb(205 217 201 / 0.58);
-  --aw-text-inverse: #121413;
+  --aw-text-secondary: rgb(230 237 226 / 0.82);
+  --aw-text-tertiary: rgb(205 217 201 / 0.68);
+  --aw-text-inverse: #111412;
 
   /* Compatibility aliases kept for existing components; values are intentionally non-neon. */
   --aw-neon-green: #A8C9A3;
@@ -111,7 +111,7 @@
   --aw-accent-mist: #DDE8D8;
   --aw-accent-sage: #AEBEAA;
   --aw-accent-line: #A8C9A3;
-  --aw-accent-ink: #121413;
+  --aw-accent-ink: #111412;
 
   --aw-state-success: #A8C9A3;
   --aw-state-warning: #D8C27A;
@@ -156,6 +156,7 @@
   --aw-chart-contour: rgb(221 232 216 / 0.30);
   --aw-chart-axis: rgb(174 190 170 / 0.28);
   --aw-chart-route: rgb(238 243 234 / 0.72);
+  --aw-chart-area-success: rgb(168 201 163 / 0.14);
 }
 
 html,
@@ -646,7 +647,7 @@ body {
   width: 5px;
   height: 34px;
   border-radius: 999px 999px 0 0;
-  background: linear-gradient(180deg, var(--aw-accent-mist), rgb(238 243 234 / 0.08));
+  background: var(--aw-accent-sage);
 }
 
 .aw-empty-chart-bars span:nth-child(1) { height: 18px; opacity: 0.32; }
@@ -682,13 +683,17 @@ body {
   min-height: 188px;
 }
 
+.aw-account-holdings-grid .aw-account-card-empty {
+  min-height: 132px;
+}
+
 .aw-account-card .aw-chart-title,
 .aw-public-holdings-card .aw-chart-title {
   margin-bottom: var(--aw-space-3);
 }
 
 .aw-holding-empty-state {
-  min-height: 96px;
+  min-height: 76px;
 }
 
 .aw-holding-row {
@@ -959,12 +964,12 @@ body {
   grid-template-columns: auto minmax(0, 1fr) minmax(260px, auto);
   align-items: center;
   gap: var(--aw-space-4);
-  min-height: 132px;
-  margin-top: var(--aw-space-4);
-  border: 1px solid var(--aw-border-subtle);
+  min-height: 108px;
+  margin-top: var(--aw-space-3);
+  border: 0;
   border-radius: var(--aw-radius-md);
-  background: var(--aw-card-bg);
-  padding: var(--aw-space-4);
+  background: var(--aw-surface-2);
+  padding: var(--aw-space-3);
 }
 
 .aw-pim-empty-icon {
@@ -1329,11 +1334,11 @@ body {
 }
 
 .aw-public-holdings-card {
-  min-height: 168px;
+  min-height: 132px;
 }
 
 .aw-chart-shell.aw-public-holdings-card {
-  min-height: 148px;
+  min-height: 120px;
 }
 
 .aw-chart-empty-state {
@@ -1360,7 +1365,7 @@ body {
   align-items: center;
   justify-content: center;
   column-gap: var(--aw-space-5);
-  min-height: 92px;
+  min-height: 64px;
 }
 
 .aw-public-holdings-card .aw-chart-empty-state .aw-empty-chart-bars {
@@ -1825,7 +1830,7 @@ body {
   position: relative;
   z-index: 1;
   border-radius: 999px;
-  background: linear-gradient(90deg, var(--aw-accent-line), var(--aw-accent-mist));
+  background: var(--aw-accent-line);
   transition: width 1000ms ease;
 }
 
@@ -2008,6 +2013,31 @@ body {
   transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease;
 }
 
+.aw-settings-nav {
+  border-color: var(--aw-border-subtle);
+}
+
+.aw-settings-content {
+  scroll-padding-block: var(--aw-space-4);
+}
+
+.aw-settings-provider-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--aw-space-3);
+}
+
+.aw-settings-refresh {
+  min-width: 96px;
+}
+
+.aw-settings-status-line {
+  border-radius: var(--aw-radius-sm);
+  background: var(--aw-surface-2);
+  padding: var(--aw-space-3);
+}
+
 .aw-settings-tab:hover,
 .aw-settings-tab-active {
   background: var(--aw-surface-2);
@@ -2142,7 +2172,7 @@ body {
 
 .aw-workbench-header-meta {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: var(--aw-space-1) var(--aw-space-3);
   color: var(--aw-text-tertiary);
   font-family: var(--aw-font-number);
@@ -2156,6 +2186,14 @@ body {
   white-space: nowrap;
 }
 
+.aw-workbench-header-title {
+  flex: 1 1 auto;
+}
+
+.aw-workbench-header-actions {
+  flex: 0 0 auto;
+}
+
 .aw-drawer-header,
 .aw-drawer-footer,
 .aw-workbench-header,
@@ -2163,7 +2201,7 @@ body {
   background: var(--aw-card-bg);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  border-color: var(--aw-border-subtle);
+  border-color: transparent;
 }
 
 .aw-workbench-scroll {
@@ -2173,7 +2211,7 @@ body {
 .aw-workbench-body-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(320px, 390px);
-  gap: var(--aw-space-4);
+  gap: var(--aw-space-3);
 }
 
 .aw-workbench-conversation-panel {
@@ -2182,6 +2220,14 @@ body {
 
 .aw-workbench-widget-rail {
   padding-right: var(--aw-space-1);
+}
+
+.aw-workbench-widget-rail-header {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--aw-space-3);
+  margin-bottom: var(--aw-space-3);
 }
 
 .aw-workbench-cio-card {
@@ -2198,9 +2244,9 @@ body {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--aw-space-1);
   margin-bottom: var(--aw-space-3);
-  border: 1px solid var(--aw-border-subtle);
+  border: 0;
   border-radius: var(--aw-radius-sm);
-  background: var(--aw-card-bg);
+  background: var(--aw-surface-2);
   padding: var(--aw-space-1);
 }
 
@@ -2241,9 +2287,9 @@ body {
   display: grid;
   gap: 2px;
   min-width: 0;
-  border: 1px solid var(--aw-border-subtle);
+  border: 0;
   border-radius: var(--aw-radius-sm);
-  background: var(--aw-card-bg);
+  background: var(--aw-surface-2);
   padding: var(--aw-space-2);
   color: var(--aw-text-tertiary);
   font-size: var(--aw-text-caption);
@@ -2260,23 +2306,33 @@ body {
 
 .aw-workbench-signal-grid {
   display: grid;
+  flex: 0 0 auto;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--aw-space-2);
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--aw-border-subtle);
+  border-radius: var(--aw-radius-sm);
+  background: var(--aw-card-bg);
 }
 
 .aw-workbench-signal-card {
   position: relative;
   display: flex;
-  min-height: 54px;
+  min-height: 48px;
   align-items: center;
   gap: var(--aw-space-2);
   overflow: hidden;
-  border: 1px solid var(--aw-border-default);
-  border-radius: var(--aw-radius-sm);
+  border: 0;
+  border-left: 1px solid var(--aw-border-subtle);
+  border-radius: 0;
   background: var(--aw-card-bg);
-  padding: var(--aw-space-3);
+  padding: var(--aw-space-2) var(--aw-space-3);
   color: var(--aw-text-secondary);
-  box-shadow: inset 0 0 0 1px rgb(238 243 234 / 0.024);
+  box-shadow: none;
+}
+
+.aw-workbench-signal-card:first-child {
+  border-left: 0;
 }
 
 .aw-workbench-signal-card::before {
@@ -2320,15 +2376,16 @@ body {
 
 .aw-workbench-event-strip {
   display: flex;
-  min-height: 38px;
+  flex: 0 0 auto;
+  min-height: 32px;
   align-items: center;
   justify-content: space-between;
   gap: var(--aw-space-2);
   overflow: hidden;
-  border: 1px solid var(--aw-border-subtle);
+  border: 0;
   border-radius: var(--aw-radius-sm);
-  background: var(--aw-card-bg);
-  padding: var(--aw-space-2);
+  background: var(--aw-surface-2);
+  padding: var(--aw-space-1) var(--aw-space-2);
 }
 
 .aw-workbench-event-list {
@@ -2352,10 +2409,10 @@ body {
   flex: 0 1 auto;
   align-items: center;
   gap: 6px;
-  border: 1px solid var(--aw-border-subtle);
-  border-radius: var(--aw-radius-xs);
-  background: var(--aw-card-bg);
-  padding: 5px 8px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 4px 6px;
   color: var(--aw-text-secondary);
   font-size: var(--aw-text-caption);
   line-height: 1;
@@ -2370,26 +2427,22 @@ body {
 .aw-workbench-signal-ready,
 .aw-workbench-signal-context {
   color: var(--aw-neon-green);
-  border-color: rgb(168 201 163 / 0.20);
-  box-shadow: inset 0 0 0 1px rgb(238 243 234 / 0.024);
+  box-shadow: none;
 }
 
 .aw-workbench-signal-waiting {
   color: var(--aw-neon-amber);
-  border-color: rgb(216 194 122 / 0.20);
-  box-shadow: inset 0 0 0 1px rgb(238 243 234 / 0.024);
+  box-shadow: none;
 }
 
 .aw-workbench-signal-partial {
   color: var(--aw-neon-blue);
-  border-color: rgb(159 182 217 / 0.22);
-  box-shadow: inset 0 0 0 1px rgb(238 243 234 / 0.024);
+  box-shadow: none;
 }
 
 .aw-workbench-signal-blocked {
   color: var(--aw-state-danger);
-  border-color: rgb(217 143 133 / 0.24);
-  box-shadow: inset 0 0 0 1px rgb(238 243 234 / 0.024);
+  box-shadow: none;
 }
 
 @media (max-width: 900px) {
@@ -2403,16 +2456,26 @@ body {
   }
 
   .aw-workbench-conversation-panel {
-    min-height: 420px;
+    min-height: 340px;
   }
 
   .aw-workbench-widget-rail {
     overflow: visible;
   }
+
+  .aw-workbench-widget-rail-header {
+    display: flex;
+  }
 }
 
 .aw-workbench-widget-card {
   box-shadow: none;
+}
+
+.aw-workbench-widget-card .aw-panel-muted,
+.aw-workbench-rail-detail .aw-panel-muted {
+  border-color: transparent;
+  background: var(--aw-surface-2);
 }
 
 .aw-workbench-widget-card .aw-chart-state-icon {
@@ -2427,6 +2490,10 @@ body {
 
 .aw-chat-empty-state {
   color: var(--aw-text-secondary);
+  height: auto !important;
+  min-height: 260px;
+  justify-content: flex-start;
+  padding-top: var(--aw-space-6);
 }
 
 .aw-chat-empty-state > .aw-icon {
@@ -2444,6 +2511,10 @@ body {
   color: var(--aw-text-primary);
 }
 
+.aw-chat-quick-prompts {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 @media (max-width: 640px) {
   .aw-settings-shell,
   .aw-profile-shell,
@@ -2453,10 +2524,38 @@ body {
   }
 
   .aw-settings-tab {
-    width: auto;
-    min-width: max-content;
-    min-height: 36px;
-    padding-inline: var(--aw-space-3);
+    width: 100%;
+    min-width: 0;
+    min-height: 40px;
+    padding-inline: var(--aw-space-2);
+    gap: var(--aw-space-2);
+    justify-content: flex-start;
+  }
+
+  .aw-settings-nav {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: visible;
+    gap: var(--aw-space-1);
+  }
+
+  .aw-settings-content {
+    padding-top: var(--aw-space-3);
+  }
+
+  .aw-settings-provider-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .aw-settings-refresh {
+    min-width: 40px;
+    width: 40px;
+    padding: 0;
+    font-size: 0;
+  }
+
+  .aw-settings-status-line {
+    gap: var(--aw-space-3);
   }
 
   .aw-workbench-header {
@@ -2465,6 +2564,21 @@ body {
 
   .aw-workbench-header .aw-title {
     font-size: 20px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .aw-workbench-header-title {
+    max-width: calc(100% - 118px);
+  }
+
+  .aw-workbench-header-actions {
+    gap: var(--aw-space-1);
+  }
+
+  .aw-workbench-phase-pill {
+    display: none;
   }
 
   .aw-workbench-header-meta span:nth-child(n + 3) {
@@ -2476,11 +2590,14 @@ body {
   }
 
   .aw-workbench-signal-card {
-    min-height: 64px;
-    align-items: flex-start;
-    flex-direction: column;
-    justify-content: center;
+    min-height: 52px;
+    align-items: center;
+    flex-direction: row;
     padding: var(--aw-space-2);
+  }
+
+  .aw-workbench-signal-card .material-symbols-rounded {
+    font-size: 18px !important;
   }
 
   .aw-workbench-signal-card strong,
@@ -2491,7 +2608,7 @@ body {
   .aw-chat-empty-state {
     align-items: stretch;
     justify-content: flex-start;
-    padding-top: var(--aw-space-6);
+    padding-top: var(--aw-space-4);
     text-align: left;
   }
 
@@ -2522,7 +2639,15 @@ body {
   }
 
   .aw-workbench-conversation-panel {
-    min-height: 360px;
+    min-height: 320px;
+  }
+
+  .aw-chat-empty-state {
+    min-height: 250px;
+  }
+
+  .aw-chat-quick-prompts {
+    grid-template-columns: 1fr;
   }
 
   .aw-workbench-rail-metrics {
@@ -2594,6 +2719,16 @@ body {
 
 .aw-chat-bubble-assistant {
   background: var(--aw-card-bg);
+}
+
+.aw-workbench-conversation-panel .aw-chat-bubble-assistant {
+  border: 0;
+  box-shadow: none;
+}
+
+.aw-workbench-conversation-panel [data-aw-response-widgets] .aw-workbench-widget-card {
+  border-color: transparent;
+  background: var(--aw-surface-2);
 }
 
 .aw-chat-input {
@@ -2869,6 +3004,11 @@ body {
   outline-offset: 2px;
 }
 
+:where(button, a, input, textarea, select, [role="tab"]):focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--aw-accent-mist) 54%, transparent);
+  outline-offset: 2px;
+}
+
 .arbitra-interactive {
   transition: all 0.2s ease;
 }
@@ -2957,6 +3097,15 @@ body {
 
 /* Step 3: Reduced Motion Protection */
 @media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
   .arbitra-interactive,
   .arbitra-clickable,
   .arbitra-btn-base,

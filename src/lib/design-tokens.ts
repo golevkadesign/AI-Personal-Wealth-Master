@@ -6,13 +6,12 @@ export function readCssToken(tokenName: string, fallback: string): string {
 
 export const AW_REFERENCE_TOKENS = {
   color: {
-    stage: '#101311',
-    card: '#121413',
-    cardRaised: '#171A18',
+    stage: '#0E100F',
+    card: '#111412',
     cardMuted: 'rgb(238 243 234 / 0.035)',
     text: '#EEF3EA',
-    textMuted: 'rgb(221 232 216 / 0.72)',
-    textDim: 'rgb(174 190 170 / 0.62)',
+    textMuted: 'rgb(230 237 226 / 0.82)',
+    textDim: 'rgb(205 217 201 / 0.68)',
     mist: '#DDE8D8',
     sage: '#A9BAA5',
     line: '#A8C9A3',
@@ -63,6 +62,10 @@ export const AW_CHART_TOKENS = {
   warning: AW_REFERENCE_TOKENS.color.amber,
   danger: AW_REFERENCE_TOKENS.color.danger,
   info: AW_REFERENCE_TOKENS.color.blue,
+  areaNeutral: 'rgb(238 243 234 / 0.018)',
+  areaNeutralDim: 'rgb(238 243 234 / 0.006)',
+  areaSuccess: 'rgb(168 201 163 / 0.14)',
+  areaInfo: 'rgb(159 182 217 / 0.08)',
   palette: [
     AW_REFERENCE_TOKENS.color.line,
     AW_REFERENCE_TOKENS.color.sage,

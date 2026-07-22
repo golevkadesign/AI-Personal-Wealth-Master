@@ -313,9 +313,7 @@ function WorkbenchEventTimeline({
   const visibleEvents = useMemo(() => {
     const allEvents = events || [];
     if (!hasUserPrompt) {
-      return allEvents
-        .filter((event) => event.phase === 'session_opened' || event.phase === 'facts_hydrated')
-        .slice(-2);
+      return [];
     }
     const latestRunStart = allEvents.map((event) => event.phase).lastIndexOf('workbench_run_started');
     const currentRun = latestRunStart >= 0 ? allEvents.slice(latestRunStart) : allEvents;
@@ -644,6 +642,9 @@ function AgentWorkbenchContent({
     closeWorkbench();
     window.dispatchEvent(new CustomEvent('open-profile-report'));
   }, [closeWorkbench]);
+  const workbenchTitle = t(session.titleKey);
+  const workbenchSubject = session.subjectSpec?.label || session.subject || '';
+  const showWorkbenchSubject = Boolean(workbenchSubject && workbenchSubject !== workbenchTitle);
 
   return (
     <div className={isOpen ? undefined : 'hidden'} aria-hidden={!isOpen}>
@@ -662,18 +663,18 @@ function AgentWorkbenchContent({
         <header
           className="aw-workbench-header flex items-center justify-between gap-4 px-5 py-4"
         >
-          <div className="min-w-0">
+          <div className="aw-workbench-header-title min-w-0">
             <p className="aw-caption aw-text-tertiary font-mono uppercase">{t('nav.brandName')}</p>
             <h2 id="aw-workbench-title" className="aw-title aw-text-primary font-semibold tracking-normal">
-              {t(session.titleKey)}
+              {workbenchTitle}
             </h2>
             <div className="aw-workbench-header-meta mt-1" aria-label={t('workbench.dataStatus')}>
-              {session.subjectSpec?.label || session.subject ? <span>{session.subjectSpec?.label || session.subject}</span> : null}
+              {showWorkbenchSubject ? <span>{workbenchSubject}</span> : null}
               <span>{t('workbench.dataStatus')}: {getStatusLabel(factStatus, t)}</span>
               <span>{t('workbench.factsAsOf')}: {factsAsOf}</span>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="aw-workbench-header-actions flex items-center gap-2">
             {canOpenProfileEditor && (
               <button
                 type="button"
@@ -693,7 +694,7 @@ function AgentWorkbenchContent({
             >
               <MaterialIcon name="restart_alt" size={20} />
             </button>
-            <span className="aw-status-pill shrink-0 font-mono">
+            <span className="aw-status-pill aw-workbench-phase-pill shrink-0 font-mono">
               {t(widgetPhase === 'reply' ? 'workbench.phaseReply' : 'workbench.phaseInitial')}
             </span>
             <button
@@ -725,7 +726,7 @@ function AgentWorkbenchContent({
 
           <section className="aw-workbench-body-grid min-h-0 flex-1">
             <section className="aw-reference-card aw-workbench-conversation-panel flex min-h-0 flex-col overflow-hidden p-0">
-            <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-4 pb-2">
+            <div className="aw-workbench-conversation-header flex flex-wrap items-center justify-between gap-2 px-4 pt-4 pb-2">
               <div className="flex min-w-0 items-center gap-2">
                 <div className="aw-chart-state-icon shrink-0">
                   <MaterialIcon name="forum" size={20} className="text-aw-success" />
@@ -770,6 +771,13 @@ function AgentWorkbenchContent({
             </section>
 
             <aside className="aw-workbench-widget-rail custom-scroll min-h-0 overflow-y-auto" aria-label={t('workbench.widgets')}>
+              <div className="aw-workbench-widget-rail-header">
+                <div className="flex min-w-0 items-center gap-2">
+                  <MaterialIcon name="dashboard_customize" size={20} className="text-aw-success" />
+                  <h3 className="aw-label aw-text-primary truncate font-semibold">{t('workbench.widgets')}</h3>
+                </div>
+                <span className="aw-status-pill shrink-0 font-mono">{widgets.length}</span>
+              </div>
               {cioWidgets.length > 0 && (
                 <section className="grid grid-cols-1 gap-3 mb-3" aria-label={t('workbench.cioSynthesis')}>
                   {cioWidgets.map((widget) => (

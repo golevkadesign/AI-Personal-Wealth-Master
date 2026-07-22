@@ -14,6 +14,7 @@ import { buildPortfolioIntelligenceMap } from '../lib/portfolio-intelligence';
 import { Arbitra2DChart } from './charts/Arbitra2DChart';
 import { getCurrencySymbol, getHoldingMarketValue } from './chart-configs';
 import { MemoryInboxItemCard } from './MemoryInboxItemCard';
+import { AW_CHART_TOKENS, readCssToken } from '../lib/design-tokens';
 
 interface WorkbenchWidgetRendererProps {
   session: WorkbenchSessionSpec;
@@ -271,19 +272,9 @@ function buildHoldingTrendOption(history: any[], currency?: string) {
         smooth: true,
         symbol: 'none',
         data: values,
-        lineStyle: { color: '#A8C9A3', width: 2 },
+        lineStyle: { color: readCssToken('--aw-accent-line', AW_CHART_TOKENS.success), width: 2 },
         areaStyle: {
-          color: {
-            type: 'linear',
-            x: 0,
-            y: 0,
-            x2: 0,
-            y2: 1,
-            colorStops: [
-              { offset: 0, color: 'rgba(168, 201, 163, 0.20)' },
-              { offset: 1, color: 'rgba(168, 201, 163, 0.00)' },
-            ],
-          },
+          color: readCssToken('--aw-chart-area-success', AW_CHART_TOKENS.areaSuccess),
         },
       },
     ],

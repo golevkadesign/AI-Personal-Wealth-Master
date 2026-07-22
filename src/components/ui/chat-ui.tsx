@@ -125,6 +125,7 @@ export const ChatList = React.memo(function ChatList({
   };
 
   React.useEffect(() => {
+    if (messages.length === 0) return;
     if (chatEndRef.current && (isAtBottomRef.current || messages.length <= 1)) {
       chatEndRef.current.scrollIntoView({ behavior: isTyping ? 'auto' : 'smooth', block: 'end' });
     }
@@ -146,12 +147,12 @@ export const ChatList = React.memo(function ChatList({
           {emptyContextLabel && emptyContextValue && (
             <div className="aw-panel-muted mt-4 flex max-w-md items-center gap-3 px-3 py-2 text-left">
               <MaterialIcon name="hub" size={16} className="text-aw-success" />
-              <span className="aw-caption aw-text-tertiary font-mono uppercase">{emptyContextLabel}</span>
-              <strong className="aw-caption aw-text-primary truncate">{emptyContextValue}</strong>
+              <span className="aw-caption aw-text-tertiary shrink-0 font-mono uppercase">{emptyContextLabel}</span>
+              <strong className="aw-caption aw-text-primary min-w-0 truncate">{emptyContextValue}</strong>
             </div>
           )}
           {quickPrompts && quickPrompts.length > 0 && onQuickPrompt && (
-            <div className="mt-4 grid w-full max-w-md gap-2">
+            <div className="aw-chat-quick-prompts mt-4 grid w-full max-w-xl gap-2">
               {quickPrompts.map((prompt) => (
                 <button
                   key={prompt}
